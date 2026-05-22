@@ -7,6 +7,8 @@ import lombok.*;
 import org.hibernate.annotations.ColumnDefault;
 
 import java.time.Instant;
+import java.util.HashSet;
+import java.util.Set;
 
 @Builder
 @AllArgsConstructor
@@ -59,4 +61,34 @@ public class Users {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
+    @Builder.Default
+    @OneToMany(
+            mappedBy = "users",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true,
+            fetch = FetchType.LAZY
+    )
+    @ToString.Exclude
+    private Set<Roles> roles = new HashSet<>();
+
+    public void addRole(Roles role) {
+        roles.add(role);
+        role.setUsers(this);
+    }
+
+    public void removeRole(Roles role) {
+        roles.remove(role);
+        role.setUsers(null);
+    }
+
+    @PrePersist
+    public void prePersist() {
+        if (this.status == null) {
+            this.status = "active";
+        }
+
+        if (this.createdAt == null) {
+            this.createdAt = Instant.now();
+        }
+    }
 }

@@ -1,80 +1,121 @@
 package com.group5.htms.util;
 
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
-import lombok.Builder;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.Function;
+import java.util.UUID;
 
-@Builder
+@Component
 public class JwtUtil {
 
-    private final String accessKey;
-    private final String refreshKey;
-    private final long accessExpiration;
-    private final long refreshExpiration;
+    private final SecretKey accessKey;
+    private final SecretKey refreshKey;
+    private final long accessTokenAge;
+    private final long refreshTokenAge;
 
-    public String generateAccessToken(String username) {
-        return buildToken(new HashMap<>(), username, accessExpiration, getSignInKey(false));
+    public JwtUtil(
+            @Value("${JWT_ACCESSKEY}") String accessKey,
+            @Value("${JWT_REFRESHKEY}") String refreshKey,
+            @Value("${JWT_ACCESSEXPIRATION}") long accessTokenAge,
+            @Value("${JWT_REFRESHEXPIRATION}") long refreshTokenAge
+    ) {
+        this.accessKey = Keys.hmacShaKeyFor(accessKey.getBytes(StandardCharsets.UTF_8));
+        this.refreshKey = Keys.hmacShaKeyFor(refreshKey.getBytes(StandardCharsets.UTF_8));
+        this.accessTokenAge = accessTokenAge;
+        this.refreshTokenAge = refreshTokenAge;
     }
 
-    public String generateAccessToken(Map<String, Object> extraClaims, String username) {
-        return buildToken(extraClaims, username, accessExpiration, getSignInKey(false));
+    public String generateAccessToken(UserDetails userDetails) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("tokenType", "ACCESS");
+        claims.put(
+                "roles",
+                userDetails.getAuthorities()
+                        .stream()
+                        .map(GrantedAuthority::getAuthority)
+                        .toList()
+        );
+
+        return buildToken(claims, userDetails.getUsername(), accessTokenAge, accessKey);
     }
 
-    public String generateRefreshToken(String username) {
-        return buildToken(new HashMap<>(), username, refreshExpiration, getSignInKey(true));
+    public String generateRefreshToken(UserDetails userDetails) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("tokenType", "REFRESH");
+
+        return buildToken(claims, userDetails.getUsername(), refreshTokenAge, refreshKey);
     }
 
-    private String buildToken(Map<String, Object> extraClaims, String username, long expiration, SecretKey key) {
+    private String buildToken(
+            Map<String, Object> claims,
+            String subject,
+            long expirationMillis,
+            SecretKey key
+    ) {
+        Instant now = Instant.now();
+
         return Jwts.builder()
-                .claims(extraClaims)
-                .subject(username)
-                .issuedAt(new Date(System.currentTimeMillis()))
-                .expiration(new Date(System.currentTimeMillis() + expiration))
-                .signWith(key, Jwts.SIG.HS256)
+                .claims(claims)
+                .subject(subject)
+                .id(UUID.randomUUID().toString())
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(now.plusMillis(expirationMillis)))
+                .signWith(key)
                 .compact();
     }
 
-    public boolean isTokenValid(String token, String username, boolean isRefreshToken) {
-        final String extractedUsername = extractUsername(token, isRefreshToken);
-        return (extractedUsername.equals(username)) && !isTokenExpired(token, isRefreshToken);
+    public String extractUsername(String token, boolean refreshToken) {
+        return extractAllClaims(token, refreshToken).getSubject();
     }
 
-    public String extractUsername(String token, boolean isRefreshToken) {
-        return extractClaim(token, Claims::getSubject, isRefreshToken);
+    public String extractJti(String token, boolean refreshToken) {
+        return extractAllClaims(token, refreshToken).getId();
     }
 
-    private boolean isTokenExpired(String token, boolean isRefreshToken) {
-        return extractExpiration(token, isRefreshToken).before(new Date());
+    public boolean isTokenValid(String token, String username, boolean refreshToken) {
+        try {
+            Claims claims = extractAllClaims(token, refreshToken);
+
+            String tokenType = claims.get("tokenType", String.class);
+            boolean correctTokenType = refreshToken
+                    ? "REFRESH".equals(tokenType)
+                    : "ACCESS".equals(tokenType);
+
+            return correctTokenType
+                    && username.equals(claims.getSubject())
+                    && claims.getExpiration().after(new Date());
+        } catch (JwtException | IllegalArgumentException ex) {
+            return false;
+        }
     }
 
-    private Date extractExpiration(String token, boolean isRefreshToken) {
-        return extractClaim(token, Claims::getExpiration, isRefreshToken);
-    }
+    private Claims extractAllClaims(String token, boolean refreshToken) {
+        SecretKey key = refreshToken ? refreshKey : accessKey;
 
-    public <T> T extractClaim(String token, Function<Claims, T> claimsResolver, boolean isRefreshToken) {
-        final Claims claims = extractAllClaims(token, isRefreshToken);
-        return claimsResolver.apply(claims);
-    }
-
-    private Claims extractAllClaims(String token, boolean isRefreshToken) {
         return Jwts.parser()
-                .verifyWith(getSignInKey(isRefreshToken))
+                .verifyWith(key)
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
     }
 
-    private SecretKey getSignInKey(boolean isRefreshToken) {
-        String secretString = isRefreshToken ? refreshKey : accessKey;
-        byte[] keyBytes = Decoders.BASE64.decode(secretString);
-        return Keys.hmacShaKeyFor(keyBytes);
+    public long getAccessTokenAge() {
+        return accessTokenAge;
+    }
+
+    public long getRefreshTokenAge() {
+        return refreshTokenAge;
     }
 }
