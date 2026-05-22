@@ -7,7 +7,9 @@ import com.group5.htms.dto.jockeyassignment.request.JockeyInvitationUpdateReques
 import com.group5.htms.dto.jockeyassignment.response.JockeyAssignmentResponse;
 import com.group5.htms.entity.JockeyHorseAssignments;
 import com.group5.htms.mapper.JockeyAssignmentMapper;
+import com.group5.htms.repository.BetsRepository;
 import com.group5.htms.repository.JockeyHorseAssignmentsRepository;
+import com.group5.htms.repository.RaceResultsRepository;
 import com.group5.htms.repository.RaceRegistrationsRepository;
 import com.group5.htms.repository.RacesRepository;
 import com.group5.htms.repository.RolesRepository;
@@ -29,6 +31,8 @@ public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
     private static final String ROLE_JOCKEY = "jockey";
 
     private final JockeyHorseAssignmentsRepository jockeyHorseAssignmentsRepository;
+    private final RaceResultsRepository raceResultsRepository;
+    private final BetsRepository betsRepository;
     private final RaceRegistrationsRepository raceRegistrationsRepository;
     private final RacesRepository racesRepository;
     private final RolesRepository rolesRepository;
@@ -86,6 +90,8 @@ public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
     @Transactional
     public void deleteAssignment(Integer id) {
         JockeyHorseAssignments assignment = findAssignmentForCurrentOwner(id);
+        betsRepository.deleteByAssignment_Id(id);
+        raceResultsRepository.deleteByAssignment_Id(id);
         jockeyHorseAssignmentsRepository.delete(assignment);
     }
 

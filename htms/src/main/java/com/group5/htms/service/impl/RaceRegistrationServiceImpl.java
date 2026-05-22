@@ -5,11 +5,15 @@ import com.group5.htms.dto.raceregistration.request.RaceRegistrationApprovalRequ
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationCreateRequest;
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationUpdateRequest;
 import com.group5.htms.dto.raceregistration.response.RaceRegistrationResponse;
+import com.group5.htms.entity.JockeyHorseAssignments;
 import com.group5.htms.entity.RaceRegistrations;
 import com.group5.htms.entity.Users;
 import com.group5.htms.mapper.RaceRegistrationMapper;
+import com.group5.htms.repository.BetsRepository;
 import com.group5.htms.repository.HorsesRepository;
+import com.group5.htms.repository.JockeyHorseAssignmentsRepository;
 import com.group5.htms.repository.RaceRegistrationsRepository;
+import com.group5.htms.repository.RaceResultsRepository;
 import com.group5.htms.repository.RacesRepository;
 import com.group5.htms.repository.RolesRepository;
 import com.group5.htms.repository.TournamentsRepository;
@@ -30,6 +34,9 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
     private static final String ROLE_HORSE_OWNER = "horse_owner";
 
     private final RaceRegistrationsRepository raceRegistrationsRepository;
+    private final JockeyHorseAssignmentsRepository jockeyHorseAssignmentsRepository;
+    private final RaceResultsRepository raceResultsRepository;
+    private final BetsRepository betsRepository;
     private final TournamentsRepository tournamentsRepository;
     private final RacesRepository racesRepository;
     private final HorsesRepository horsesRepository;
@@ -104,6 +111,7 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
                 id,
                 authService.getCurrentUserRoleId(ROLE_HORSE_OWNER)
         );
+        deleteAssignmentsByRegistration(id);
         raceRegistrationsRepository.delete(registration);
     }
 
@@ -182,6 +190,25 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
         if (!rolesRepository.existsById(id)) {
             throw new ResourceNotFoundException(message);
         }
+    }
+
+    private void deleteAssignmentsByRegistration(Integer registrationId) {
+        List<Integer> assignmentIds = jockeyHorseAssignmentsRepository.findByReg_Id(registrationId)
+                .stream()
+                .map(JockeyHorseAssignments::getId)
+                .toList();
+
+        deleteAssignmentChildren(assignmentIds);
+        jockeyHorseAssignmentsRepository.deleteByReg_Id(registrationId);
+    }
+
+    private void deleteAssignmentChildren(List<Integer> assignmentIds) {
+        if (assignmentIds.isEmpty()) {
+            return;
+        }
+
+        betsRepository.deleteByAssignment_IdIn(assignmentIds);
+        raceResultsRepository.deleteByAssignment_IdIn(assignmentIds);
     }
 
 }
