@@ -1,5 +1,6 @@
 package com.group5.htms.dto.horse.request;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
@@ -12,6 +13,7 @@ import java.time.Instant;
 @Getter
 @Setter
 public class HorseUpdateRequest {
+    @Schema(hidden = true)
     private Integer ownerRoleId;
 
     @Size(max = 100, message = "Horse name must not exceed 100 characters")

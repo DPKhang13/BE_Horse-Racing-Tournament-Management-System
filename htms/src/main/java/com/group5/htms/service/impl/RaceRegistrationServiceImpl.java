@@ -1,6 +1,6 @@
 package com.group5.htms.service.impl;
 
-import com.group5.htms.common.exceptions.ResourceNotFoundException;
+import com.group5.htms.exceptions.ResourceNotFoundException;
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationApprovalRequest;
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationCreateRequest;
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationUpdateRequest;
@@ -13,24 +13,28 @@ import com.group5.htms.repository.RaceRegistrationsRepository;
 import com.group5.htms.repository.RacesRepository;
 import com.group5.htms.repository.RolesRepository;
 import com.group5.htms.repository.TournamentsRepository;
-import com.group5.htms.repository.UsersRepository;
+import com.group5.htms.service.AuthService;
 import com.group5.htms.service.RaceRegistrationService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
 public class RaceRegistrationServiceImpl implements RaceRegistrationService {
+    private static final String ROLE_HORSE_OWNER = "horse_owner";
+
     private final RaceRegistrationsRepository raceRegistrationsRepository;
     private final TournamentsRepository tournamentsRepository;
     private final RacesRepository racesRepository;
     private final HorsesRepository horsesRepository;
     private final RolesRepository rolesRepository;
-    private final UsersRepository usersRepository;
+    private final AuthService authService;
     private final RaceRegistrationMapper raceRegistrationMapper;
 
     @Override
@@ -49,7 +53,13 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
     @Override
     @Transactional
     public RaceRegistrationResponse createRegistration(RaceRegistrationCreateRequest request) {
+        Integer ownerRoleId = authService.getCurrentUserRoleId(ROLE_HORSE_OWNER);
+        request.setOwnerRoleId(ownerRoleId);
+        request.setStatus(null);
+        request.setApprovedAt(null);
+        request.setApprovedById(null);
         validateCreateReferences(request);
+        validateHorseBelongsToOwner(request.getHorseId(), ownerRoleId);
         RaceRegistrations registration = raceRegistrationMapper.toEntity(request);
 
         return raceRegistrationMapper.toResponse(raceRegistrationsRepository.save(registration));
@@ -58,8 +68,16 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
     @Override
     @Transactional
     public RaceRegistrationResponse updateRegistration(Integer id, RaceRegistrationUpdateRequest request) {
-        RaceRegistrations registration = findRegistration(id);
+        Integer ownerRoleId = authService.getCurrentUserRoleId(ROLE_HORSE_OWNER);
+        RaceRegistrations registration = findRegistrationForCurrentOwner(id, ownerRoleId);
+        request.setOwnerRoleId(null);
+        request.setStatus(null);
+        request.setApprovedAt(null);
+        request.setApprovedById(null);
         validateUpdateReferences(request);
+        if (request.getHorseId() != null) {
+            validateHorseBelongsToOwner(request.getHorseId(), ownerRoleId);
+        }
         raceRegistrationMapper.updateRegistration(registration, request);
 
         return raceRegistrationMapper.toResponse(raceRegistrationsRepository.save(registration));
@@ -72,12 +90,9 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
 
         registration.setStatus(request.getStatus().trim());
         registration.setApprovedAt(request.getApprovedAt() == null ? Instant.now() : request.getApprovedAt());
-        if (request.getApprovedById() != null) {
-            validateUserExists(request.getApprovedById());
-            Users approvedBy = new Users();
-            approvedBy.setId(request.getApprovedById());
-            registration.setApprovedBy(approvedBy);
-        }
+        Users approvedBy = new Users();
+        approvedBy.setId(authService.getCurrentUserId());
+        registration.setApprovedBy(approvedBy);
 
         return raceRegistrationMapper.toResponse(raceRegistrationsRepository.save(registration));
     }
@@ -85,13 +100,26 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
     @Override
     @Transactional
     public void deleteRegistration(Integer id) {
-        RaceRegistrations registration = findRegistration(id);
+        RaceRegistrations registration = findRegistrationForCurrentOwner(
+                id,
+                authService.getCurrentUserRoleId(ROLE_HORSE_OWNER)
+        );
         raceRegistrationsRepository.delete(registration);
     }
 
     private RaceRegistrations findRegistration(Integer id) {
         return raceRegistrationsRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Race registration not found"));
+    }
+
+    private RaceRegistrations findRegistrationForCurrentOwner(Integer id, Integer ownerRoleId) {
+        RaceRegistrations registration = findRegistration(id);
+
+        if (!Objects.equals(registration.getOwnerRoles().getId(), ownerRoleId)) {
+            throw new AccessDeniedException("You do not own this race registration");
+        }
+
+        return registration;
     }
 
     private void validateCreateReferences(RaceRegistrationCreateRequest request) {
@@ -101,9 +129,6 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
         validateRoleExists(request.getOwnerRoleId(), "Owner role not found");
         if (request.getJockeyRoleId() != null) {
             validateRoleExists(request.getJockeyRoleId(), "Jockey role not found");
-        }
-        if (request.getApprovedById() != null) {
-            validateUserExists(request.getApprovedById());
         }
     }
 
@@ -122,9 +147,6 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
         }
         if (request.getJockeyRoleId() != null) {
             validateRoleExists(request.getJockeyRoleId(), "Jockey role not found");
-        }
-        if (request.getApprovedById() != null) {
-            validateUserExists(request.getApprovedById());
         }
     }
 
@@ -146,15 +168,20 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
         }
     }
 
+    private void validateHorseBelongsToOwner(Integer horseId, Integer ownerRoleId) {
+        boolean belongsToOwner = horsesRepository.findById(horseId)
+                .map(horse -> Objects.equals(horse.getOwnerRoles().getId(), ownerRoleId))
+                .orElse(false);
+
+        if (!belongsToOwner) {
+            throw new AccessDeniedException("You do not own this horse");
+        }
+    }
+
     private void validateRoleExists(Integer id, String message) {
         if (!rolesRepository.existsById(id)) {
             throw new ResourceNotFoundException(message);
         }
     }
 
-    private void validateUserExists(Integer id) {
-        if (!usersRepository.existsById(id)) {
-            throw new ResourceNotFoundException("User not found");
-        }
-    }
 }

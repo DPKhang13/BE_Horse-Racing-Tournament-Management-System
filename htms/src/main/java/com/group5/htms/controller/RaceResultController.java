@@ -10,6 +10,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -41,12 +42,14 @@ public class RaceResultController {
 
     @Operation(summary = "Create race result", description = "Tạo mới kết quả race cho một jockey assignment.")
     @PostMapping("/create")
+    @PreAuthorize("hasAnyRole('ADMIN', 'RACE_REFEREE')")
     public ResponseEntity<RaceResultResponse> createResult(@Valid @RequestBody RaceResultCreateRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(raceResultService.createResult(request));
     }
 
     @Operation(summary = "Update race result", description = "Cập nhật kết quả race. Field nào không gửi lên sẽ giữ nguyên.")
     @PutMapping("/update/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'RACE_REFEREE')")
     public ResponseEntity<RaceResultResponse> updateResult(
             @PathVariable Integer id,
             @Valid @RequestBody RaceResultUpdateRequest request
@@ -56,6 +59,7 @@ public class RaceResultController {
 
     @Operation(summary = "Publish race result", description = "Publish kết quả race bằng cách cập nhật status và published at.")
     @PutMapping("/publish/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'RACE_REFEREE')")
     public ResponseEntity<RaceResultResponse> publishResult(
             @PathVariable Integer id,
             @Valid @RequestBody RaceResultPublishRequest request
@@ -65,6 +69,7 @@ public class RaceResultController {
 
     @Operation(summary = "Delete race result", description = "Xóa kết quả race theo result id.")
     @DeleteMapping("/delete/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'RACE_REFEREE')")
     public ResponseEntity<Void> deleteResult(@PathVariable Integer id) {
         raceResultService.deleteResult(id);
         return ResponseEntity.noContent().build();

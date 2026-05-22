@@ -10,6 +10,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -39,14 +40,16 @@ public class BetController {
         return ResponseEntity.ok(betService.getBetById(id));
     }
 
-    @Operation(summary = "Create bet", description = "Tạo bet cho một assignment với spectator role.")
+    @Operation(summary = "Create bet", description = "Tạo bet cho một assignment. Spectator role được lấy từ JWT của user đang đăng nhập.")
     @PostMapping("/create")
+    @PreAuthorize("hasRole('SPECTATOR')")
     public ResponseEntity<BetResponse> createBet(@Valid @RequestBody BetCreateRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(betService.createBet(request));
     }
 
     @Operation(summary = "Update bet", description = "Cập nhật bet. Field nào không gửi lên sẽ giữ nguyên.")
     @PutMapping("/update/{id}")
+    @PreAuthorize("hasRole('SPECTATOR')")
     public ResponseEntity<BetResponse> updateBet(
             @PathVariable Integer id,
             @Valid @RequestBody BetUpdateRequest request
@@ -54,8 +57,9 @@ public class BetController {
         return ResponseEntity.ok(betService.updateBet(id, request));
     }
 
-    @Operation(summary = "Check bet result", description = "Cập nhật kết quả bet sau race: status, payout, settled info.")
+    @Operation(summary = "Check bet result", description = "Cập nhật kết quả bet sau race. Người settle được lấy từ JWT.")
     @PutMapping("/check/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'RACE_REFEREE')")
     public ResponseEntity<BetResponse> checkBet(
             @PathVariable Integer id,
             @Valid @RequestBody BetCheckRequest request
@@ -65,6 +69,7 @@ public class BetController {
 
     @Operation(summary = "Delete bet", description = "Xóa bet theo id.")
     @DeleteMapping("/delete/{id}")
+    @PreAuthorize("hasRole('SPECTATOR')")
     public ResponseEntity<Void> deleteBet(@PathVariable Integer id) {
         betService.deleteBet(id);
         return ResponseEntity.noContent().build();

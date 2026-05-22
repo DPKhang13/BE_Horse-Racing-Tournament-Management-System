@@ -7,9 +7,11 @@ import com.group5.htms.dto.auth.RegisterRequest;
 import com.group5.htms.dto.auth.UserMeResponse;
 import com.group5.htms.entity.Roles;
 import com.group5.htms.entity.Users;
-import com.group5.htms.exception.BadRequestException;
-import com.group5.htms.exception.UnauthorizedException;
+import com.group5.htms.exceptions.BadRequestException;
+import com.group5.htms.exceptions.ResourceNotFoundException;
+import com.group5.htms.exceptions.UnauthorizedException;
 import com.group5.htms.mapper.AuthMapper;
+import com.group5.htms.repository.RolesRepository;
 import com.group5.htms.repository.UsersRepository;
 import com.group5.htms.service.AuthService;
 import com.group5.htms.util.CookieUtil;
@@ -57,6 +59,7 @@ public class AuthServiceImpl implements AuthService {
     );
 
     private final UsersRepository usersRepository;
+    private final RolesRepository rolesRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final CustomUserDetailsConfig userDetailsService;
@@ -223,6 +226,12 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional(readOnly = true)
     public UserMeResponse me() {
+        return authMapper.toUserMeResponse(getCurrentUser());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Users getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
         if (authentication == null || !authentication.isAuthenticated()) {
@@ -234,7 +243,28 @@ public class AuthServiceImpl implements AuthService {
         Users user = usersRepository.findByUsernameWithRoles(username)
                 .orElseThrow(() -> new UnauthorizedException("User not found"));
 
-        return authMapper.toUserMeResponse(user);
+        return user;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Roles getCurrentUserRole(String roleType) {
+        Users user = getCurrentUser();
+
+        return rolesRepository.findByUsersAndRoleType(user, roleType)
+                .orElseThrow(() -> new ResourceNotFoundException(roleType + " role not found"));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Integer getCurrentUserId() {
+        return getCurrentUser().getId();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Integer getCurrentUserRoleId(String roleType) {
+        return getCurrentUserRole(roleType).getId();
     }
 
     /*

@@ -1,25 +1,29 @@
 package com.group5.htms.service.impl;
 
-import com.group5.htms.common.exceptions.ResourceNotFoundException;
+import com.group5.htms.exceptions.ResourceNotFoundException;
 import com.group5.htms.dto.horse.request.HorseCreateRequest;
 import com.group5.htms.dto.horse.request.HorseUpdateRequest;
 import com.group5.htms.dto.horse.response.HorseResponse;
 import com.group5.htms.entity.Horses;
 import com.group5.htms.mapper.HorseMapper;
 import com.group5.htms.repository.HorsesRepository;
-import com.group5.htms.repository.RolesRepository;
+import com.group5.htms.service.AuthService;
 import com.group5.htms.service.HorseService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
 public class HorseServiceImpl implements HorseService {
+    private static final String ROLE_HORSE_OWNER = "horse_owner";
+
     private final HorsesRepository horsesRepository;
-    private final RolesRepository rolesRepository;
+    private final AuthService authService;
     private final HorseMapper horseMapper;
 
     @Override
@@ -38,7 +42,7 @@ public class HorseServiceImpl implements HorseService {
     @Override
     @Transactional
     public HorseResponse createHorse(HorseCreateRequest request) {
-        validateOwnerRoleExists(request.getOwnerRoleId());
+        request.setOwnerRoleId(authService.getCurrentUserRoleId(ROLE_HORSE_OWNER));
         Horses horse = horseMapper.toEntity(request);
 
         return horseMapper.toResponse(horsesRepository.save(horse));
@@ -47,10 +51,8 @@ public class HorseServiceImpl implements HorseService {
     @Override
     @Transactional
     public HorseResponse updateHorse(Integer id, HorseUpdateRequest request) {
-        Horses horse = findHorse(id);
-        if (request.getOwnerRoleId() != null) {
-            validateOwnerRoleExists(request.getOwnerRoleId());
-        }
+        Horses horse = findHorseForCurrentOwner(id);
+        request.setOwnerRoleId(null);
         horseMapper.updateHorse(horse, request);
 
         return horseMapper.toResponse(horsesRepository.save(horse));
@@ -59,7 +61,7 @@ public class HorseServiceImpl implements HorseService {
     @Override
     @Transactional
     public void deleteHorse(Integer id) {
-        Horses horse = findHorse(id);
+        Horses horse = findHorseForCurrentOwner(id);
         horsesRepository.delete(horse);
     }
 
@@ -68,9 +70,14 @@ public class HorseServiceImpl implements HorseService {
                 .orElseThrow(() -> new ResourceNotFoundException("Horse not found"));
     }
 
-    private void validateOwnerRoleExists(Integer ownerRoleId) {
-        if (!rolesRepository.existsById(ownerRoleId)) {
-            throw new ResourceNotFoundException("Owner role not found");
+    private Horses findHorseForCurrentOwner(Integer id) {
+        Horses horse = findHorse(id);
+        Integer ownerRoleId = authService.getCurrentUserRoleId(ROLE_HORSE_OWNER);
+
+        if (!Objects.equals(horse.getOwnerRoles().getId(), ownerRoleId)) {
+            throw new AccessDeniedException("You do not own this horse");
         }
+
+        return horse;
     }
 }

@@ -1,6 +1,6 @@
 package com.group5.htms.service.impl;
 
-import com.group5.htms.common.exceptions.ResourceNotFoundException;
+import com.group5.htms.exceptions.ResourceNotFoundException;
 import com.group5.htms.dto.raceresult.request.RaceResultCreateRequest;
 import com.group5.htms.dto.raceresult.request.RaceResultPublishRequest;
 import com.group5.htms.dto.raceresult.request.RaceResultUpdateRequest;

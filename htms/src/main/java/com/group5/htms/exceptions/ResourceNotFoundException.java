@@ -1,4 +1,4 @@
-package com.group5.htms.common.exceptions;
+package com.group5.htms.exceptions;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;

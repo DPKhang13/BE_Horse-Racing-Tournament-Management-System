@@ -1,5 +1,6 @@
 package com.group5.htms.dto.raceregistration.request;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
@@ -19,7 +20,7 @@ public class RaceRegistrationCreateRequest {
     @NotNull(message = "Horse id is required")
     private Integer horseId;
 
-    @NotNull(message = "Owner role id is required")
+    @Schema(hidden = true)
     private Integer ownerRoleId;
 
     private Integer jockeyRoleId;
@@ -32,6 +33,9 @@ public class RaceRegistrationCreateRequest {
 
     private Instant ownerConfirmedAt;
     private Instant registeredAt;
+    @Schema(hidden = true)
     private Instant approvedAt;
+
+    @Schema(hidden = true)
     private Integer approvedById;
 }

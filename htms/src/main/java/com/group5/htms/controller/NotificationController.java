@@ -9,6 +9,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -38,8 +39,9 @@ public class NotificationController {
         return ResponseEntity.ok(notificationService.getNotificationById(id));
     }
 
-    @Operation(summary = "Create notification", description = "Tạo notification cho user.")
+    @Operation(summary = "Create notification", description = "Tạo notification cho user đang đăng nhập dựa trên JWT.")
     @PostMapping("/create")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<NotificationResponse> createNotification(
             @Valid @RequestBody NotificationCreateRequest request
     ) {
@@ -48,6 +50,7 @@ public class NotificationController {
 
     @Operation(summary = "Update notification", description = "Cập nhật notification. Field nào không gửi lên sẽ giữ nguyên.")
     @PutMapping("/update/{id}")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<NotificationResponse> updateNotification(
             @PathVariable Integer id,
             @Valid @RequestBody NotificationUpdateRequest request
@@ -57,12 +60,14 @@ public class NotificationController {
 
     @Operation(summary = "Mark notification as read", description = "Đánh dấu notification là đã đọc.")
     @PutMapping("/mark-read/{id}")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<NotificationResponse> markAsRead(@PathVariable Integer id) {
         return ResponseEntity.ok(notificationService.markAsRead(id));
     }
 
     @Operation(summary = "Delete notification", description = "Xóa notification theo id.")
     @DeleteMapping("/delete/{id}")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> deleteNotification(@PathVariable Integer id) {
         notificationService.deleteNotification(id);
         return ResponseEntity.noContent().build();

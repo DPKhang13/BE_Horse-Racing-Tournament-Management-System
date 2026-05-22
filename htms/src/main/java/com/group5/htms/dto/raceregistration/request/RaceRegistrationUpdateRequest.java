@@ -1,5 +1,6 @@
 package com.group5.htms.dto.raceregistration.request;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
@@ -12,6 +13,7 @@ public class RaceRegistrationUpdateRequest {
     private Integer tournamentId;
     private Integer raceId;
     private Integer horseId;
+    @Schema(hidden = true)
     private Integer ownerRoleId;
     private Integer jockeyRoleId;
 
@@ -23,6 +25,9 @@ public class RaceRegistrationUpdateRequest {
 
     private Instant ownerConfirmedAt;
     private Instant registeredAt;
+    @Schema(hidden = true)
     private Instant approvedAt;
+
+    @Schema(hidden = true)
     private Integer approvedById;
 }

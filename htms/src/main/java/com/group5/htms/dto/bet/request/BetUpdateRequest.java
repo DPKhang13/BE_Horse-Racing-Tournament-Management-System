@@ -1,5 +1,6 @@
 package com.group5.htms.dto.bet.request;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
@@ -11,6 +12,7 @@ import java.time.Instant;
 @Getter
 @Setter
 public class BetUpdateRequest {
+    @Schema(hidden = true)
     private Integer spectatorRoleId;
     private Integer assignmentId;
 
@@ -32,9 +34,13 @@ public class BetUpdateRequest {
     private String status;
 
     private Instant placedAt;
+    @Schema(hidden = true)
     private Instant settledAt;
+
+    @Schema(hidden = true)
     private Integer settledById;
 
+    @Schema(hidden = true)
     @Size(max = 20, message = "Settled type must not exceed 20 characters")
     private String settledType;
 }

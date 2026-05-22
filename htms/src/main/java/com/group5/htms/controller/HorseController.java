@@ -9,6 +9,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -46,9 +47,10 @@ public class HorseController {
 
     @Operation(
             summary = "Create horse",
-            description = "Tạo mới một ngựa và gắn với owner role id được gửi trong request."
+            description = "Tạo mới một ngựa. Owner role được lấy từ JWT của user đang đăng nhập."
     )
     @PostMapping("/create")
+    @PreAuthorize("hasRole('HORSE_OWNER')")
     public ResponseEntity<HorseResponse> createHorse(@Valid @RequestBody HorseCreateRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(horseService.createHorse(request));
     }
@@ -58,6 +60,7 @@ public class HorseController {
             description = "Cập nhật thông tin ngựa theo horse id. Field nào không gửi lên sẽ được giữ nguyên."
     )
     @PutMapping("/update/{id}")
+    @PreAuthorize("hasRole('HORSE_OWNER')")
     public ResponseEntity<HorseResponse> updateHorse(
             @PathVariable Integer id,
             @Valid @RequestBody HorseUpdateRequest request
@@ -70,6 +73,7 @@ public class HorseController {
             description = "Xóa một ngựa theo horse id."
     )
     @DeleteMapping("/delete/{id}")
+    @PreAuthorize("hasRole('HORSE_OWNER')")
     public ResponseEntity<Void> deleteHorse(@PathVariable Integer id) {
         horseService.deleteHorse(id);
         return ResponseEntity.noContent().build();
