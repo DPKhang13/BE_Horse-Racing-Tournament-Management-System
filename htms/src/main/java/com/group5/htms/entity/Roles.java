@@ -17,6 +17,7 @@ import java.time.Instant;
 @Entity
 @Table(name = "\"Roles\"")
 public class Roles {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "role_id", nullable = false)
@@ -25,6 +26,7 @@ public class Roles {
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
+    @ToString.Exclude
     private Users users;
 
     @Size(max = 30)
@@ -50,4 +52,14 @@ public class Roles {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
+    @PrePersist
+    public void prePersist() {
+        if (this.status == null) {
+            this.status = "active";
+        }
+
+        if (this.createdAt == null) {
+            this.createdAt = Instant.now();
+        }
+    }
 }
