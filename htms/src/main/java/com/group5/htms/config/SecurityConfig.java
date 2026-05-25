@@ -52,13 +52,16 @@ public class SecurityConfig {
                                 "/api/auth/login",
                                 "/api/auth/refresh-token",
                                 "/swagger-ui/**",
-                                "/v3/api-docs/**"
+                                "/v3/api-docs/**",
+                                "/api/payments/vnpay/return",
+                                "/api/payments/vnpay/ipn"
                         ).permitAll()
 
                         // Cần accessToken
                         .requestMatchers(
                                 "/api/auth/logout",
-                                "/api/auth/me"
+                                "/api/auth/me",
+                                "/api/payments/vnpay/create-payment"
                         ).authenticated()
 
                         .anyRequest().authenticated()
