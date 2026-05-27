@@ -90,16 +90,20 @@ public class VnpayUtil {
         String ipAddress = request.getHeader("X-FORWARDED-FOR");
 
         if (ipAddress != null && !ipAddress.isBlank()) {
-            return ipAddress.split(",")[0].trim();
+            ipAddress = ipAddress.split(",")[0].trim();
+        } else {
+            ipAddress = request.getHeader("X-Real-IP");
+
+            if (ipAddress == null || ipAddress.isBlank()) {
+                ipAddress = request.getRemoteAddr();
+            }
         }
 
-        ipAddress = request.getHeader("X-Real-IP");
-
-        if (ipAddress != null && !ipAddress.isBlank()) {
-            return ipAddress;
+        if ("0:0:0:0:0:0:0:1".equals(ipAddress) || "::1".equals(ipAddress)) {
+            return "127.0.0.1";
         }
 
-        return request.getRemoteAddr();
+        return ipAddress;
     }
 
     public static String getFirstValue(Map<String, String[]> params, String key) {

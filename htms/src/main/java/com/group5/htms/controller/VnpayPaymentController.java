@@ -8,6 +8,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -24,6 +25,7 @@ public class VnpayPaymentController {
      User đã login mới được tạo payment URL để nạp tiền.
      */
     @PostMapping("/create-payment")
+    @PreAuthorize("hasRole('SPECTATOR')")
     public ResponseEntity<VnpayCreatePaymentResponse> createPayment(
             @Valid @RequestBody VnpayCreatePaymentRequest request,
             HttpServletRequest httpServletRequest

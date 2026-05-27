@@ -22,8 +22,8 @@ import com.group5.htms.repository.WalletsRepository;
 import com.group5.htms.service.VnpayPaymentService;
 import com.group5.htms.util.VnpayUtil;
 import jakarta.servlet.http.HttpServletRequest;
+import com.group5.htms.config.VnpayConfig;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -49,19 +49,7 @@ public class VnpayPaymentServiceImpl implements VnpayPaymentService {
 
     private static final DateTimeFormatter VNPAY_DATE_FORMAT =
             DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
-
-    @Value("${vnpay.tmn-code}")
-    private String tmnCode;
-
-    @Value("${vnpay.hash-secret}")
-    private String hashSecret;
-
-    @Value("${vnpay.pay-url}")
-    private String payUrl;
-
-    @Value("${vnpay.return-url}")
-    private String returnUrl;
-
+    private final VnpayConfig vnpayConfig;
     private final UsersRepository usersRepository;
     private final WalletsRepository walletsRepository;
     private final WalletTransactionsRepository walletTransactionsRepository;
@@ -142,7 +130,10 @@ public class VnpayPaymentServiceImpl implements VnpayPaymentService {
      */
     @Override
     public VnpayReturnResponse handleReturn(Map<String, String[]> parameterMap) {
-        boolean validSignature = VnpayUtil.verifySignature(parameterMap, hashSecret);
+        boolean validSignature = VnpayUtil.verifySignature(
+                parameterMap,
+                vnpayConfig.getHashSecret()
+        );
 
         String responseCode =
                 VnpayUtil.getFirstValue(parameterMap, "vnp_ResponseCode");
@@ -185,7 +176,10 @@ public class VnpayPaymentServiceImpl implements VnpayPaymentService {
     @Override
     @Transactional
     public Map<String, String> handleIpn(Map<String, String[]> parameterMap) {
-        boolean validSignature = VnpayUtil.verifySignature(parameterMap, hashSecret);
+        boolean validSignature = VnpayUtil.verifySignature(
+                parameterMap,
+                vnpayConfig.getHashSecret()
+        );
 
         if (!validSignature) {
             return Map.of(
@@ -298,7 +292,7 @@ public class VnpayPaymentServiceImpl implements VnpayPaymentService {
 
         params.put("vnp_Version", "2.1.0");
         params.put("vnp_Command", "pay");
-        params.put("vnp_TmnCode", tmnCode);
+        params.put("vnp_TmnCode", vnpayConfig.getTmnCode());
         params.put("vnp_Amount", vnpAmount);
         params.put("vnp_CurrCode", "VND");
         params.put("vnp_TxnRef", gatewayTxnRef);
@@ -308,7 +302,7 @@ public class VnpayPaymentServiceImpl implements VnpayPaymentService {
                         + " txn " + gatewayTxnRef
         );
         params.put("vnp_OrderType", "other");
-        params.put("vnp_ReturnUrl", returnUrl);
+        params.put("vnp_ReturnUrl", vnpayConfig.getReturnUrl());
         params.put("vnp_IpAddr", clientIp);
         params.put("vnp_Locale", normalizeLocale(request.getLocale()));
         params.put("vnp_CreateDate", now.format(VNPAY_DATE_FORMAT));
@@ -319,9 +313,12 @@ public class VnpayPaymentServiceImpl implements VnpayPaymentService {
         }
 
         String hashData = VnpayUtil.buildHashData(params);
-        String secureHash = VnpayUtil.hmacSHA512(hashSecret, hashData);
+        String secureHash = VnpayUtil.hmacSHA512(
+                vnpayConfig.getHashSecret(),
+                hashData
+        );
 
-        return payUrl
+        return vnpayConfig.getPayUrl()
                 + "?"
                 + VnpayUtil.buildQueryString(params)
                 + "&vnp_SecureHash="
