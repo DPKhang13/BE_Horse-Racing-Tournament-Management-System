@@ -6,4 +6,7 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface RaceResultsRepository extends JpaRepository<RaceResults, Integer> {
+    void deleteByAssignment_Id(Integer assignmentId);
+
+    void deleteByAssignment_IdIn(Iterable<Integer> assignmentIds);
 }

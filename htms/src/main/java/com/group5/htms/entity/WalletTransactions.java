@@ -60,7 +60,7 @@ public class WalletTransactions {
 
     @Size(max = 20)
     @NotNull
-    @ColumnDefault("'completed'")
+    @ColumnDefault("'pending'")
     @Column(name = "status", nullable = false, length = 20)
     private String status;
 
@@ -71,12 +71,120 @@ public class WalletTransactions {
     @Column(name = "ref_id")
     private Integer refId;
 
+    /*
+     * Payment gateway provider.
+     * Với VNPay: "vnpay".
+     * Sau này có thể thêm "zalopay".
+     */
+    @Size(max = 30)
+    @Column(name = "gateway_provider", length = 30)
+    private String gatewayProvider;
+
+    /*
+     * Mã giao dịch gửi sang VNPay qua vnp_TxnRef.
+     *
+     * Không dùng tx_id trần.
+     * Format nên là: TOPUP-{txId}-{random}
+     *
+     * Ví dụ: TOPUP-25-A8F3K2D9
+     */
+    @Size(max = 100)
+    @Column(name = "gateway_txn_ref", length = 100)
+    private String gatewayTxnRef;
+
+    /*
+     * Mã giao dịch do VNPay trả về: vnp_TransactionNo.
+     */
+    @Size(max = 100)
+    @Column(name = "gateway_transaction_no", length = 100)
+    private String gatewayTransactionNo;
+
+    /*
+     * VNPay vnp_ResponseCode.
+     * "00" thường là thành công.
+     */
+    @Size(max = 20)
+    @Column(name = "gateway_response_code", length = 20)
+    private String gatewayResponseCode;
+
+    /*
+     * VNPay vnp_TransactionStatus.
+     * "00" thường là giao dịch thành công.
+     */
+    @Size(max = 20)
+    @Column(name = "gateway_transaction_status", length = 20)
+    private String gatewayTransactionStatus;
+
+    /*
+     * Ngân hàng/kênh thanh toán VNPay trả về.
+     */
+    @Size(max = 50)
+    @Column(name = "gateway_bank_code", length = 50)
+    private String gatewayBankCode;
+
+    /*
+     * Thời gian thanh toán VNPay trả về dạng string.
+     * Ví dụ: yyyyMMddHHmmss.
+     */
+    @Size(max = 50)
+    @Column(name = "gateway_pay_date", length = 50)
+    private String gatewayPayDate;
+
+    /*
+     * Raw params từ VNPay để debug/audit.
+     *
+     * Lưu ý:
+     * - Không expose field này ra API public.
+     * - Không log ra console.
+     */
+    @Column(name = "gateway_raw_response", columnDefinition = "TEXT")
+    private String gatewayRawResponse;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by")
+    @ToString.Exclude
     private Users createdBy;
 
     @NotNull
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
+    @Column(name = "updated_at")
+    private Instant updatedAt;
+
+    @PrePersist
+    public void prePersist() {
+        if (this.cashAmount == null) {
+            this.cashAmount = BigDecimal.ZERO;
+        }
+
+        if (this.pointsAmount == null) {
+            this.pointsAmount = BigDecimal.ZERO;
+        }
+
+        if (this.exchangeRate == null) {
+            this.exchangeRate = BigDecimal.ONE;
+        }
+
+        if (this.pointsBefore == null) {
+            this.pointsBefore = BigDecimal.ZERO;
+        }
+
+        if (this.pointsAfter == null) {
+            this.pointsAfter = BigDecimal.ZERO;
+        }
+
+        if (this.status == null || this.status.isBlank()) {
+            this.status = "pending";
+        }
+
+        if (this.createdAt == null) {
+            this.createdAt = Instant.now();
+        }
+    }
+
+    @PreUpdate
+    public void preUpdate() {
+        this.updatedAt = Instant.now();
+    }
 }
