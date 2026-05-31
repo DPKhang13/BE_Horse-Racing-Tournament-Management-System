@@ -5,15 +5,23 @@ import com.group5.htms.dto.auth.AuthResponse;
 import com.group5.htms.dto.auth.LoginRequest;
 import com.group5.htms.dto.auth.RegisterRequest;
 import com.group5.htms.dto.auth.UserMeResponse;
+import com.group5.htms.dto.otpverify.request.ResendOtpRequest;
+import com.group5.htms.dto.otpverify.request.VerifyOtpRequest;
+import com.group5.htms.dto.otpverify.response.OtpVerifyResponse;
 import com.group5.htms.entity.Roles;
 import com.group5.htms.entity.Users;
-import com.group5.htms.exceptions.BadRequestException;
-import com.group5.htms.exceptions.ResourceNotFoundException;
-import com.group5.htms.exceptions.UnauthorizedException;
+import com.group5.htms.enums.OtpValidationStatus;
+import com.group5.htms.enums.RoleStatus;
+import com.group5.htms.enums.RoleType;
+import com.group5.htms.enums.UserStatus;
+import com.group5.htms.exception.BadRequestException;
+import com.group5.htms.exception.ResourceNotFoundException;
+import com.group5.htms.exception.UnauthorizedException;
 import com.group5.htms.mapper.AuthMapper;
 import com.group5.htms.repository.RolesRepository;
 import com.group5.htms.repository.UsersRepository;
 import com.group5.htms.service.AuthService;
+import com.group5.htms.service.OtpMailService;
 import com.group5.htms.util.CookieUtil;
 import com.group5.htms.util.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
@@ -66,7 +74,7 @@ public class AuthServiceImpl implements AuthService {
     private final JwtUtil jwtUtil;
     private final RefreshTokenServiceImpl refreshTokenService;
     private final AuthMapper authMapper;
-
+    private final OtpMailService otpMailService;
     /*
      * POST /api/auth/register
      1. Check username/email trùng.
@@ -78,38 +86,54 @@ public class AuthServiceImpl implements AuthService {
      */
     @Override
     @Transactional
-    public AuthResponse register(RegisterRequest request, HttpServletResponse response) {
-        if (usersRepository.existsByUsername(request.getUsername())) {
-            throw new BadRequestException("Username already exists");
-        }
+    public OtpVerifyResponse register(RegisterRequest request) {
+        String email = normalizeEmail(request.getEmail());
+        String username = request.getUsername().trim();
 
-        if (usersRepository.existsByEmail(request.getEmail())) {
-            throw new BadRequestException("Email already exists");
+        usersRepository.findByEmail(email).ifPresent(existingUser -> {
+            if (UserStatus.ACTIVE.getValue().equalsIgnoreCase(existingUser.getStatus())) {
+                throw new BadRequestException("Email already exists");
+            }
+
+            if (UserStatus.INACTIVE.getValue().equalsIgnoreCase(existingUser.getStatus())) {
+                otpMailService.resendOtp(email);
+                throw new BadRequestException("Email already registered but not verified. OTP has been resent.");
+            }
+
+            throw new BadRequestException("Email cannot be used");
+        });
+
+        if (usersRepository.existsByUsername(username)) {
+            throw new BadRequestException("Username already exists");
         }
 
         String initialRole = normalizeRegisterRole(request.getRoleType());
 
         Users user = Users.builder()
-                .username(request.getUsername())
-                .email(request.getEmail())
+                .username(username)
+                .email(email)
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
-                .fullName(request.getFullName())
-                .phone(request.getPhone())
-                .status(STATUS_ACTIVE)
+                .fullName(request.getFullName().trim())
+                .phone(clean(request.getPhone()))
+                .status(UserStatus.INACTIVE.getValue())
                 .build();
 
         Roles role = Roles.builder()
                 .roleType(initialRole)
-                .status(STATUS_ACTIVE)
+                .status(RoleStatus.ACTIVE.getValue())
                 .build();
 
         user.addRole(role);
 
-        Users savedUser = usersRepository.save(user);
+        usersRepository.save(user);
 
-        UserDetails userDetails = userDetailsService.loadUserByUsername(savedUser.getUsername());
+        otpMailService.generateAndSendOtp(email);
 
-        return buildAuthResponse(userDetails, savedUser, response);
+        return OtpVerifyResponse.builder()
+                .message("Register successfully. Please verify your email with OTP.")
+                .email(email)
+                .verified(false)
+                .build();
     }
 
     /*
@@ -219,7 +243,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     /*
-     * GET /api/auth/me
+     GET /api/auth/me
      JwtAuthenticationFilter đọc AccessToken cookie hoặc Bearer token,
      sau đó set Authentication vào SecurityContextHolder.
      */
@@ -319,21 +343,121 @@ public class AuthServiceImpl implements AuthService {
      Chuẩn hóa role khi register.
      Nếu không gửi roleType thì mặc định là spectator.
      */
+//    private String normalizeRegisterRole(String roleType) {
+//        if (roleType == null || roleType.isBlank()) {
+//            return ROLE_SPECTATOR;
+//        }
+//
+//        String normalizedRole = roleType.trim().toLowerCase();
+//
+//        if (BLOCKED_REGISTER_ROLES.contains(normalizedRole)) {
+//            throw new BadRequestException("This role cannot be created from public registration");
+//        }
+//
+//        if (!PUBLIC_REGISTER_ROLES.contains(normalizedRole)) {
+//            throw new BadRequestException("Invalid register role");
+//        }
+//
+//        return normalizedRole;
+//    }
     private String normalizeRegisterRole(String roleType) {
         if (roleType == null || roleType.isBlank()) {
-            return ROLE_SPECTATOR;
+            return RoleType.SPECTATOR.getValue();
         }
 
         String normalizedRole = roleType.trim().toLowerCase();
 
-        if (BLOCKED_REGISTER_ROLES.contains(normalizedRole)) {
-            throw new BadRequestException("This role cannot be created from public registration");
-        }
-
-        if (!PUBLIC_REGISTER_ROLES.contains(normalizedRole)) {
-            throw new BadRequestException("Invalid register role");
+        if (!RoleType.SPECTATOR.getValue().equals(normalizedRole)) {
+            throw new BadRequestException("Only spectator can register publicly");
         }
 
         return normalizedRole;
+    }
+
+    @Override
+    @Transactional
+    public OtpVerifyResponse verifyOtp(VerifyOtpRequest request) {
+        String email = normalizeEmail(request.getEmail());
+
+        Users user = usersRepository.findByEmail(email)
+                .orElseThrow(() -> new BadRequestException("User not found"));
+
+        if (UserStatus.ACTIVE.getValue().equalsIgnoreCase(user.getStatus())) {
+            return OtpVerifyResponse.builder()
+                    .message("Email is already verified")
+                    .email(email)
+                    .verified(true)
+                    .build();
+        }
+
+        if (!UserStatus.INACTIVE.getValue().equalsIgnoreCase(user.getStatus())) {
+            throw new BadRequestException("User account cannot be verified");
+        }
+
+        OtpValidationStatus otpStatus = otpMailService.validateOtp(email, request.getOtp());
+
+        switch (otpStatus) {
+            case VALID -> {
+                // continue
+            }
+            case NOT_FOUND -> throw new BadRequestException("OTP not found. Please request a new OTP.");
+            case EXPIRED -> throw new BadRequestException("OTP has expired. Please request a new OTP.");
+            case MAX_ATTEMPTS_EXCEEDED -> throw new BadRequestException("Too many failed attempts. Please request a new OTP.");
+            case INVALID -> throw new BadRequestException("Invalid OTP.");
+        }
+
+        user.setStatus(UserStatus.ACTIVE.getValue());
+
+        usersRepository.save(user);
+
+        otpMailService.clearOtp(email);
+
+        return OtpVerifyResponse.builder()
+                .message("Email verified successfully. Please login.")
+                .email(email)
+                .verified(true)
+                .build();
+    }
+
+    @Override
+    public OtpVerifyResponse resendOtp(ResendOtpRequest request) {
+        String email = normalizeEmail(request.getEmail());
+
+        Users user = usersRepository.findByEmail(email)
+                .orElseThrow(() -> new BadRequestException("User not found"));
+
+        if (UserStatus.ACTIVE.getValue().equalsIgnoreCase(user.getStatus())) {
+            throw new BadRequestException("Email is already verified");
+        }
+
+        if (!UserStatus.INACTIVE.getValue().equalsIgnoreCase(user.getStatus())) {
+            throw new BadRequestException("User account cannot request OTP");
+        }
+
+        otpMailService.resendOtp(email);
+
+        return OtpVerifyResponse.builder()
+                .message("OTP has been resent to your email")
+                .email(email)
+                .verified(false)
+                .build();
+    }
+
+    private String normalizeEmail(String email) {
+        if (email == null || email.isBlank()) {
+            throw new BadRequestException("Email is required");
+        }
+
+        return email.trim().toLowerCase();
+    }
+
+    private String clean(String value) {
+        if (value == null) {
+            return null;
+        }
+
+        String cleaned = value.trim();
+
+        return cleaned.isBlank() ? null : cleaned;
     }
 }

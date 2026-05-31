@@ -1,6 +1,6 @@
 package com.group5.htms.service.impl;
 
-import com.group5.htms.exceptions.ResourceNotFoundException;
+import com.group5.htms.exception.ResourceNotFoundException;
 import com.group5.htms.dto.notification.request.NotificationCreateRequest;
 import com.group5.htms.dto.notification.request.NotificationUpdateRequest;
 import com.group5.htms.dto.notification.response.NotificationResponse;

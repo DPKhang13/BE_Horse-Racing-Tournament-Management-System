@@ -1,4 +1,4 @@
-package com.group5.htms.exceptions;
+package com.group5.htms.exception;
 
 public class UnauthorizedException extends RuntimeException {
 

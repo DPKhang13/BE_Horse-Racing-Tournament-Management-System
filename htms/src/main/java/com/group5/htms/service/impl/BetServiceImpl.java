@@ -1,6 +1,6 @@
 package com.group5.htms.service.impl;
 
-import com.group5.htms.exceptions.ResourceNotFoundException;
+import com.group5.htms.exception.ResourceNotFoundException;
 import com.group5.htms.dto.bet.request.BetCheckRequest;
 import com.group5.htms.dto.bet.request.BetCreateRequest;
 import com.group5.htms.dto.bet.request.BetUpdateRequest;

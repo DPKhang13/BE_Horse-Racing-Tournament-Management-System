@@ -4,6 +4,7 @@ import com.group5.htms.dto.auth.AuthResponse;
 import com.group5.htms.dto.auth.LoginRequest;
 import com.group5.htms.dto.auth.RegisterRequest;
 import com.group5.htms.dto.auth.UserMeResponse;
+import com.group5.htms.dto.otpverify.response.OtpVerifyResponse;
 import com.group5.htms.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -23,13 +24,12 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/register")
-    public ResponseEntity<AuthResponse> register(
-            @Valid @RequestBody RegisterRequest request,
-            HttpServletResponse response
+    public ResponseEntity<OtpVerifyResponse> register(
+            @Valid @RequestBody RegisterRequest request
     ) {
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(authService.register(request, response));
+                .body(authService.register(request));
     }
 
     @PostMapping("/login")
