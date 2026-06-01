@@ -1,6 +1,6 @@
 package com.group5.htms.service.impl;
 
-import com.group5.htms.dto.payment.VnpayCreatePaymentRequest;
+import com.group5.htms.dto.payment.request.VnpayCreatePaymentRequest;
 import com.group5.htms.dto.payment.response.VnpayCreatePaymentResponse;
 import com.group5.htms.dto.payment.response.VnpayReturnResponse;
 import com.group5.htms.entity.Roles;
