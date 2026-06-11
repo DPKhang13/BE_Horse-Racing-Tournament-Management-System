@@ -7,12 +7,10 @@ import com.group5.htms.dto.jockeyassignment.request.JockeyInvitationUpdateReques
 import com.group5.htms.dto.jockeyassignment.response.JockeyAssignmentResponse;
 import com.group5.htms.entity.JockeyHorseAssignments;
 import com.group5.htms.mapper.JockeyAssignmentMapper;
-import com.group5.htms.repository.BetsRepository;
+import com.group5.htms.repository.JockeyProfilesRepository;
 import com.group5.htms.repository.JockeyHorseAssignmentsRepository;
-import com.group5.htms.repository.RaceResultsRepository;
 import com.group5.htms.repository.RaceRegistrationsRepository;
 import com.group5.htms.repository.RacesRepository;
-import com.group5.htms.repository.RolesRepository;
 import com.group5.htms.service.AuthService;
 import com.group5.htms.service.JockeyAssignmentService;
 import lombok.RequiredArgsConstructor;
@@ -27,15 +25,12 @@ import java.util.Objects;
 @Service
 @RequiredArgsConstructor
 public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
-    private static final String ROLE_HORSE_OWNER = "horse_owner";
-    private static final String ROLE_JOCKEY = "jockey";
+    private static final String STATUS_DELETED = "deleted";
 
     private final JockeyHorseAssignmentsRepository jockeyHorseAssignmentsRepository;
-    private final RaceResultsRepository raceResultsRepository;
-    private final BetsRepository betsRepository;
     private final RaceRegistrationsRepository raceRegistrationsRepository;
     private final RacesRepository racesRepository;
-    private final RolesRepository rolesRepository;
+    private final JockeyProfilesRepository jockeyProfilesRepository;
     private final AuthService authService;
     private final JockeyAssignmentMapper jockeyAssignmentMapper;
 
@@ -43,6 +38,7 @@ public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
     public List<JockeyAssignmentResponse> getAllAssignments() {
         return jockeyHorseAssignmentsRepository.findAll()
                 .stream()
+                .filter(assignment -> !isDeleted(assignment.getStatus()))
                 .map(jockeyAssignmentMapper::toResponse)
                 .toList();
     }
@@ -90,21 +86,21 @@ public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
     @Transactional
     public void deleteAssignment(Integer id) {
         JockeyHorseAssignments assignment = findAssignmentForCurrentOwner(id);
-        betsRepository.deleteByAssignment_Id(id);
-        raceResultsRepository.deleteByAssignment_Id(id);
-        jockeyHorseAssignmentsRepository.delete(assignment);
+        assignment.setStatus(STATUS_DELETED);
+        jockeyHorseAssignmentsRepository.save(assignment);
     }
 
     private JockeyHorseAssignments findAssignment(Integer id) {
         return jockeyHorseAssignmentsRepository.findById(id)
+                .filter(assignment -> !isDeleted(assignment.getStatus()))
                 .orElseThrow(() -> new ResourceNotFoundException("Jockey assignment not found"));
     }
 
     private JockeyHorseAssignments findAssignmentForCurrentOwner(Integer id) {
         JockeyHorseAssignments assignment = findAssignment(id);
-        Integer ownerRoleId = authService.getCurrentUserRoleId(ROLE_HORSE_OWNER);
+        Integer ownerId = authService.getCurrentUserId();
 
-        if (!Objects.equals(assignment.getReg().getOwnerRoles().getId(), ownerRoleId)) {
+        if (!Objects.equals(assignment.getReg().getOwner().getId(), ownerId)) {
             throw new AccessDeniedException("You do not own this jockey assignment");
         }
 
@@ -113,9 +109,9 @@ public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
 
     private JockeyHorseAssignments findAssignmentForCurrentJockey(Integer id) {
         JockeyHorseAssignments assignment = findAssignment(id);
-        Integer jockeyRoleId = authService.getCurrentUserRoleId(ROLE_JOCKEY);
+        Integer jockeyId = authService.getCurrentUserId();
 
-        if (!Objects.equals(assignment.getJockeyRoles().getId(), jockeyRoleId)) {
+        if (!Objects.equals(assignment.getJockey().getId(), jockeyId)) {
             throw new AccessDeniedException("This invitation is not assigned to you");
         }
 
@@ -125,7 +121,7 @@ public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
     private void validateCreateReferences(JockeyInvitationCreateRequest request) {
         validateRegistrationExists(request.getRegistrationId());
         validateRaceExists(request.getRaceId());
-        validateRoleExists(request.getJockeyRoleId());
+        validateJockeyExists(request.getJockeyId());
     }
 
     private void validateUpdateReferences(JockeyInvitationUpdateRequest request) {
@@ -135,8 +131,8 @@ public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
         if (request.getRaceId() != null) {
             validateRaceExists(request.getRaceId());
         }
-        if (request.getJockeyRoleId() != null) {
-            validateRoleExists(request.getJockeyRoleId());
+        if (request.getJockeyId() != null) {
+            validateJockeyExists(request.getJockeyId());
         }
     }
 
@@ -147,9 +143,10 @@ public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
     }
 
     private void validateRegistrationBelongsToCurrentOwner(Integer id) {
-        Integer ownerRoleId = authService.getCurrentUserRoleId(ROLE_HORSE_OWNER);
+        Integer ownerId = authService.getCurrentUserId();
         boolean belongsToOwner = raceRegistrationsRepository.findById(id)
-                .map(registration -> Objects.equals(registration.getOwnerRoles().getId(), ownerRoleId))
+                .map(registration -> !isDeleted(registration.getStatus())
+                        && Objects.equals(registration.getOwner().getId(), ownerId))
                 .orElse(false);
 
         if (!belongsToOwner) {
@@ -163,9 +160,13 @@ public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
         }
     }
 
-    private void validateRoleExists(Integer id) {
-        if (!rolesRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Jockey role not found");
+    private void validateJockeyExists(Integer id) {
+        if (!jockeyProfilesRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Jockey profile not found");
         }
+    }
+
+    private boolean isDeleted(String status) {
+        return STATUS_DELETED.equalsIgnoreCase(status);
     }
 }

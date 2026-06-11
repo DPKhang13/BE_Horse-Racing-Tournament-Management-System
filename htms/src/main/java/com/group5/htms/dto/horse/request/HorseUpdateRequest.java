@@ -14,7 +14,7 @@ import java.time.Instant;
 @Setter
 public class HorseUpdateRequest {
     @Schema(hidden = true)
-    private Integer ownerRoleId;
+    private Integer ownerId;
 
     @Size(max = 100, message = "Horse name must not exceed 100 characters")
     private String name;

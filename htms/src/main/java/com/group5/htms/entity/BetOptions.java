@@ -10,7 +10,6 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -19,6 +18,7 @@ import lombok.Setter;
 import lombok.ToString;
 import org.hibernate.annotations.ColumnDefault;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 
 @Builder
@@ -28,17 +28,12 @@ import java.time.Instant;
 @Setter
 @ToString
 @Entity
-@Table(name = "\"JockeyHorseAssignments\"")
-public class JockeyHorseAssignments {
+@Table(name = "\"BetOptions\"")
+public class BetOptions {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "assignment_id", nullable = false)
+    @Column(name = "option_id", nullable = false)
     private Integer id;
-
-    @NotNull
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "reg_id", nullable = false)
-    private RaceRegistrations reg;
 
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
@@ -47,22 +42,29 @@ public class JockeyHorseAssignments {
 
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "jockey_id", nullable = false)
-    private JockeyProfiles jockey;
-
-    @Column(name = "gate_number")
-    private Integer gateNumber;
-
-    @Size(max = 20)
-    @NotNull
-    @ColumnDefault("'pending'")
-    @Column(name = "status", nullable = false, length = 20)
-    private String status;
+    @JoinColumn(name = "assignment_id", nullable = false)
+    private JockeyHorseAssignments assignment;
 
     @NotNull
-    @Column(name = "invited_at", nullable = false)
-    private Instant invitedAt;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "horse_id", nullable = false)
+    private Horses horses;
 
-    @Column(name = "responded_at")
-    private Instant respondedAt;
+    @NotNull
+    @Column(name = "current_rate", nullable = false, precision = 8, scale = 2)
+    private BigDecimal currentRate;
+
+    @NotNull
+    @ColumnDefault("0")
+    @Column(name = "total_bet_points", nullable = false, precision = 18, scale = 2)
+    private BigDecimal totalBetPoints;
+
+    @NotNull
+    @ColumnDefault("0")
+    @Column(name = "total_bet_count", nullable = false)
+    private Integer totalBetCount;
+
+    @NotNull
+    @Column(name = "updated_at", nullable = false)
+    private Instant updatedAt;
 }

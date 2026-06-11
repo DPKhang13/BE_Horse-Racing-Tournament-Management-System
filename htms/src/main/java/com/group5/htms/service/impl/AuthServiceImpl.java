@@ -8,17 +8,13 @@ import com.group5.htms.dto.auth.UserMeResponse;
 import com.group5.htms.dto.otpverify.request.ResendOtpRequest;
 import com.group5.htms.dto.otpverify.request.VerifyOtpRequest;
 import com.group5.htms.dto.otpverify.response.OtpVerifyResponse;
-import com.group5.htms.entity.Roles;
 import com.group5.htms.entity.Users;
 import com.group5.htms.enums.OtpValidationStatus;
-import com.group5.htms.enums.RoleStatus;
 import com.group5.htms.enums.RoleType;
 import com.group5.htms.enums.UserStatus;
 import com.group5.htms.exception.BadRequestException;
-import com.group5.htms.exception.ResourceNotFoundException;
 import com.group5.htms.exception.UnauthorizedException;
 import com.group5.htms.mapper.AuthMapper;
-import com.group5.htms.repository.RolesRepository;
 import com.group5.htms.repository.UsersRepository;
 import com.group5.htms.service.AuthService;
 import com.group5.htms.service.OtpMailService;
@@ -47,27 +43,7 @@ public class AuthServiceImpl implements AuthService {
 
     private static final String STATUS_ACTIVE = "active";
 
-    private static final String ROLE_SPECTATOR = "spectator";
-    private static final String ROLE_HORSE_OWNER = "horse_owner";
-    private static final String ROLE_JOCKEY = "jockey";
-
-    /*
-     Role được phép tự đăng ký.
-     Admin và Race Referee phải được tạo/phân quyền bởi admin, không cho public register.
-     */
-    private static final Set<String> PUBLIC_REGISTER_ROLES = Set.of(
-            ROLE_SPECTATOR,
-            ROLE_HORSE_OWNER,
-            ROLE_JOCKEY
-    );
-
-    private static final Set<String> BLOCKED_REGISTER_ROLES = Set.of(
-            "admin",
-            "race_referee"
-    );
-
     private final UsersRepository usersRepository;
-    private final RolesRepository rolesRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final CustomUserDetailsConfig userDetailsService;
@@ -79,8 +55,8 @@ public class AuthServiceImpl implements AuthService {
      * POST /api/auth/register
      1. Check username/email trùng.
      2. Chuẩn hóa role đăng ký.
-     3. Tạo Users + Roles.
-     4. Save user, cascade sẽ save role.
+     3. Tạo Users với role_type.
+     4. Save user.
      5. Tạo access token + refresh token.
      6. Set token vào HttpOnly Cookie.
      */
@@ -115,15 +91,9 @@ public class AuthServiceImpl implements AuthService {
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .fullName(request.getFullName().trim())
                 .phone(clean(request.getPhone()))
+                .roleType(initialRole)
                 .status(UserStatus.INACTIVE.getValue())
                 .build();
-
-        Roles role = Roles.builder()
-                .roleType(initialRole)
-                .status(RoleStatus.ACTIVE.getValue())
-                .build();
-
-        user.addRole(role);
 
         usersRepository.save(user);
 
@@ -153,7 +123,10 @@ public class AuthServiceImpl implements AuthService {
                 )
         );
 
-        Users user = usersRepository.findByUsernameOrEmailWithRoles(request.getUsernameOrEmail())
+        Users user = usersRepository.findByUsernameOrEmail(
+                        request.getUsernameOrEmail(),
+                        request.getUsernameOrEmail()
+                )
                 .orElseThrow(() -> new UnauthorizedException("Invalid username/email or password"));
 
         UserDetails userDetails = userDetailsService.loadUserByUsername(user.getUsername());
@@ -196,7 +169,7 @@ public class AuthServiceImpl implements AuthService {
 
         refreshTokenService.revoke(oldJti);
 
-        Users user = usersRepository.findByUsernameWithRoles(username)
+        Users user = usersRepository.findByUsername(username)
                 .orElseThrow(() -> new UnauthorizedException("User not found"));
 
         if (!STATUS_ACTIVE.equalsIgnoreCase(user.getStatus())) {
@@ -264,7 +237,7 @@ public class AuthServiceImpl implements AuthService {
 
         String username = authentication.getName();
 
-        Users user = usersRepository.findByUsernameWithRoles(username)
+        Users user = usersRepository.findByUsername(username)
                 .orElseThrow(() -> new UnauthorizedException("User not found"));
 
         return user;
@@ -272,23 +245,8 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional(readOnly = true)
-    public Roles getCurrentUserRole(String roleType) {
-        Users user = getCurrentUser();
-
-        return rolesRepository.findByUsersAndRoleType(user, roleType)
-                .orElseThrow(() -> new ResourceNotFoundException(roleType + " role not found"));
-    }
-
-    @Override
-    @Transactional(readOnly = true)
     public Integer getCurrentUserId() {
         return getCurrentUser().getId();
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public Integer getCurrentUserRoleId(String roleType) {
-        return getCurrentUserRole(roleType).getId();
     }
 
     /*
@@ -343,23 +301,6 @@ public class AuthServiceImpl implements AuthService {
      Chuẩn hóa role khi register.
      Nếu không gửi roleType thì mặc định là spectator.
      */
-//    private String normalizeRegisterRole(String roleType) {
-//        if (roleType == null || roleType.isBlank()) {
-//            return ROLE_SPECTATOR;
-//        }
-//
-//        String normalizedRole = roleType.trim().toLowerCase();
-//
-//        if (BLOCKED_REGISTER_ROLES.contains(normalizedRole)) {
-//            throw new BadRequestException("This role cannot be created from public registration");
-//        }
-//
-//        if (!PUBLIC_REGISTER_ROLES.contains(normalizedRole)) {
-//            throw new BadRequestException("Invalid register role");
-//        }
-//
-//        return normalizedRole;
-//    }
     private String normalizeRegisterRole(String roleType) {
         if (roleType == null || roleType.isBlank()) {
             return RoleType.SPECTATOR.getValue();

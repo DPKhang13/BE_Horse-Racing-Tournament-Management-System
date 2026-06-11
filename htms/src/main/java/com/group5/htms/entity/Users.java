@@ -1,14 +1,23 @@
 package com.group5.htms.entity;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 import org.hibernate.annotations.ColumnDefault;
 
 import java.time.Instant;
-import java.util.HashSet;
-import java.util.Set;
 
 @Builder
 @AllArgsConstructor
@@ -48,6 +57,11 @@ public class Users {
     @Column(name = "phone", length = 20)
     private String phone;
 
+    @Size(max = 30)
+    @NotNull
+    @Column(name = "role_type", nullable = false, length = 30)
+    private String roleType;
+
     @Size(max = 20)
     @NotNull
     @ColumnDefault("'active'")
@@ -60,26 +74,6 @@ public class Users {
     @NotNull
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
-
-    @Builder.Default
-    @OneToMany(
-            mappedBy = "users",
-            cascade = CascadeType.ALL,
-            orphanRemoval = true,
-            fetch = FetchType.LAZY
-    )
-    @ToString.Exclude
-    private Set<Roles> roles = new HashSet<>();
-
-    public void addRole(Roles role) {
-        roles.add(role);
-        role.setUsers(this);
-    }
-
-    public void removeRole(Roles role) {
-        roles.remove(role);
-        role.setUsers(null);
-    }
 
     @PrePersist
     public void prePersist() {

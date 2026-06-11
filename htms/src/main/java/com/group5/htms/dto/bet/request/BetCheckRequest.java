@@ -1,6 +1,5 @@
 package com.group5.htms.dto.bet.request;
 
-import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.Setter;
@@ -14,11 +13,6 @@ public class BetCheckRequest {
     @NotBlank(message = "Status is required")
     private String status;
 
-    private BigDecimal payoutPoints;
-
-    @Schema(hidden = true)
-    private Integer settledById;
-
+    private BigDecimal rewardPoints;
     private Instant settledAt;
-    private String settledType;
 }

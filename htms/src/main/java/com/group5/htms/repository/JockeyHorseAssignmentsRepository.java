@@ -11,8 +11,4 @@ public interface JockeyHorseAssignmentsRepository extends JpaRepository<JockeyHo
     List<JockeyHorseAssignments> findByReg_Id(Integer registrationId);
 
     List<JockeyHorseAssignments> findByReg_IdIn(Iterable<Integer> registrationIds);
-
-    void deleteByReg_Id(Integer registrationId);
-
-    void deleteByReg_IdIn(Iterable<Integer> registrationIds);
 }

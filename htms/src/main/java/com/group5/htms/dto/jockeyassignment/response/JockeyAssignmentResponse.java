@@ -11,7 +11,7 @@ public class JockeyAssignmentResponse {
     private Integer id;
     private Integer registrationId;
     private Integer raceId;
-    private Integer jockeyRoleId;
+    private Integer jockeyId;
     private Integer gateNumber;
     private String status;
     private Instant invitedAt;

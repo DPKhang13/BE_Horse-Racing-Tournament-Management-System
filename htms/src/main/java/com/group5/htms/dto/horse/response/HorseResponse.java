@@ -10,7 +10,7 @@ import java.time.Instant;
 @Getter
 public class HorseResponse {
     private Integer id;
-    private Integer ownerRoleId;
+    private Integer ownerId;
     private String name;
     private String breed;
     private Integer age;

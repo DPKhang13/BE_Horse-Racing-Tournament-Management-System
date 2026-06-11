@@ -13,7 +13,7 @@ import java.util.Optional;
 @Repository
 public interface WalletsRepository extends JpaRepository<Wallets, Integer> {
 
-    Optional<Wallets> findBySpectatorRolesId(Integer spectatorRoleId);
+    Optional<Wallets> findByUsersId(Integer userId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""

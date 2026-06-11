@@ -1,9 +1,22 @@
 package com.group5.htms.entity;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 import org.hibernate.annotations.ColumnDefault;
 
 import java.math.BigDecimal;
@@ -25,8 +38,8 @@ public class Horses {
 
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "owner_role_id", nullable = false)
-    private Roles ownerRoles;
+    @JoinColumn(name = "owner_id", nullable = false)
+    private HorseOwnerProfiles owner;
 
     @Size(max = 100)
     @NotNull
@@ -43,7 +56,7 @@ public class Horses {
     @Column(name = "weight_kg", precision = 5, scale = 2)
     private BigDecimal weightKg;
 
-    @Column(name = "rank_group", length = Integer.MAX_VALUE)
+    @Column(name = "rank_group", length = 1)
     private String rankGroup;
 
     @NotNull
@@ -66,5 +79,4 @@ public class Horses {
     @NotNull
     @Column(name = "registered_at", nullable = false)
     private Instant registeredAt;
-
 }

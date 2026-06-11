@@ -5,6 +5,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.MapsId;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.PrePersist;
@@ -19,6 +20,8 @@ import lombok.Setter;
 import lombok.ToString;
 import org.hibernate.annotations.ColumnDefault;
 
+import java.time.Instant;
+
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
@@ -26,53 +29,53 @@ import org.hibernate.annotations.ColumnDefault;
 @Setter
 @ToString
 @Entity
-@Table(name = "\"JockeyProfiles\"")
-public class JockeyProfiles {
+@Table(name = "\"HorseOwnerProfiles\"")
+public class HorseOwnerProfiles {
     @Id
-    @Column(name = "jockey_id", nullable = false)
+    @Column(name = "owner_id", nullable = false)
     private Integer id;
 
     @MapsId
     @OneToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "jockey_id", nullable = false)
+    @JoinColumn(name = "owner_id", nullable = false)
     @ToString.Exclude
     private Users users;
+
+    @Size(max = 150)
+    @Column(name = "stable_name", length = 150)
+    private String stableName;
 
     @Size(max = 50)
     @Column(name = "license_number", length = 50)
     private String licenseNumber;
 
-    @NotNull
-    @ColumnDefault("0")
-    @Column(name = "ranking_points", nullable = false)
-    private Integer rankingPoints;
+    @Size(max = 255)
+    @Column(name = "address")
+    private String address;
 
-    @Column(name = "total_wins")
-    private Integer totalWins;
-
-    @NotNull
-    @ColumnDefault("0")
-    @Column(name = "experience_years", nullable = false)
-    private Integer experienceYears;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "favorite_jockey_id")
+    @ToString.Exclude
+    private JockeyProfiles favoriteJockey;
 
     @Size(max = 20)
     @NotNull
-    @ColumnDefault("'available'")
+    @ColumnDefault("'active'")
     @Column(name = "status", nullable = false, length = 20)
     private String status;
 
+    @NotNull
+    @Column(name = "created_at", nullable = false)
+    private Instant createdAt;
+
     @PrePersist
     public void prePersist() {
-        if (this.rankingPoints == null) {
-            this.rankingPoints = 0;
-        }
-
-        if (this.experienceYears == null) {
-            this.experienceYears = 0;
-        }
-
         if (this.status == null || this.status.isBlank()) {
-            this.status = "available";
+            this.status = "active";
+        }
+
+        if (this.createdAt == null) {
+            this.createdAt = Instant.now();
         }
     }
 }

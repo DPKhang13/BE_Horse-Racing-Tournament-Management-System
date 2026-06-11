@@ -9,6 +9,4 @@ import java.util.List;
 @Repository
 public interface RaceRegistrationsRepository extends JpaRepository<RaceRegistrations, Integer> {
     List<RaceRegistrations> findByHorses_Id(Integer horseId);
-
-    void deleteByHorses_Id(Integer horseId);
 }

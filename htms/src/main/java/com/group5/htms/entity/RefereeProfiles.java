@@ -1,9 +1,22 @@
 package com.group5.htms.entity;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.MapsId;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 import org.hibernate.annotations.ColumnDefault;
 
 import java.time.Instant;
@@ -15,24 +28,17 @@ import java.time.Instant;
 @Setter
 @ToString
 @Entity
-@Table(name = "\"Roles\"")
-public class Roles {
-
+@Table(name = "\"RefereeProfiles\"")
+public class RefereeProfiles {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "role_id", nullable = false)
+    @Column(name = "referee_id", nullable = false)
     private Integer id;
 
-    @NotNull
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false)
+    @MapsId
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "referee_id", nullable = false)
     @ToString.Exclude
     private Users users;
-
-    @Size(max = 30)
-    @NotNull
-    @Column(name = "role_type", nullable = false, length = 30)
-    private String roleType;
 
     @Size(max = 50)
     @Column(name = "license_number", length = 50)
@@ -54,7 +60,7 @@ public class Roles {
 
     @PrePersist
     public void prePersist() {
-        if (this.status == null) {
+        if (this.status == null || this.status.isBlank()) {
             this.status = "active";
         }
 

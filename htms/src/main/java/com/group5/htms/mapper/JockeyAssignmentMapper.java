@@ -4,9 +4,9 @@ import com.group5.htms.dto.jockeyassignment.request.JockeyInvitationCreateReques
 import com.group5.htms.dto.jockeyassignment.request.JockeyInvitationUpdateRequest;
 import com.group5.htms.dto.jockeyassignment.response.JockeyAssignmentResponse;
 import com.group5.htms.entity.JockeyHorseAssignments;
+import com.group5.htms.entity.JockeyProfiles;
 import com.group5.htms.entity.RaceRegistrations;
 import com.group5.htms.entity.Races;
-import com.group5.htms.entity.Roles;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -17,7 +17,7 @@ public class JockeyAssignmentMapper {
         return JockeyHorseAssignments.builder()
                 .reg(toRegistration(request.getRegistrationId()))
                 .races(toRace(request.getRaceId()))
-                .jockeyRoles(toRole(request.getJockeyRoleId()))
+                .jockey(toJockey(request.getJockeyId()))
                 .gateNumber(request.getGateNumber())
                 .status(defaultText(request.getStatus(), "pending"))
                 .invitedAt(defaultInstant(request.getInvitedAt()))
@@ -32,8 +32,8 @@ public class JockeyAssignmentMapper {
         if (request.getRaceId() != null) {
             assignment.setRaces(toRace(request.getRaceId()));
         }
-        if (request.getJockeyRoleId() != null) {
-            assignment.setJockeyRoles(toRole(request.getJockeyRoleId()));
+        if (request.getJockeyId() != null) {
+            assignment.setJockey(toJockey(request.getJockeyId()));
         }
         if (request.getGateNumber() != null) {
             assignment.setGateNumber(request.getGateNumber());
@@ -54,7 +54,7 @@ public class JockeyAssignmentMapper {
                 .id(assignment.getId())
                 .registrationId(assignment.getReg().getId())
                 .raceId(assignment.getRaces().getId())
-                .jockeyRoleId(assignment.getJockeyRoles().getId())
+                .jockeyId(assignment.getJockey().getId())
                 .gateNumber(assignment.getGateNumber())
                 .status(assignment.getStatus())
                 .invitedAt(assignment.getInvitedAt())
@@ -74,10 +74,10 @@ public class JockeyAssignmentMapper {
         return race;
     }
 
-    private Roles toRole(Integer id) {
-        Roles role = new Roles();
-        role.setId(id);
-        return role;
+    private JockeyProfiles toJockey(Integer id) {
+        JockeyProfiles jockey = new JockeyProfiles();
+        jockey.setId(id);
+        return jockey;
     }
 
     private String defaultText(String value, String defaultValue) {

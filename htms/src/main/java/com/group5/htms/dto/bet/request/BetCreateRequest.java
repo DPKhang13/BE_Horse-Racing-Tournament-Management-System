@@ -14,38 +14,28 @@ import java.time.Instant;
 @Setter
 public class BetCreateRequest {
     @Schema(hidden = true)
-    private Integer spectatorRoleId;
+    private Integer userId;
 
-    @NotNull(message = "Assignment id is required")
-    private Integer assignmentId;
+    @NotNull(message = "Option id is required")
+    private Integer optionId;
 
-    @Size(max = 30, message = "Market type must not exceed 30 characters")
-    private String marketType;
+    private Boolean betType;
 
-    private Integer predictedPosition;
+    @NotNull(message = "Bet points is required")
+    @DecimalMin(value = "0.0", inclusive = false, message = "Bet points must be greater than 0")
+    private BigDecimal betPoints;
 
-    @NotNull(message = "Stake points is required")
-    @DecimalMin(value = "0.0", inclusive = false, message = "Stake points must be greater than 0")
-    private BigDecimal stakePoints;
+    @NotNull(message = "Bet rate is required")
+    @DecimalMin(value = "0.0", inclusive = false, message = "Bet rate must be greater than 0")
+    private BigDecimal betRate;
 
-    @NotNull(message = "Odds decimal is required")
-    @DecimalMin(value = "0.0", inclusive = false, message = "Odds decimal must be greater than 0")
-    private BigDecimal oddsDecimal;
-
-    private BigDecimal potentialPayoutPoints;
-    private BigDecimal payoutPoints;
+    private BigDecimal rewardPoints;
 
     @Size(max = 20, message = "Status must not exceed 20 characters")
     private String status;
 
     private Instant placedAt;
+
     @Schema(hidden = true)
     private Instant settledAt;
-
-    @Schema(hidden = true)
-    private Integer settledById;
-
-    @Schema(hidden = true)
-    @Size(max = 20, message = "Settled type must not exceed 20 characters")
-    private String settledType;
 }

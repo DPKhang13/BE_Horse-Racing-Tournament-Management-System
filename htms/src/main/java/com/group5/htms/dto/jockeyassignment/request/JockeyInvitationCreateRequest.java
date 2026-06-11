@@ -16,8 +16,8 @@ public class JockeyInvitationCreateRequest {
     @NotNull(message = "Race id is required")
     private Integer raceId;
 
-    @NotNull(message = "Jockey role id is required")
-    private Integer jockeyRoleId;
+    @NotNull(message = "Jockey id is required")
+    private Integer jockeyId;
 
     private Integer gateNumber;
 

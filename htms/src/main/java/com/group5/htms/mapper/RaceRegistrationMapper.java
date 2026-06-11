@@ -3,10 +3,11 @@ package com.group5.htms.mapper;
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationCreateRequest;
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationUpdateRequest;
 import com.group5.htms.dto.raceregistration.response.RaceRegistrationResponse;
+import com.group5.htms.entity.HorseOwnerProfiles;
 import com.group5.htms.entity.Horses;
+import com.group5.htms.entity.JockeyProfiles;
 import com.group5.htms.entity.RaceRegistrations;
 import com.group5.htms.entity.Races;
-import com.group5.htms.entity.Roles;
 import com.group5.htms.entity.Tournaments;
 import com.group5.htms.entity.Users;
 import org.springframework.stereotype.Component;
@@ -20,8 +21,8 @@ public class RaceRegistrationMapper {
                 .tournaments(toTournament(request.getTournamentId()))
                 .races(toRace(request.getRaceId()))
                 .horses(toHorse(request.getHorseId()))
-                .ownerRoles(toRole(request.getOwnerRoleId()))
-                .jockeyRoles(toNullableRole(request.getJockeyRoleId()))
+                .owner(toOwner(request.getOwnerId()))
+                .jockey(toNullableJockey(request.getJockeyId()))
                 .status(defaultText(request.getStatus(), "pending"))
                 .ownerConfirmationStatus(defaultText(request.getOwnerConfirmationStatus(), "pending"))
                 .ownerConfirmedAt(request.getOwnerConfirmedAt())
@@ -41,11 +42,11 @@ public class RaceRegistrationMapper {
         if (request.getHorseId() != null) {
             registration.setHorses(toHorse(request.getHorseId()));
         }
-        if (request.getOwnerRoleId() != null) {
-            registration.setOwnerRoles(toRole(request.getOwnerRoleId()));
+        if (request.getOwnerId() != null) {
+            registration.setOwner(toOwner(request.getOwnerId()));
         }
-        if (request.getJockeyRoleId() != null) {
-            registration.setJockeyRoles(toRole(request.getJockeyRoleId()));
+        if (request.getJockeyId() != null) {
+            registration.setJockey(toJockey(request.getJockeyId()));
         }
         if (request.getStatus() != null && !request.getStatus().isBlank()) {
             registration.setStatus(request.getStatus().trim());
@@ -73,8 +74,8 @@ public class RaceRegistrationMapper {
                 .tournamentId(registration.getTournaments().getId())
                 .raceId(registration.getRaces().getId())
                 .horseId(registration.getHorses().getId())
-                .ownerRoleId(registration.getOwnerRoles().getId())
-                .jockeyRoleId(registration.getJockeyRoles() == null ? null : registration.getJockeyRoles().getId())
+                .ownerId(registration.getOwner().getId())
+                .jockeyId(registration.getJockey() == null ? null : registration.getJockey().getId())
                 .status(registration.getStatus())
                 .ownerConfirmationStatus(registration.getOwnerConfirmationStatus())
                 .ownerConfirmedAt(registration.getOwnerConfirmedAt())
@@ -102,14 +103,20 @@ public class RaceRegistrationMapper {
         return horse;
     }
 
-    private Roles toRole(Integer id) {
-        Roles role = new Roles();
-        role.setId(id);
-        return role;
+    private HorseOwnerProfiles toOwner(Integer id) {
+        HorseOwnerProfiles owner = new HorseOwnerProfiles();
+        owner.setId(id);
+        return owner;
     }
 
-    private Roles toNullableRole(Integer id) {
-        return id == null ? null : toRole(id);
+    private JockeyProfiles toJockey(Integer id) {
+        JockeyProfiles jockey = new JockeyProfiles();
+        jockey.setId(id);
+        return jockey;
+    }
+
+    private JockeyProfiles toNullableJockey(Integer id) {
+        return id == null ? null : toJockey(id);
     }
 
     private Users toUser(Integer id) {

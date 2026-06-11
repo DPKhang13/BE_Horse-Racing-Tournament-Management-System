@@ -21,9 +21,9 @@ public class RaceRegistrationCreateRequest {
     private Integer horseId;
 
     @Schema(hidden = true)
-    private Integer ownerRoleId;
+    private Integer ownerId;
 
-    private Integer jockeyRoleId;
+    private Integer jockeyId;
 
     @Size(max = 20, message = "Status must not exceed 20 characters")
     private String status;

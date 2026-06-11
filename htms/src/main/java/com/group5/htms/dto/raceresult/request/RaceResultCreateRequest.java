@@ -17,7 +17,7 @@ public class RaceResultCreateRequest {
     private Integer assignmentId;
 
     private Integer reportId;
-    private Integer prizeId;
+    private Integer finalRound;
 
     @Min(value = 1, message = "Finish position must be greater than or equal to 1")
     private Integer finishPosition;

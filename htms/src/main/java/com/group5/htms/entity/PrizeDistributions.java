@@ -2,6 +2,7 @@ package com.group5.htms.entity;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.*;
 
 import java.math.BigDecimal;
@@ -29,8 +30,16 @@ public class PrizeDistributions {
     @Column(name = "finish_position", nullable = false)
     private Integer finishPosition;
 
+    @Size(max = 100)
+    @Column(name = "prize_name", length = 100)
+    private String prizeName;
+
     @NotNull
     @Column(name = "amount", nullable = false, precision = 18, scale = 2)
     private BigDecimal amount;
+
+    @Size(max = 255)
+    @Column(name = "note")
+    private String note;
 
 }

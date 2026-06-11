@@ -40,6 +40,11 @@ public class Races {
     private String rankGroup;
 
     @NotNull
+    @ColumnDefault("1")
+    @Column(name = "lap_count", nullable = false)
+    private Integer lapCount;
+
+    @NotNull
     @Column(name = "scheduled_at", nullable = false)
     private Instant scheduledAt;
 
@@ -58,6 +63,14 @@ public class Races {
     @ColumnDefault("8")
     @Column(name = "max_horses", nullable = false)
     private Integer maxHorses;
+
+    @NotNull
+    @ColumnDefault("3")
+    @Column(name = "max_referees", nullable = false)
+    private Integer maxReferees;
+
+    @Column(name = "point_rule_note", length = Integer.MAX_VALUE)
+    private String pointRuleNote;
 
     @Size(max = 20)
     @NotNull

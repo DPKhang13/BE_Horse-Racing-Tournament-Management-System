@@ -3,8 +3,8 @@ package com.group5.htms.mapper;
 import com.group5.htms.dto.horse.request.HorseCreateRequest;
 import com.group5.htms.dto.horse.request.HorseUpdateRequest;
 import com.group5.htms.dto.horse.response.HorseResponse;
+import com.group5.htms.entity.HorseOwnerProfiles;
 import com.group5.htms.entity.Horses;
-import com.group5.htms.entity.Roles;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -13,14 +13,14 @@ import java.time.Instant;
 public class HorseMapper {
     public Horses toEntity(HorseCreateRequest request) {
         return Horses.builder()
-                .ownerRoles(toOwnerRole(request.getOwnerRoleId()))
+                .owner(toOwner(request.getOwnerId()))
                 .name(request.getName())
-                .breed(request.getBreed())
+                .breed(trim(request.getBreed()))
                 .age(request.getAge())
                 .weightKg(request.getWeightKg())
-                .rankGroup(request.getRankGroup())
+                .rankGroup(trim(request.getRankGroup()))
                 .rankingPoints(defaultZero(request.getRankingPoints()))
-                .avatarUrl(request.getAvatarUrl())
+                .avatarUrl(trim(request.getAvatarUrl()))
                 .totalWins(defaultZero(request.getTotalWins()))
                 .status(defaultStatus(request.getStatus()))
                 .registeredAt(defaultRegisteredAt(request.getRegisteredAt()))
@@ -28,14 +28,14 @@ public class HorseMapper {
     }
 
     public void updateHorse(Horses horse, HorseUpdateRequest request) {
-        if (request.getOwnerRoleId() != null) {
-            horse.setOwnerRoles(toOwnerRole(request.getOwnerRoleId()));
+        if (request.getOwnerId() != null) {
+            horse.setOwner(toOwner(request.getOwnerId()));
         }
         if (request.getName() != null && !request.getName().isBlank()) {
             horse.setName(request.getName().trim());
         }
         if (request.getBreed() != null) {
-            horse.setBreed(request.getBreed().trim());
+            horse.setBreed(trim(request.getBreed()));
         }
         if (request.getAge() != null) {
             horse.setAge(request.getAge());
@@ -44,13 +44,13 @@ public class HorseMapper {
             horse.setWeightKg(request.getWeightKg());
         }
         if (request.getRankGroup() != null) {
-            horse.setRankGroup(request.getRankGroup().trim());
+            horse.setRankGroup(trim(request.getRankGroup()));
         }
         if (request.getRankingPoints() != null) {
             horse.setRankingPoints(request.getRankingPoints());
         }
         if (request.getAvatarUrl() != null) {
-            horse.setAvatarUrl(request.getAvatarUrl().trim());
+            horse.setAvatarUrl(trim(request.getAvatarUrl()));
         }
         if (request.getTotalWins() != null) {
             horse.setTotalWins(request.getTotalWins());
@@ -66,7 +66,7 @@ public class HorseMapper {
     public HorseResponse toResponse(Horses horse) {
         return HorseResponse.builder()
                 .id(horse.getId())
-                .ownerRoleId(horse.getOwnerRoles().getId())
+                .ownerId(horse.getOwner().getId())
                 .name(horse.getName())
                 .breed(horse.getBreed())
                 .age(horse.getAge())
@@ -80,10 +80,10 @@ public class HorseMapper {
                 .build();
     }
 
-    private Roles toOwnerRole(Integer ownerRoleId) {
-        Roles ownerRole = new Roles();
-        ownerRole.setId(ownerRoleId);
-        return ownerRole;
+    private HorseOwnerProfiles toOwner(Integer ownerId) {
+        HorseOwnerProfiles owner = new HorseOwnerProfiles();
+        owner.setId(ownerId);
+        return owner;
     }
 
     private Integer defaultZero(Integer value) {
@@ -91,10 +91,14 @@ public class HorseMapper {
     }
 
     private String defaultStatus(String value) {
-        return value == null || value.isBlank() ? "active" : value;
+        return value == null || value.isBlank() ? "active" : value.trim();
     }
 
     private Instant defaultRegisteredAt(Instant value) {
         return value == null ? Instant.now() : value;
+    }
+
+    private String trim(String value) {
+        return value == null ? null : value.trim();
     }
 }

@@ -5,10 +5,10 @@ import com.group5.htms.dto.raceresult.request.RaceResultCreateRequest;
 import com.group5.htms.dto.raceresult.request.RaceResultPublishRequest;
 import com.group5.htms.dto.raceresult.request.RaceResultUpdateRequest;
 import com.group5.htms.dto.raceresult.response.RaceResultResponse;
+import com.group5.htms.entity.JockeyHorseAssignments;
 import com.group5.htms.entity.RaceResults;
 import com.group5.htms.mapper.RaceResultMapper;
 import com.group5.htms.repository.JockeyHorseAssignmentsRepository;
-import com.group5.htms.repository.PrizeDistributionsRepository;
 import com.group5.htms.repository.RaceResultsRepository;
 import com.group5.htms.repository.RefereeReportsRepository;
 import com.group5.htms.service.RaceResultService;
@@ -22,16 +22,18 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class RaceResultServiceImpl implements RaceResultService {
+    private static final String STATUS_DELETED = "deleted";
+
     private final RaceResultsRepository raceResultsRepository;
     private final JockeyHorseAssignmentsRepository jockeyHorseAssignmentsRepository;
     private final RefereeReportsRepository refereeReportsRepository;
-    private final PrizeDistributionsRepository prizeDistributionsRepository;
     private final RaceResultMapper raceResultMapper;
 
     @Override
     public List<RaceResultResponse> getAllResults() {
         return raceResultsRepository.findAll()
                 .stream()
+                .filter(result -> !isDeleted(result.getStatus()))
                 .map(raceResultMapper::toResponse)
                 .toList();
     }
@@ -44,8 +46,8 @@ public class RaceResultServiceImpl implements RaceResultService {
     @Override
     @Transactional
     public RaceResultResponse createResult(RaceResultCreateRequest request) {
-        validateCreateReferences(request);
-        RaceResults result = raceResultMapper.toEntity(request);
+        JockeyHorseAssignments assignment = validateCreateReferences(request);
+        RaceResults result = raceResultMapper.toEntity(request, assignment);
 
         return raceResultMapper.toResponse(raceResultsRepository.save(result));
     }
@@ -54,8 +56,8 @@ public class RaceResultServiceImpl implements RaceResultService {
     @Transactional
     public RaceResultResponse updateResult(Integer id, RaceResultUpdateRequest request) {
         RaceResults result = findResult(id);
-        validateUpdateReferences(request);
-        raceResultMapper.updateResult(result, request);
+        JockeyHorseAssignments assignment = validateUpdateReferences(request);
+        raceResultMapper.updateResult(result, request, assignment);
 
         return raceResultMapper.toResponse(raceResultsRepository.save(result));
     }
@@ -75,40 +77,38 @@ public class RaceResultServiceImpl implements RaceResultService {
     @Transactional
     public void deleteResult(Integer id) {
         RaceResults result = findResult(id);
-        raceResultsRepository.delete(result);
+        result.setStatus(STATUS_DELETED);
+        raceResultsRepository.save(result);
     }
 
     private RaceResults findResult(Integer id) {
         return raceResultsRepository.findById(id)
+                .filter(result -> !isDeleted(result.getStatus()))
                 .orElseThrow(() -> new ResourceNotFoundException("Race result not found"));
     }
 
-    private void validateCreateReferences(RaceResultCreateRequest request) {
-        validateAssignmentExists(request.getAssignmentId());
+    private JockeyHorseAssignments validateCreateReferences(RaceResultCreateRequest request) {
+        JockeyHorseAssignments assignment = getAssignment(request.getAssignmentId());
         if (request.getReportId() != null) {
             validateReportExists(request.getReportId());
         }
-        if (request.getPrizeId() != null) {
-            validatePrizeExists(request.getPrizeId());
-        }
+        return assignment;
     }
 
-    private void validateUpdateReferences(RaceResultUpdateRequest request) {
+    private JockeyHorseAssignments validateUpdateReferences(RaceResultUpdateRequest request) {
         if (request.getAssignmentId() != null) {
-            validateAssignmentExists(request.getAssignmentId());
+            return getAssignment(request.getAssignmentId());
         }
         if (request.getReportId() != null) {
             validateReportExists(request.getReportId());
         }
-        if (request.getPrizeId() != null) {
-            validatePrizeExists(request.getPrizeId());
-        }
+        return null;
     }
 
-    private void validateAssignmentExists(Integer id) {
-        if (!jockeyHorseAssignmentsRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Jockey assignment not found");
-        }
+    private JockeyHorseAssignments getAssignment(Integer id) {
+        return jockeyHorseAssignmentsRepository.findById(id)
+                .filter(assignment -> !isDeleted(assignment.getStatus()))
+                .orElseThrow(() -> new ResourceNotFoundException("Jockey assignment not found"));
     }
 
     private void validateReportExists(Integer id) {
@@ -117,9 +117,7 @@ public class RaceResultServiceImpl implements RaceResultService {
         }
     }
 
-    private void validatePrizeExists(Integer id) {
-        if (!prizeDistributionsRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Prize distribution not found");
-        }
+    private boolean isDeleted(String status) {
+        return STATUS_DELETED.equalsIgnoreCase(status);
     }
 }

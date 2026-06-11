@@ -1,7 +1,6 @@
 package com.group5.htms.mapper;
 
 import com.group5.htms.dto.auth.UserMeResponse;
-import com.group5.htms.enums.RoleStatus;
 import com.group5.htms.entity.Users;
 import org.springframework.stereotype.Component;
 
@@ -11,11 +10,9 @@ import java.util.List;
 public class AuthMapper {
 
     public UserMeResponse toUserMeResponse(Users user) {
-        List<String> roles = user.getRoles()
-                .stream()
-                .filter(role -> "active".equalsIgnoreCase(role.getStatus()))
-                .map(role -> role.getRoleType().toLowerCase())
-                .toList();
+        List<String> roles = user.getRoleType() == null || user.getRoleType().isBlank()
+                ? List.of()
+                : List.of(user.getRoleType().toLowerCase());
 
         return UserMeResponse.builder()
                 .id(user.getId())

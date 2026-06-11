@@ -6,11 +6,9 @@ import com.group5.htms.dto.bet.request.BetCreateRequest;
 import com.group5.htms.dto.bet.request.BetUpdateRequest;
 import com.group5.htms.dto.bet.response.BetResponse;
 import com.group5.htms.entity.Bets;
-import com.group5.htms.entity.Users;
 import com.group5.htms.mapper.BetMapper;
+import com.group5.htms.repository.BetOptionsRepository;
 import com.group5.htms.repository.BetsRepository;
-import com.group5.htms.repository.JockeyHorseAssignmentsRepository;
-import com.group5.htms.repository.RolesRepository;
 import com.group5.htms.service.AuthService;
 import com.group5.htms.service.BetService;
 import lombok.RequiredArgsConstructor;
@@ -26,11 +24,10 @@ import java.util.Objects;
 @Service
 @RequiredArgsConstructor
 public class BetServiceImpl implements BetService {
-    private static final String ROLE_SPECTATOR = "spectator";
+    private static final String STATUS_DELETED = "deleted";
 
     private final BetsRepository betsRepository;
-    private final RolesRepository rolesRepository;
-    private final JockeyHorseAssignmentsRepository jockeyHorseAssignmentsRepository;
+    private final BetOptionsRepository betOptionsRepository;
     private final AuthService authService;
     private final BetMapper betMapper;
 
@@ -38,6 +35,7 @@ public class BetServiceImpl implements BetService {
     public List<BetResponse> getAllBets() {
         return betsRepository.findAll()
                 .stream()
+                .filter(bet -> !isDeleted(bet.getStatus()))
                 .map(betMapper::toResponse)
                 .toList();
     }
@@ -50,12 +48,10 @@ public class BetServiceImpl implements BetService {
     @Override
     @Transactional
     public BetResponse createBet(BetCreateRequest request) {
-        request.setSpectatorRoleId(authService.getCurrentUserRoleId(ROLE_SPECTATOR));
-        request.setPayoutPoints(null);
+        request.setUserId(authService.getCurrentUserId());
+        request.setRewardPoints(null);
         request.setStatus(null);
         request.setSettledAt(null);
-        request.setSettledById(null);
-        request.setSettledType(null);
         validateCreateReferences(request);
         Bets bet = betMapper.toEntity(request);
 
@@ -66,12 +62,10 @@ public class BetServiceImpl implements BetService {
     @Transactional
     public BetResponse updateBet(Integer id, BetUpdateRequest request) {
         Bets bet = findBetForCurrentSpectator(id);
-        request.setSpectatorRoleId(null);
-        request.setPayoutPoints(null);
+        request.setUserId(null);
+        request.setRewardPoints(null);
         request.setStatus(null);
         request.setSettledAt(null);
-        request.setSettledById(null);
-        request.setSettledType(null);
         validateUpdateReferences(request);
         betMapper.updateBet(bet, request);
 
@@ -84,14 +78,8 @@ public class BetServiceImpl implements BetService {
         Bets bet = findBet(id);
 
         bet.setStatus(request.getStatus().trim());
-        bet.setPayoutPoints(request.getPayoutPoints() == null ? BigDecimal.ZERO : request.getPayoutPoints());
+        bet.setRewardPoints(request.getRewardPoints() == null ? BigDecimal.ZERO : request.getRewardPoints());
         bet.setSettledAt(request.getSettledAt() == null ? Instant.now() : request.getSettledAt());
-        Users settledBy = new Users();
-        settledBy.setId(authService.getCurrentUserId());
-        bet.setSettledBy(settledBy);
-        if (request.getSettledType() != null && !request.getSettledType().isBlank()) {
-            bet.setSettledType(request.getSettledType().trim());
-        }
 
         return betMapper.toResponse(betsRepository.save(bet));
     }
@@ -100,19 +88,21 @@ public class BetServiceImpl implements BetService {
     @Transactional
     public void deleteBet(Integer id) {
         Bets bet = findBetForCurrentSpectator(id);
-        betsRepository.delete(bet);
+        bet.setStatus(STATUS_DELETED);
+        betsRepository.save(bet);
     }
 
     private Bets findBet(Integer id) {
         return betsRepository.findById(id)
+                .filter(bet -> !isDeleted(bet.getStatus()))
                 .orElseThrow(() -> new ResourceNotFoundException("Bet not found"));
     }
 
     private Bets findBetForCurrentSpectator(Integer id) {
         Bets bet = findBet(id);
-        Integer spectatorRoleId = authService.getCurrentUserRoleId(ROLE_SPECTATOR);
+        Integer userId = authService.getCurrentUserId();
 
-        if (!Objects.equals(bet.getSpectatorRoles().getId(), spectatorRoleId)) {
+        if (!Objects.equals(bet.getUsers().getId(), userId)) {
             throw new AccessDeniedException("You do not own this bet");
         }
 
@@ -120,29 +110,22 @@ public class BetServiceImpl implements BetService {
     }
 
     private void validateCreateReferences(BetCreateRequest request) {
-        validateRoleExists(request.getSpectatorRoleId(), "Spectator role not found");
-        validateAssignmentExists(request.getAssignmentId());
+        validateOptionExists(request.getOptionId());
     }
 
     private void validateUpdateReferences(BetUpdateRequest request) {
-        if (request.getSpectatorRoleId() != null) {
-            validateRoleExists(request.getSpectatorRoleId(), "Spectator role not found");
-        }
-        if (request.getAssignmentId() != null) {
-            validateAssignmentExists(request.getAssignmentId());
+        if (request.getOptionId() != null) {
+            validateOptionExists(request.getOptionId());
         }
     }
 
-    private void validateRoleExists(Integer id, String message) {
-        if (!rolesRepository.existsById(id)) {
-            throw new ResourceNotFoundException(message);
+    private void validateOptionExists(Integer id) {
+        if (!betOptionsRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Bet option not found");
         }
     }
 
-    private void validateAssignmentExists(Integer id) {
-        if (!jockeyHorseAssignmentsRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Jockey assignment not found");
-        }
+    private boolean isDeleted(String status) {
+        return STATUS_DELETED.equalsIgnoreCase(status);
     }
-
 }

@@ -12,8 +12,8 @@ public class RaceRegistrationResponse {
     private Integer tournamentId;
     private Integer raceId;
     private Integer horseId;
-    private Integer ownerRoleId;
-    private Integer jockeyRoleId;
+    private Integer ownerId;
+    private Integer jockeyId;
     private String status;
     private String ownerConfirmationStatus;
     private Instant ownerConfirmedAt;

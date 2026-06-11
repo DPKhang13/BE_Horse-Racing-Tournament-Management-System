@@ -7,7 +7,6 @@ import com.group5.htms.dto.auth.UserMeResponse;
 import com.group5.htms.dto.otpverify.request.ResendOtpRequest;
 import com.group5.htms.dto.otpverify.request.VerifyOtpRequest;
 import com.group5.htms.dto.otpverify.response.OtpVerifyResponse;
-import com.group5.htms.entity.Roles;
 import com.group5.htms.entity.Users;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -26,11 +25,7 @@ public interface AuthService {
 
     Users getCurrentUser();
 
-    Roles getCurrentUserRole(String roleType);
-
     Integer getCurrentUserId();
-
-    Integer getCurrentUserRoleId(String roleType);
 
     OtpVerifyResponse verifyOtp(VerifyOtpRequest request);
 

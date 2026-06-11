@@ -10,17 +10,13 @@ import java.time.Instant;
 @Getter
 public class BetResponse {
     private Integer id;
-    private Integer spectatorRoleId;
-    private Integer assignmentId;
-    private String marketType;
-    private Integer predictedPosition;
-    private BigDecimal stakePoints;
-    private BigDecimal oddsDecimal;
-    private BigDecimal potentialPayoutPoints;
-    private BigDecimal payoutPoints;
+    private Integer userId;
+    private Integer optionId;
+    private Boolean betType;
+    private BigDecimal betPoints;
+    private BigDecimal betRate;
+    private BigDecimal rewardPoints;
     private String status;
     private Instant placedAt;
     private Instant settledAt;
-    private Integer settledById;
-    private String settledType;
 }

@@ -3,9 +3,11 @@ package com.group5.htms.mapper;
 import com.group5.htms.dto.raceresult.request.RaceResultCreateRequest;
 import com.group5.htms.dto.raceresult.request.RaceResultUpdateRequest;
 import com.group5.htms.dto.raceresult.response.RaceResultResponse;
+import com.group5.htms.entity.HorseOwnerProfiles;
+import com.group5.htms.entity.Horses;
 import com.group5.htms.entity.JockeyHorseAssignments;
-import com.group5.htms.entity.PrizeDistributions;
 import com.group5.htms.entity.RaceResults;
+import com.group5.htms.entity.Races;
 import com.group5.htms.entity.RefereeReports;
 import org.springframework.stereotype.Component;
 
@@ -13,11 +15,14 @@ import java.time.Instant;
 
 @Component
 public class RaceResultMapper {
-    public RaceResults toEntity(RaceResultCreateRequest request) {
+    public RaceResults toEntity(RaceResultCreateRequest request, JockeyHorseAssignments assignment) {
         return RaceResults.builder()
                 .assignment(toAssignment(request.getAssignmentId()))
+                .races(toRace(assignment.getRaces().getId()))
+                .horses(toHorse(assignment.getReg().getHorses().getId()))
+                .owner(toOwner(assignment.getReg().getOwner().getId()))
                 .report(toNullableReport(request.getReportId()))
-                .prize(toNullablePrize(request.getPrizeId()))
+                .finalRound(request.getFinalRound())
                 .finishPosition(request.getFinishPosition())
                 .finishTimeSec(request.getFinishTimeSec())
                 .pointsAwarded(defaultZero(request.getPointsAwarded()))
@@ -29,15 +34,18 @@ public class RaceResultMapper {
                 .build();
     }
 
-    public void updateResult(RaceResults result, RaceResultUpdateRequest request) {
+    public void updateResult(RaceResults result, RaceResultUpdateRequest request, JockeyHorseAssignments assignment) {
         if (request.getAssignmentId() != null) {
             result.setAssignment(toAssignment(request.getAssignmentId()));
+            result.setRaces(toRace(assignment.getRaces().getId()));
+            result.setHorses(toHorse(assignment.getReg().getHorses().getId()));
+            result.setOwner(toOwner(assignment.getReg().getOwner().getId()));
         }
         if (request.getReportId() != null) {
             result.setReport(toReport(request.getReportId()));
         }
-        if (request.getPrizeId() != null) {
-            result.setPrize(toPrize(request.getPrizeId()));
+        if (request.getFinalRound() != null) {
+            result.setFinalRound(request.getFinalRound());
         }
         if (request.getFinishPosition() != null) {
             result.setFinishPosition(request.getFinishPosition());
@@ -69,8 +77,11 @@ public class RaceResultMapper {
         return RaceResultResponse.builder()
                 .id(result.getId())
                 .assignmentId(result.getAssignment().getId())
+                .raceId(result.getRaces().getId())
+                .horseId(result.getHorses().getId())
+                .ownerId(result.getOwner().getId())
                 .reportId(result.getReport() == null ? null : result.getReport().getId())
-                .prizeId(result.getPrize() == null ? null : result.getPrize().getId())
+                .finalRound(result.getFinalRound())
                 .finishPosition(result.getFinishPosition())
                 .finishTimeSec(result.getFinishTimeSec())
                 .pointsAwarded(result.getPointsAwarded())
@@ -88,6 +99,24 @@ public class RaceResultMapper {
         return assignment;
     }
 
+    private Races toRace(Integer id) {
+        Races race = new Races();
+        race.setId(id);
+        return race;
+    }
+
+    private Horses toHorse(Integer id) {
+        Horses horse = new Horses();
+        horse.setId(id);
+        return horse;
+    }
+
+    private HorseOwnerProfiles toOwner(Integer id) {
+        HorseOwnerProfiles owner = new HorseOwnerProfiles();
+        owner.setId(id);
+        return owner;
+    }
+
     private RefereeReports toReport(Integer id) {
         RefereeReports report = new RefereeReports();
         report.setId(id);
@@ -96,16 +125,6 @@ public class RaceResultMapper {
 
     private RefereeReports toNullableReport(Integer id) {
         return id == null ? null : toReport(id);
-    }
-
-    private PrizeDistributions toPrize(Integer id) {
-        PrizeDistributions prize = new PrizeDistributions();
-        prize.setId(id);
-        return prize;
-    }
-
-    private PrizeDistributions toNullablePrize(Integer id) {
-        return id == null ? null : toPrize(id);
     }
 
     private Integer defaultZero(Integer value) {

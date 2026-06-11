@@ -3,12 +3,10 @@ package com.group5.htms.service.impl;
 import com.group5.htms.dto.payment.request.VnpayCreatePaymentRequest;
 import com.group5.htms.dto.payment.response.VnpayCreatePaymentResponse;
 import com.group5.htms.dto.payment.response.VnpayReturnResponse;
-import com.group5.htms.entity.Roles;
 import com.group5.htms.entity.Users;
 import com.group5.htms.entity.WalletTransactions;
 import com.group5.htms.entity.Wallets;
 import com.group5.htms.enums.PaymentGatewayProvider;
-import com.group5.htms.enums.RoleStatus;
 import com.group5.htms.enums.RoleType;
 import com.group5.htms.enums.VnpayResponseCodeStatus;
 import com.group5.htms.enums.WalletStatus;
@@ -71,11 +69,11 @@ public class VnpayPaymentServiceImpl implements VnpayPaymentService {
             VnpayCreatePaymentRequest request,
             HttpServletRequest httpServletRequest
     ) {
-        Users currentUser = getCurrentUserWithRoles();
+        Users currentUser = getCurrentUser();
 
-        Roles spectatorRole = getActiveSpectatorRole(currentUser);
+        validateSpectator(currentUser);
 
-        Wallets wallet = getOrCreateWallet(spectatorRole);
+        Wallets wallet = getOrCreateWallet(currentUser);
 
         BigDecimal cashAmount = normalizeAmount(request.getAmount());
 
@@ -85,7 +83,7 @@ public class VnpayPaymentServiceImpl implements VnpayPaymentService {
 
         WalletTransactions transaction = WalletTransactions.builder()
                 .wallets(wallet)
-                .spectatorRoles(spectatorRole)
+                .users(currentUser)
                 .txType(WalletTransactionType.TOPUP.getValue())
                 .cashAmount(cashAmount)
                 .pointsAmount(pointsAmount)
@@ -391,33 +389,26 @@ public class VnpayPaymentServiceImpl implements VnpayPaymentService {
         }
     }
 
-    private Users getCurrentUserWithRoles() {
+    private Users getCurrentUser() {
         String username = SecurityContextHolder.getContext()
                 .getAuthentication()
                 .getName();
 
-        return usersRepository.findByUsernameWithRoles(username)
+        return usersRepository.findByUsername(username)
                 .orElseThrow(() -> new UnauthorizedException("User not found"));
     }
 
-    private Roles getActiveSpectatorRole(Users user) {
-        return user.getRoles()
-                .stream()
-                .filter(role -> RoleType.SPECTATOR.getValue()
-                        .equalsIgnoreCase(role.getRoleType()))
-                .filter(role -> RoleStatus.ACTIVE.getValue()
-                        .equalsIgnoreCase(role.getStatus()))
-                .findFirst()
-                .orElseThrow(() ->
-                        new UnauthorizedException("Only spectator can top up wallet")
-                );
+    private void validateSpectator(Users user) {
+        if (!RoleType.SPECTATOR.getValue().equalsIgnoreCase(user.getRoleType())) {
+            throw new UnauthorizedException("Only spectator can top up wallet");
+        }
     }
 
-    private Wallets getOrCreateWallet(Roles spectatorRole) {
-        return walletsRepository.findBySpectatorRolesId(spectatorRole.getId())
+    private Wallets getOrCreateWallet(Users user) {
+        return walletsRepository.findByUsersId(user.getId())
                 .orElseGet(() -> {
                     Wallets wallet = Wallets.builder()
-                            .spectatorRoles(spectatorRole)
+                            .users(user)
                             .pointBalance(BigDecimal.ZERO)
                             .status(WalletStatus.ACTIVE.getValue())
                             .createdAt(Instant.now())

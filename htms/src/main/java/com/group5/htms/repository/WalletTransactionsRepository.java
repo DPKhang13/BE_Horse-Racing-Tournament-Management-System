@@ -43,13 +43,13 @@ public interface WalletTransactionsRepository extends JpaRepository<WalletTransa
     /*
     Dùng cho user xem lịch sử giao dịch của chính mình.
      */
-    List<WalletTransactions> findBySpectatorRolesIdOrderByCreatedAtDesc(Integer spectatorRoleId);
+    List<WalletTransactions> findByUsersIdOrderByCreatedAtDesc(Integer userId);
 
     /*
      Dùng cho owner check:
      Chỉ cho user xem transaction nếu transaction thuộc role spectator của user đó.
      */
-    Optional<WalletTransactions> findByGatewayProviderAndGatewayTxnRefAndSpectatorRolesUsersId(
+    Optional<WalletTransactions> findByGatewayProviderAndGatewayTxnRefAndUsersId(
             String gatewayProvider,
             String gatewayTxnRef,
             Integer userId

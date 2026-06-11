@@ -11,8 +11,11 @@ import java.time.Instant;
 public class RaceResultResponse {
     private Integer id;
     private Integer assignmentId;
+    private Integer raceId;
+    private Integer horseId;
+    private Integer ownerId;
     private Integer reportId;
-    private Integer prizeId;
+    private Integer finalRound;
     private Integer finishPosition;
     private BigDecimal finishTimeSec;
     private Integer pointsAwarded;
