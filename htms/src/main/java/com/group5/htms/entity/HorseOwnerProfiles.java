@@ -29,7 +29,7 @@ import java.time.Instant;
 @Setter
 @ToString
 @Entity
-@Table(name = "\"HorseOwnerProfiles\"")
+@Table(name = "\"horse_owner_profiles\"")
 public class HorseOwnerProfiles {
     @Id
     @Column(name = "owner_id", nullable = false)

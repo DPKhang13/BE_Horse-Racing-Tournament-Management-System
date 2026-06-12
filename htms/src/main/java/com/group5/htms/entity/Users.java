@@ -26,7 +26,7 @@ import java.time.Instant;
 @Setter
 @ToString
 @Entity
-@Table(name = "\"Users\"")
+@Table(name = "\"users\"")
 public class Users {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

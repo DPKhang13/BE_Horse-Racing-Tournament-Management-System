@@ -26,7 +26,7 @@ import org.hibernate.annotations.ColumnDefault;
 @Setter
 @ToString
 @Entity
-@Table(name = "\"JockeyProfiles\"")
+@Table(name = "\"jockey_profiles\"")
 public class JockeyProfiles {
     @Id
     @Column(name = "jockey_id", nullable = false)

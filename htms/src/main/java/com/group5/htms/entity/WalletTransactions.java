@@ -31,7 +31,7 @@ import java.time.Instant;
 @Setter
 @ToString
 @Entity
-@Table(name = "\"WalletTransactions\"")
+@Table(name = "\"wallet_transactions\"")
 public class WalletTransactions {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

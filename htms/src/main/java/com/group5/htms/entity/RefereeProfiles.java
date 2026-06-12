@@ -28,7 +28,7 @@ import java.time.Instant;
 @Setter
 @ToString
 @Entity
-@Table(name = "\"RefereeProfiles\"")
+@Table(name = "\"referee_profiles\"")
 public class RefereeProfiles {
     @Id
     @Column(name = "referee_id", nullable = false)

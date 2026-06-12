@@ -29,7 +29,7 @@ import java.time.Instant;
 @Setter
 @ToString
 @Entity
-@Table(name = "\"Wallets\"")
+@Table(name = "\"wallets\"")
 public class Wallets {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

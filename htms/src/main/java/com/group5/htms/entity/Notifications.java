@@ -15,7 +15,7 @@ import java.time.Instant;
 @Setter
 @ToString
 @Entity
-@Table(name = "\"Notifications\"")
+@Table(name = "\"notifications\"")
 public class Notifications {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
