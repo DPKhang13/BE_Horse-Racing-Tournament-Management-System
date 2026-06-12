@@ -2,6 +2,7 @@ package com.group5.htms.controller;
 
 import com.group5.htms.dto.horse.request.HorseCreateRequest;
 import com.group5.htms.dto.horse.request.HorseUpdateRequest;
+import com.group5.htms.dto.horse.response.HorseRankingResponse;
 import com.group5.htms.dto.horse.response.HorseResponse;
 import com.group5.htms.service.HorseService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -34,6 +36,18 @@ public class HorseController {
     @GetMapping("/get-all")
     public ResponseEntity<List<HorseResponse>> getAllHorses() {
         return ResponseEntity.ok(horseService.getAllHorses());
+    }
+
+    @Operation(
+            summary = "Get horse ranking",
+            description = "Lấy bảng xếp hạng ngựa theo ranking points, total wins và tên ngựa."
+    )
+    @GetMapping("/ranking")
+    public ResponseEntity<List<HorseRankingResponse>> getHorseRanking(
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) Integer limit
+    ) {
+        return ResponseEntity.ok(horseService.getHorseRanking(status, limit));
     }
 
     @Operation(

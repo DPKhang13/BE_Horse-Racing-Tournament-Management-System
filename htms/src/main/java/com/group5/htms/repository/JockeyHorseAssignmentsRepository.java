@@ -11,4 +11,12 @@ public interface JockeyHorseAssignmentsRepository extends JpaRepository<JockeyHo
     List<JockeyHorseAssignments> findByReg_Id(Integer registrationId);
 
     List<JockeyHorseAssignments> findByReg_IdIn(Iterable<Integer> registrationIds);
+
+    List<JockeyHorseAssignments> findByJockey_IdOrderByInvitedAtDesc(Integer jockeyId);
+
+    List<JockeyHorseAssignments> findByJockey_IdAndStatusIgnoreCaseOrderByInvitedAtDesc(Integer jockeyId, String status);
+
+    List<JockeyHorseAssignments> findByReg_Owner_IdOrderByInvitedAtDesc(Integer ownerId);
+
+    List<JockeyHorseAssignments> findByReg_Owner_IdAndStatusIgnoreCaseOrderByInvitedAtDesc(Integer ownerId, String status);
 }

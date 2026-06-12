@@ -2,6 +2,7 @@ package com.group5.htms.mapper;
 
 import com.group5.htms.dto.horse.request.HorseCreateRequest;
 import com.group5.htms.dto.horse.request.HorseUpdateRequest;
+import com.group5.htms.dto.horse.response.HorseRankingResponse;
 import com.group5.htms.dto.horse.response.HorseResponse;
 import com.group5.htms.entity.HorseOwnerProfiles;
 import com.group5.htms.entity.Horses;
@@ -77,6 +78,20 @@ public class HorseMapper {
                 .totalWins(horse.getTotalWins())
                 .status(horse.getStatus())
                 .registeredAt(horse.getRegisteredAt())
+                .build();
+    }
+
+    public HorseRankingResponse toRankingResponse(Horses horse, Integer rank) {
+        return HorseRankingResponse.builder()
+                .rank(rank)
+                .id(horse.getId())
+                .name(horse.getName())
+                .breed(horse.getBreed())
+                .rankGroup(horse.getRankGroup())
+                .rankingPoints(horse.getRankingPoints())
+                .totalWins(horse.getTotalWins())
+                .avatarUrl(horse.getAvatarUrl())
+                .status(horse.getStatus())
                 .build();
     }
 

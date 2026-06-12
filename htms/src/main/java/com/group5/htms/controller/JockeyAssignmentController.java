@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -32,6 +33,24 @@ public class JockeyAssignmentController {
     @GetMapping("/get-all")
     public ResponseEntity<List<JockeyAssignmentResponse>> getAllAssignments() {
         return ResponseEntity.ok(jockeyAssignmentService.getAllAssignments());
+    }
+
+    @Operation(summary = "Get my jockey invitations", description = "Lấy danh sách lời mời của jockey đang đăng nhập.")
+    @GetMapping("/get-my-invitations")
+    @PreAuthorize("hasRole('JOCKEY')")
+    public ResponseEntity<List<JockeyAssignmentResponse>> getMyInvitations(
+            @RequestParam(required = false) String status
+    ) {
+        return ResponseEntity.ok(jockeyAssignmentService.getMyInvitations(status));
+    }
+
+    @Operation(summary = "Get sent jockey invitations", description = "Lấy danh sách jockey mà horse owner đang đăng nhập đã mời.")
+    @GetMapping("/get-sent-invitations")
+    @PreAuthorize("hasRole('HORSE_OWNER')")
+    public ResponseEntity<List<JockeyAssignmentResponse>> getSentInvitations(
+            @RequestParam(required = false) String status
+    ) {
+        return ResponseEntity.ok(jockeyAssignmentService.getSentInvitations(status));
     }
 
     @Operation(summary = "Get jockey assignment by id", description = "Lấy thông tin assignment jockey theo id.")

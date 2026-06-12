@@ -10,6 +10,8 @@ import java.util.List;
 public interface RaceRegistrationService {
     List<RaceRegistrationResponse> getAllRegistrations();
 
+    List<RaceRegistrationResponse> getMyRegistrations(String status);
+
     RaceRegistrationResponse getRegistrationById(Integer id);
 
     RaceRegistrationResponse createRegistration(RaceRegistrationCreateRequest request);

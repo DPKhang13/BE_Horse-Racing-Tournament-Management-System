@@ -4,6 +4,8 @@ import com.group5.htms.dto.auth.AuthResponse;
 import com.group5.htms.dto.auth.LoginRequest;
 import com.group5.htms.dto.auth.RegisterRequest;
 import com.group5.htms.dto.auth.UserMeResponse;
+import com.group5.htms.dto.otpverify.request.ResendOtpRequest;
+import com.group5.htms.dto.otpverify.request.VerifyOtpRequest;
 import com.group5.htms.dto.otpverify.response.OtpVerifyResponse;
 import com.group5.htms.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -38,6 +40,20 @@ public class AuthController {
             HttpServletResponse response
     ) {
         return ResponseEntity.ok(authService.login(request, response));
+    }
+
+    @PostMapping("/verify-otp")
+    public ResponseEntity<OtpVerifyResponse> verifyOtp(
+            @Valid @RequestBody VerifyOtpRequest request
+    ) {
+        return ResponseEntity.ok(authService.verifyOtp(request));
+    }
+
+    @PostMapping("/resend-otp")
+    public ResponseEntity<OtpVerifyResponse> resendOtp(
+            @Valid @RequestBody ResendOtpRequest request
+    ) {
+        return ResponseEntity.ok(authService.resendOtp(request));
     }
 
     @PostMapping("/refresh-token")

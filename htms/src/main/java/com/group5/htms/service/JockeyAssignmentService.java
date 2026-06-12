@@ -10,6 +10,10 @@ import java.util.List;
 public interface JockeyAssignmentService {
     List<JockeyAssignmentResponse> getAllAssignments();
 
+    List<JockeyAssignmentResponse> getMyInvitations(String status);
+
+    List<JockeyAssignmentResponse> getSentInvitations(String status);
+
     JockeyAssignmentResponse getAssignmentById(Integer id);
 
     JockeyAssignmentResponse createInvitation(JockeyInvitationCreateRequest request);

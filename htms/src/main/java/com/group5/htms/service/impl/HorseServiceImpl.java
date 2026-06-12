@@ -3,6 +3,7 @@ package com.group5.htms.service.impl;
 import com.group5.htms.exception.ResourceNotFoundException;
 import com.group5.htms.dto.horse.request.HorseCreateRequest;
 import com.group5.htms.dto.horse.request.HorseUpdateRequest;
+import com.group5.htms.dto.horse.response.HorseRankingResponse;
 import com.group5.htms.dto.horse.response.HorseResponse;
 import com.group5.htms.entity.Horses;
 import com.group5.htms.mapper.HorseMapper;
@@ -22,6 +23,7 @@ import java.util.Objects;
 @RequiredArgsConstructor
 public class HorseServiceImpl implements HorseService {
     private static final String STATUS_DELETED = "deleted";
+    private static final String STATUS_ACTIVE = "active";
 
     private final HorsesRepository horsesRepository;
     private final HorseOwnerProfilesRepository horseOwnerProfilesRepository;
@@ -34,6 +36,18 @@ public class HorseServiceImpl implements HorseService {
                 .stream()
                 .filter(horse -> !isDeleted(horse.getStatus()))
                 .map(horseMapper::toResponse)
+                .toList();
+    }
+
+    @Override
+    public List<HorseRankingResponse> getHorseRanking(String status, Integer limit) {
+        String normalizedStatus = status == null || status.isBlank() ? STATUS_ACTIVE : status.trim();
+        List<Horses> horses = horsesRepository
+                .findByStatusIgnoreCaseOrderByRankingPointsDescTotalWinsDescNameAsc(normalizedStatus);
+        int maxResult = normalizeLimit(limit, horses.size());
+
+        return java.util.stream.IntStream.range(0, maxResult)
+                .mapToObj(index -> horseMapper.toRankingResponse(horses.get(index), index + 1))
                 .toList();
     }
 
@@ -96,5 +110,13 @@ public class HorseServiceImpl implements HorseService {
 
     private boolean isDeleted(String status) {
         return STATUS_DELETED.equalsIgnoreCase(status);
+    }
+
+    private int normalizeLimit(Integer limit, int total) {
+        if (limit == null || limit <= 0 || limit > total) {
+            return total;
+        }
+
+        return limit;
     }
 }

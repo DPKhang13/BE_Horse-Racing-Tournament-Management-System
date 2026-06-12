@@ -1,12 +1,13 @@
 package com.group5.htms.service.impl;
 
-import com.group5.htms.exception.ResourceNotFoundException;
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationApprovalRequest;
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationCreateRequest;
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationUpdateRequest;
 import com.group5.htms.dto.raceregistration.response.RaceRegistrationResponse;
 import com.group5.htms.entity.RaceRegistrations;
 import com.group5.htms.entity.Users;
+import com.group5.htms.exception.BadRequestException;
+import com.group5.htms.exception.ResourceNotFoundException;
 import com.group5.htms.mapper.RaceRegistrationMapper;
 import com.group5.htms.repository.HorseOwnerProfilesRepository;
 import com.group5.htms.repository.HorsesRepository;
@@ -49,6 +50,17 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
     }
 
     @Override
+    public List<RaceRegistrationResponse> getMyRegistrations(String status) {
+        Integer ownerId = authService.getCurrentUserId();
+
+        return findRegistrationsByOwner(ownerId, status)
+                .stream()
+                .filter(registration -> !isDeleted(registration.getStatus()))
+                .map(raceRegistrationMapper::toResponse)
+                .toList();
+    }
+
+    @Override
     public RaceRegistrationResponse getRegistrationById(Integer id) {
         return raceRegistrationMapper.toResponse(findRegistration(id));
     }
@@ -62,6 +74,7 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
         request.setApprovedAt(null);
         request.setApprovedById(null);
         validateCreateReferences(request);
+        validateRaceBelongsToTournament(request.getRaceId(), request.getTournamentId());
         validateHorseBelongsToOwner(request.getHorseId(), ownerId);
         RaceRegistrations registration = raceRegistrationMapper.toEntity(request);
 
@@ -78,6 +91,13 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
         request.setApprovedAt(null);
         request.setApprovedById(null);
         validateUpdateReferences(request);
+        Integer tournamentId = request.getTournamentId() == null
+                ? registration.getTournaments().getId()
+                : request.getTournamentId();
+        Integer raceId = request.getRaceId() == null
+                ? registration.getRaces().getId()
+                : request.getRaceId();
+        validateRaceBelongsToTournament(raceId, tournamentId);
         if (request.getHorseId() != null) {
             validateHorseBelongsToOwner(request.getHorseId(), ownerId);
         }
@@ -167,6 +187,18 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
         }
     }
 
+    private void validateRaceBelongsToTournament(Integer raceId, Integer tournamentId) {
+        boolean belongsToTournament = racesRepository.findById(raceId)
+                .map(race -> race.getSchedule() != null
+                        && race.getSchedule().getTournaments() != null
+                        && Objects.equals(race.getSchedule().getTournaments().getId(), tournamentId))
+                .orElse(false);
+
+        if (!belongsToTournament) {
+            throw new BadRequestException("Race does not belong to this tournament");
+        }
+    }
+
     private void validateHorseExists(Integer id) {
         if (!horsesRepository.existsById(id)) {
             throw new ResourceNotFoundException("Horse not found");
@@ -197,6 +229,15 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
 
     private boolean isDeleted(String status) {
         return STATUS_DELETED.equalsIgnoreCase(status);
+    }
+
+    private List<RaceRegistrations> findRegistrationsByOwner(Integer ownerId, String status) {
+        if (status != null && !status.isBlank()) {
+            return raceRegistrationsRepository
+                    .findByOwner_IdAndStatusIgnoreCaseOrderByRegisteredAtDesc(ownerId, status.trim());
+        }
+
+        return raceRegistrationsRepository.findByOwner_IdOrderByRegisteredAtDesc(ownerId);
     }
 
 }
