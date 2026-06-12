@@ -46,6 +46,8 @@ public class PrizeServiceImpl implements PrizeService {
         Tournaments tournament = tournamentsRepository.findById(tournamentId)
                 .orElseThrow(() -> new BadRequestException("Tournament not found"));
 
+        validateTournamentCanCreatePrize(tournament);
+
         validatePrizePositionsOnlyTopThree(request.getPrizes());
 
         validateDuplicateFinishPositionInRequest(request.getPrizes());
@@ -95,8 +97,13 @@ public class PrizeServiceImpl implements PrizeService {
     }
 
     private void validateTournamentCanCreatePrize(Tournaments tournament) {
-        if (tournament.getStatus() == null
-                || !TOURNAMENT_STATUS_UPCOMING.equalsIgnoreCase(tournament.getStatus())) {
+        if (tournament == null) {
+            throw new BadRequestException("Tournament not found");
+        }
+
+        String status = tournament.getStatus();
+
+        if (status == null || !TOURNAMENT_STATUS_UPCOMING.equalsIgnoreCase(status.trim())) {
             throw new BadRequestException("Prize distributions can only be created for upcoming tournaments");
         }
     }
