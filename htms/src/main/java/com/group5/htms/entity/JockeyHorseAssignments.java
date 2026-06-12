@@ -1,9 +1,22 @@
 package com.group5.htms.entity;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 import org.hibernate.annotations.ColumnDefault;
 
 import java.time.Instant;
@@ -34,8 +47,8 @@ public class JockeyHorseAssignments {
 
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "jockey_role_id", nullable = false)
-    private Roles jockeyRoles;
+    @JoinColumn(name = "jockey_id", nullable = false)
+    private JockeyProfiles jockey;
 
     @Column(name = "gate_number")
     private Integer gateNumber;
@@ -52,5 +65,4 @@ public class JockeyHorseAssignments {
 
     @Column(name = "responded_at")
     private Instant respondedAt;
-
 }

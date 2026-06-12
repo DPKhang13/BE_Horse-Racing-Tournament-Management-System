@@ -1,9 +1,22 @@
 package com.group5.htms.entity;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.MapsId;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 import org.hibernate.annotations.ColumnDefault;
 
 @Builder
@@ -16,14 +29,18 @@ import org.hibernate.annotations.ColumnDefault;
 @Table(name = "\"JockeyProfiles\"")
 public class JockeyProfiles {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "jockey_profile_id", nullable = false)
+    @Column(name = "jockey_id", nullable = false)
     private Integer id;
 
-    @NotNull
+    @MapsId
     @OneToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "role_id", nullable = false)
-    private Roles roles;
+    @JoinColumn(name = "jockey_id", nullable = false)
+    @ToString.Exclude
+    private Users users;
+
+    @Size(max = 50)
+    @Column(name = "license_number", length = 50)
+    private String licenseNumber;
 
     @NotNull
     @ColumnDefault("0")
@@ -44,4 +61,18 @@ public class JockeyProfiles {
     @Column(name = "status", nullable = false, length = 20)
     private String status;
 
+    @PrePersist
+    public void prePersist() {
+        if (this.rankingPoints == null) {
+            this.rankingPoints = 0;
+        }
+
+        if (this.experienceYears == null) {
+            this.experienceYears = 0;
+        }
+
+        if (this.status == null || this.status.isBlank()) {
+            this.status = "available";
+        }
+    }
 }

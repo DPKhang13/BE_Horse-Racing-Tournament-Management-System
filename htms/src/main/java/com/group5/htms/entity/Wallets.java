@@ -1,9 +1,22 @@
 package com.group5.htms.entity;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 import org.hibernate.annotations.ColumnDefault;
 
 import java.math.BigDecimal;
@@ -25,8 +38,8 @@ public class Wallets {
 
     @NotNull
     @OneToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "spectator_role_id", nullable = false)
-    private Roles spectatorRoles;
+    @JoinColumn(name = "user_id", nullable = false)
+    private Users users;
 
     @NotNull
     @ColumnDefault("0")
@@ -42,5 +55,4 @@ public class Wallets {
     @NotNull
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
-
 }

@@ -1,9 +1,24 @@
 package com.group5.htms.entity;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 import org.hibernate.annotations.ColumnDefault;
 
 import java.math.BigDecimal;
@@ -30,8 +45,8 @@ public class WalletTransactions {
 
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "spectator_role_id", nullable = false)
-    private Roles spectatorRoles;
+    @JoinColumn(name = "user_id", nullable = false)
+    private Users users;
 
     @Size(max = 20)
     @NotNull
@@ -60,7 +75,7 @@ public class WalletTransactions {
 
     @Size(max = 20)
     @NotNull
-    @ColumnDefault("'completed'")
+    @ColumnDefault("'pending'")
     @Column(name = "status", nullable = false, length = 20)
     private String status;
 
@@ -71,12 +86,82 @@ public class WalletTransactions {
     @Column(name = "ref_id")
     private Integer refId;
 
+    @Size(max = 30)
+    @Column(name = "gateway_provider", length = 30)
+    private String gatewayProvider;
+
+    @Size(max = 100)
+    @Column(name = "gateway_txn_ref", length = 100)
+    private String gatewayTxnRef;
+
+    @Size(max = 100)
+    @Column(name = "gateway_transaction_no", length = 100)
+    private String gatewayTransactionNo;
+
+    @Size(max = 20)
+    @Column(name = "gateway_response_code", length = 20)
+    private String gatewayResponseCode;
+
+    @Size(max = 20)
+    @Column(name = "gateway_transaction_status", length = 20)
+    private String gatewayTransactionStatus;
+
+    @Size(max = 50)
+    @Column(name = "gateway_bank_code", length = 50)
+    private String gatewayBankCode;
+
+    @Size(max = 50)
+    @Column(name = "gateway_pay_date", length = 50)
+    private String gatewayPayDate;
+
+    @Column(name = "gateway_raw_response", columnDefinition = "TEXT")
+    private String gatewayRawResponse;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by")
+    @ToString.Exclude
     private Users createdBy;
 
     @NotNull
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
+    @Column(name = "updated_at")
+    private Instant updatedAt;
+
+    @PrePersist
+    public void prePersist() {
+        if (this.cashAmount == null) {
+            this.cashAmount = BigDecimal.ZERO;
+        }
+
+        if (this.pointsAmount == null) {
+            this.pointsAmount = BigDecimal.ZERO;
+        }
+
+        if (this.exchangeRate == null) {
+            this.exchangeRate = BigDecimal.ONE;
+        }
+
+        if (this.pointsBefore == null) {
+            this.pointsBefore = BigDecimal.ZERO;
+        }
+
+        if (this.pointsAfter == null) {
+            this.pointsAfter = BigDecimal.ZERO;
+        }
+
+        if (this.status == null || this.status.isBlank()) {
+            this.status = "pending";
+        }
+
+        if (this.createdAt == null) {
+            this.createdAt = Instant.now();
+        }
+    }
+
+    @PreUpdate
+    public void preUpdate() {
+        this.updatedAt = Instant.now();
+    }
 }

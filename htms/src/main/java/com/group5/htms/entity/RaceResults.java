@@ -1,9 +1,22 @@
 package com.group5.htms.entity;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 import org.hibernate.annotations.ColumnDefault;
 
 import java.math.BigDecimal;
@@ -28,13 +41,27 @@ public class RaceResults {
     @JoinColumn(name = "assignment_id", nullable = false)
     private JockeyHorseAssignments assignment;
 
+    @NotNull
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "race_id", nullable = false)
+    private Races races;
+
+    @NotNull
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "horse_id", nullable = false)
+    private Horses horses;
+
+    @NotNull
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "owner_id", nullable = false)
+    private HorseOwnerProfiles owner;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "report_id")
     private RefereeReports report;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "prize_id")
-    private PrizeDistributions prize;
+    @Column(name = "final_round")
+    private Integer finalRound;
 
     @Column(name = "finish_position")
     private Integer finishPosition;
@@ -68,5 +95,4 @@ public class RaceResults {
 
     @Column(name = "published_at")
     private Instant publishedAt;
-
 }
