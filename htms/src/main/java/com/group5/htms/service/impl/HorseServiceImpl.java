@@ -40,13 +40,11 @@ public class HorseServiceImpl implements HorseService {
     }
 
     @Override
-    public List<HorseRankingResponse> getHorseRanking(String status, Integer limit) {
-        String normalizedStatus = status == null || status.isBlank() ? STATUS_ACTIVE : status.trim();
+    public List<HorseRankingResponse> getHorseRanking() {
         List<Horses> horses = horsesRepository
-                .findByStatusIgnoreCaseOrderByRankingPointsDescTotalWinsDescNameAsc(normalizedStatus);
-        int maxResult = normalizeLimit(limit, horses.size());
+                .findByStatusIgnoreCaseOrderByRankingPointsDescTotalWinsDescNameAsc(STATUS_ACTIVE);
 
-        return java.util.stream.IntStream.range(0, maxResult)
+        return java.util.stream.IntStream.range(0, horses.size())
                 .mapToObj(index -> horseMapper.toRankingResponse(horses.get(index), index + 1))
                 .toList();
     }
@@ -112,11 +110,4 @@ public class HorseServiceImpl implements HorseService {
         return STATUS_DELETED.equalsIgnoreCase(status);
     }
 
-    private int normalizeLimit(Integer limit, int total) {
-        if (limit == null || limit <= 0 || limit > total) {
-            return total;
-        }
-
-        return limit;
-    }
 }

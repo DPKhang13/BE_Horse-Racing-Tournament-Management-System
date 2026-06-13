@@ -34,22 +34,12 @@ public class JockeyServiceImpl implements JockeyService {
     }
 
     @Override
-    public List<JockeyRankingResponse> getJockeyRanking(String status, Integer limit) {
-        String normalizedStatus = status == null || status.isBlank() ? STATUS_AVAILABLE : status.trim();
+    public List<JockeyRankingResponse> getJockeyRanking() {
         var jockeys = jockeyProfilesRepository
-                .findByStatusIgnoreCaseOrderByRankingPointsDescTotalWinsDescExperienceYearsDesc(normalizedStatus);
-        int maxResult = normalizeLimit(limit, jockeys.size());
+                .findByStatusIgnoreCaseOrderByRankingPointsDescTotalWinsDescExperienceYearsDesc(STATUS_AVAILABLE);
 
-        return java.util.stream.IntStream.range(0, maxResult)
+        return java.util.stream.IntStream.range(0, jockeys.size())
                 .mapToObj(index -> jockeyMapper.toRankingResponse(jockeys.get(index), index + 1))
                 .toList();
-    }
-
-    private int normalizeLimit(Integer limit, int total) {
-        if (limit == null || limit <= 0 || limit > total) {
-            return total;
-        }
-
-        return limit;
     }
 }

@@ -35,8 +35,11 @@ public class PrizeMapper {
 
         return PrizeResponse.builder()
                 .id(prize.getId())
+                .prizeId(prize.getId())
                 .tournamentId(tournament != null ? tournament.getId() : null)
                 .tournamentName(tournament != null ? tournament.getName() : null)
+                .tournamentStatus(tournament != null ? tournament.getStatus() : null)
+                .prizePool(tournament != null ? tournament.getPrizePool() : null)
                 .finishPosition(prize.getFinishPosition())
                 .prizeName(prize.getPrizeName())
                 .amount(prize.getAmount())

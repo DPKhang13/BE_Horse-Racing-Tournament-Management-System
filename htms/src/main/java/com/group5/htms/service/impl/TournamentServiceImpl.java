@@ -2,13 +2,17 @@ package com.group5.htms.service.impl;
 
 import com.group5.htms.dto.tournament.request.TournamentCreateRequest;
 import com.group5.htms.dto.tournament.request.TournamentUpdateRequest;
+import com.group5.htms.dto.tournament.response.TournamentDetailResponse;
 import com.group5.htms.dto.tournament.response.TournamentResponse;
+import com.group5.htms.dto.tournament.response.TournamentSummaryResponse;
 import com.group5.htms.entity.Tournaments;
 import com.group5.htms.entity.Users;
 import com.group5.htms.enums.TournamentStatus;
 import com.group5.htms.exception.BadRequestException;
 import com.group5.htms.exception.UnauthorizedException;
 import com.group5.htms.mapper.TournamentMapper;
+import com.group5.htms.repository.PrizeRepository;
+import com.group5.htms.repository.TournamentSchedulesRepository;
 import com.group5.htms.repository.TournamentsRepository;
 import com.group5.htms.repository.UsersRepository;
 import com.group5.htms.service.TournamentService;
@@ -26,6 +30,8 @@ public class TournamentServiceImpl implements TournamentService {
 
     private final TournamentsRepository tournamentsRepository;
     private final UsersRepository usersRepository;
+    private final TournamentSchedulesRepository tournamentSchedulesRepository;
+    private final PrizeRepository prizeRepository;
     private final TournamentMapper tournamentMapper;
 
     @Override
@@ -63,13 +69,20 @@ public class TournamentServiceImpl implements TournamentService {
 
     @Override
     @Transactional(readOnly = true)
-    public TournamentResponse getTournamentById(Integer tournamentId) {
-        return tournamentMapper.toResponse(getTournamentEntity(tournamentId));
+    public TournamentDetailResponse getTournamentById(Integer tournamentId) {
+        Tournaments tournament = getTournamentEntity(tournamentId);
+
+        return tournamentMapper.toDetailResponse(
+                tournament,
+                tournamentSchedulesRepository
+                        .findByTournamentsIdOrderByRaceDateAscDayNumberAsc(tournamentId),
+                prizeRepository.findByTournamentsIdOrderByFinishPositionAsc(tournamentId)
+        );
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<TournamentResponse> getAllTournaments(String status) {
+    public List<TournamentSummaryResponse> getAllTournaments(String status) {
         List<Tournaments> tournaments;
 
         if (status != null && !status.isBlank()) {
@@ -86,7 +99,7 @@ public class TournamentServiceImpl implements TournamentService {
         }
 
         return tournaments.stream()
-                .map(tournamentMapper::toResponse)
+                .map(tournamentMapper::toSummaryResponse)
                 .toList();
     }
 

@@ -1,9 +1,9 @@
 package com.group5.htms.service;
 
-import com.group5.htms.dto.auth.AuthResponse;
-import com.group5.htms.dto.auth.LoginRequest;
-import com.group5.htms.dto.auth.RegisterRequest;
-import com.group5.htms.dto.auth.UserMeResponse;
+import com.group5.htms.dto.auth.response.AuthResponse;
+import com.group5.htms.dto.auth.request.LoginRequest;
+import com.group5.htms.dto.auth.request.RegisterRequest;
+import com.group5.htms.dto.auth.response.UserMeResponse;
 import com.group5.htms.dto.otpverify.request.ResendOtpRequest;
 import com.group5.htms.dto.otpverify.request.VerifyOtpRequest;
 import com.group5.htms.dto.otpverify.response.OtpVerifyResponse;
