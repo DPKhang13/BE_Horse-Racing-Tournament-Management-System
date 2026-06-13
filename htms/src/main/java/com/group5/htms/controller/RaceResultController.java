@@ -3,6 +3,7 @@ package com.group5.htms.controller;
 import com.group5.htms.dto.raceresult.request.RaceResultCreateRequest;
 import com.group5.htms.dto.raceresult.request.RaceResultPublishRequest;
 import com.group5.htms.dto.raceresult.request.RaceResultUpdateRequest;
+import com.group5.htms.dto.raceresult.response.RaceResultListResponse;
 import com.group5.htms.dto.raceresult.response.RaceResultResponse;
 import com.group5.htms.service.RaceResultService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -30,7 +31,7 @@ public class RaceResultController {
 
     @Operation(summary = "Get all race results", description = "Lấy danh sách tất cả kết quả race.")
     @GetMapping("/get-all")
-    public ResponseEntity<List<RaceResultResponse>> getAllResults() {
+    public ResponseEntity<List<RaceResultListResponse>> getAllResults() {
         return ResponseEntity.ok(raceResultService.getAllResults());
     }
 

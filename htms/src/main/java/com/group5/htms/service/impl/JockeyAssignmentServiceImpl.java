@@ -3,6 +3,7 @@ package com.group5.htms.service.impl;
 import com.group5.htms.dto.jockeyassignment.request.JockeyInvitationCreateRequest;
 import com.group5.htms.dto.jockeyassignment.request.JockeyInvitationResponseRequest;
 import com.group5.htms.dto.jockeyassignment.request.JockeyInvitationUpdateRequest;
+import com.group5.htms.dto.jockeyassignment.response.JockeyAssignmentListResponse;
 import com.group5.htms.dto.jockeyassignment.response.JockeyAssignmentResponse;
 import com.group5.htms.entity.JockeyHorseAssignments;
 import com.group5.htms.exception.BadRequestException;
@@ -36,33 +37,33 @@ public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
     private final JockeyAssignmentMapper jockeyAssignmentMapper;
 
     @Override
-    public List<JockeyAssignmentResponse> getAllAssignments() {
+    public List<JockeyAssignmentListResponse> getAllAssignments() {
         return jockeyHorseAssignmentsRepository.findAll()
                 .stream()
                 .filter(assignment -> !isDeleted(assignment.getStatus()))
-                .map(jockeyAssignmentMapper::toResponse)
+                .map(jockeyAssignmentMapper::toListResponse)
                 .toList();
     }
 
     @Override
-    public List<JockeyAssignmentResponse> getMyInvitations(String status) {
+    public List<JockeyAssignmentListResponse> getMyInvitations(String status) {
         Integer jockeyId = authService.getCurrentUserId();
 
         return findAssignmentsByJockey(jockeyId, status)
                 .stream()
                 .filter(assignment -> !isDeleted(assignment.getStatus()))
-                .map(jockeyAssignmentMapper::toResponse)
+                .map(jockeyAssignmentMapper::toListResponse)
                 .toList();
     }
 
     @Override
-    public List<JockeyAssignmentResponse> getSentInvitations(String status) {
+    public List<JockeyAssignmentListResponse> getSentInvitations(String status) {
         Integer ownerId = authService.getCurrentUserId();
 
         return findAssignmentsByOwner(ownerId, status)
                 .stream()
                 .filter(assignment -> !isDeleted(assignment.getStatus()))
-                .map(jockeyAssignmentMapper::toResponse)
+                .map(jockeyAssignmentMapper::toListResponse)
                 .toList();
     }
 

@@ -19,4 +19,8 @@ public interface JockeyHorseAssignmentsRepository extends JpaRepository<JockeyHo
     List<JockeyHorseAssignments> findByReg_Owner_IdOrderByInvitedAtDesc(Integer ownerId);
 
     List<JockeyHorseAssignments> findByReg_Owner_IdAndStatusIgnoreCaseOrderByInvitedAtDesc(Integer ownerId, String status);
+
+    long countByRaces_IdAndStatusIgnoreCase(Integer raceId, String status);
+
+    long countByJockey_Id(Integer jockeyId);
 }

@@ -8,6 +8,8 @@ import lombok.Getter;
 public class HorseRankingResponse {
     private Integer rank;
     private Integer id;
+    private Integer horseId;
+    private Integer ownerId;
     private String name;
     private String breed;
     private String rankGroup;
@@ -15,4 +17,9 @@ public class HorseRankingResponse {
     private Integer totalWins;
     private String avatarUrl;
     private String status;
+    private String ownerFullName;
+    private String ownerEmail;
+    private String ownerPhone;
+    private String ownerStableName;
+    private String ownerLicenseNumber;
 }

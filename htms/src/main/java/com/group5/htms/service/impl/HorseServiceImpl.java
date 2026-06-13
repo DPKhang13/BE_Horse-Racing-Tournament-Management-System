@@ -3,6 +3,7 @@ package com.group5.htms.service.impl;
 import com.group5.htms.exception.ResourceNotFoundException;
 import com.group5.htms.dto.horse.request.HorseCreateRequest;
 import com.group5.htms.dto.horse.request.HorseUpdateRequest;
+import com.group5.htms.dto.horse.response.HorseListResponse;
 import com.group5.htms.dto.horse.response.HorseRankingResponse;
 import com.group5.htms.dto.horse.response.HorseResponse;
 import com.group5.htms.entity.Horses;
@@ -31,11 +32,11 @@ public class HorseServiceImpl implements HorseService {
     private final HorseMapper horseMapper;
 
     @Override
-    public List<HorseResponse> getAllHorses() {
+    public List<HorseListResponse> getAllHorses() {
         return horsesRepository.findAll()
                 .stream()
                 .filter(horse -> !isDeleted(horse.getStatus()))
-                .map(horseMapper::toResponse)
+                .map(horseMapper::toListResponse)
                 .toList();
     }
 

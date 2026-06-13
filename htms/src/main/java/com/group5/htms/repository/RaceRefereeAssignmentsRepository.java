@@ -6,4 +6,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface RaceRefereeAssignmentsRepository extends JpaRepository<RaceRefereeAssignments, Integer> {
+    long countByRaces_Id(Integer raceId);
 }

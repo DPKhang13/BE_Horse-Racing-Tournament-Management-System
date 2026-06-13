@@ -2,6 +2,7 @@ package com.group5.htms.mapper;
 
 import com.group5.htms.dto.raceresult.request.RaceResultCreateRequest;
 import com.group5.htms.dto.raceresult.request.RaceResultUpdateRequest;
+import com.group5.htms.dto.raceresult.response.RaceResultListResponse;
 import com.group5.htms.dto.raceresult.response.RaceResultResponse;
 import com.group5.htms.entity.HorseOwnerProfiles;
 import com.group5.htms.entity.Horses;
@@ -74,8 +75,12 @@ public class RaceResultMapper {
     }
 
     public RaceResultResponse toResponse(RaceResults result) {
+        JockeyHorseAssignments assignment = result.getAssignment();
+        Races race = result.getRaces();
+
         return RaceResultResponse.builder()
                 .id(result.getId())
+                .resultId(result.getId())
                 .assignmentId(result.getAssignment().getId())
                 .raceId(result.getRaces().getId())
                 .horseId(result.getHorses().getId())
@@ -90,6 +95,52 @@ public class RaceResultMapper {
                 .status(result.getStatus())
                 .recordedAt(result.getRecordedAt())
                 .publishedAt(result.getPublishedAt())
+                .raceName(race.getName())
+                .raceNumber(race.getRaceNumber())
+                .scheduledAt(race.getScheduledAt())
+                .distanceM(race.getDistanceM())
+                .trackType(race.getTrackType())
+                .tournamentId(race.getSchedule().getTournaments().getId())
+                .tournamentName(race.getSchedule().getTournaments().getName())
+                .location(race.getSchedule().getTournaments().getLocation())
+                .horseName(result.getHorses().getName())
+                .horseAvatarUrl(result.getHorses().getAvatarUrl())
+                .ownerFullName(result.getOwner().getUsers().getFullName())
+                .ownerStableName(result.getOwner().getStableName())
+                .jockeyId(assignment.getJockey().getId())
+                .jockeyFullName(assignment.getJockey().getUsers().getFullName())
+                .gateNumber(assignment.getGateNumber())
+                .reportVerdict(result.getReport() == null ? null : result.getReport().getVerdict())
+                .build();
+    }
+
+    public RaceResultListResponse toListResponse(RaceResults result) {
+        JockeyHorseAssignments assignment = result.getAssignment();
+        Races race = result.getRaces();
+
+        return RaceResultListResponse.builder()
+                .resultId(result.getId())
+                .assignmentId(assignment.getId())
+                .raceId(race.getId())
+                .horseId(result.getHorses().getId())
+                .ownerId(result.getOwner().getId())
+                .finishPosition(result.getFinishPosition())
+                .finishTimeSec(result.getFinishTimeSec())
+                .pointsAwarded(result.getPointsAwarded())
+                .isDisqualified(result.getIsDisqualified())
+                .status(result.getStatus())
+                .recordedAt(result.getRecordedAt())
+                .publishedAt(result.getPublishedAt())
+                .raceName(race.getName())
+                .raceNumber(race.getRaceNumber())
+                .scheduledAt(race.getScheduledAt())
+                .horseName(result.getHorses().getName())
+                .horseAvatarUrl(result.getHorses().getAvatarUrl())
+                .ownerFullName(result.getOwner().getUsers().getFullName())
+                .ownerStableName(result.getOwner().getStableName())
+                .jockeyId(assignment.getJockey().getId())
+                .jockeyFullName(assignment.getJockey().getUsers().getFullName())
+                .gateNumber(assignment.getGateNumber())
                 .build();
     }
 

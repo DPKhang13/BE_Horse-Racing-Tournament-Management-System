@@ -4,6 +4,7 @@ import com.group5.htms.exception.ResourceNotFoundException;
 import com.group5.htms.dto.bet.request.BetCheckRequest;
 import com.group5.htms.dto.bet.request.BetCreateRequest;
 import com.group5.htms.dto.bet.request.BetUpdateRequest;
+import com.group5.htms.dto.bet.response.BetListResponse;
 import com.group5.htms.dto.bet.response.BetResponse;
 import com.group5.htms.entity.Bets;
 import com.group5.htms.mapper.BetMapper;
@@ -32,11 +33,11 @@ public class BetServiceImpl implements BetService {
     private final BetMapper betMapper;
 
     @Override
-    public List<BetResponse> getAllBets() {
+    public List<BetListResponse> getAllBets() {
         return betsRepository.findAll()
                 .stream()
                 .filter(bet -> !isDeleted(bet.getStatus()))
-                .map(betMapper::toResponse)
+                .map(betMapper::toListResponse)
                 .toList();
     }
 

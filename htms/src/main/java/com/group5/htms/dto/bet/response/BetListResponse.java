@@ -8,8 +8,7 @@ import java.time.Instant;
 
 @Builder
 @Getter
-public class BetResponse {
-    private Integer id;
+public class BetListResponse {
     private Integer betId;
     private Integer userId;
     private Integer optionId;
@@ -24,13 +23,9 @@ public class BetResponse {
     private String raceName;
     private Integer raceNumber;
     private Instant scheduledAt;
-    private Instant predictionClosesAt;
     private Integer assignmentId;
     private Integer horseId;
     private String horseName;
-    private BigDecimal currentRate;
-    private BigDecimal totalBetPoints;
-    private Integer totalBetCount;
     private Integer jockeyId;
     private String jockeyFullName;
     private String userFullName;

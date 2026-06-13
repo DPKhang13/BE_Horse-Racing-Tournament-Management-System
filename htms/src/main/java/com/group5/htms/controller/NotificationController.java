@@ -2,6 +2,7 @@ package com.group5.htms.controller;
 
 import com.group5.htms.dto.notification.request.NotificationCreateRequest;
 import com.group5.htms.dto.notification.request.NotificationUpdateRequest;
+import com.group5.htms.dto.notification.response.NotificationListResponse;
 import com.group5.htms.dto.notification.response.NotificationResponse;
 import com.group5.htms.service.NotificationService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -29,7 +30,7 @@ public class NotificationController {
 
     @Operation(summary = "Get all notifications", description = "Lấy danh sách tất cả notification.")
     @GetMapping("/get-all")
-    public ResponseEntity<List<NotificationResponse>> getAllNotifications() {
+    public ResponseEntity<List<NotificationListResponse>> getAllNotifications() {
         return ResponseEntity.ok(notificationService.getAllNotifications());
     }
 

@@ -3,6 +3,7 @@ package com.group5.htms.service.impl;
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationApprovalRequest;
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationCreateRequest;
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationUpdateRequest;
+import com.group5.htms.dto.raceregistration.response.RaceRegistrationListResponse;
 import com.group5.htms.dto.raceregistration.response.RaceRegistrationResponse;
 import com.group5.htms.entity.RaceRegistrations;
 import com.group5.htms.entity.Users;
@@ -41,22 +42,22 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
     private final RaceRegistrationMapper raceRegistrationMapper;
 
     @Override
-    public List<RaceRegistrationResponse> getAllRegistrations() {
+    public List<RaceRegistrationListResponse> getAllRegistrations() {
         return raceRegistrationsRepository.findAll()
                 .stream()
                 .filter(registration -> !isDeleted(registration.getStatus()))
-                .map(raceRegistrationMapper::toResponse)
+                .map(raceRegistrationMapper::toListResponse)
                 .toList();
     }
 
     @Override
-    public List<RaceRegistrationResponse> getMyRegistrations(String status) {
+    public List<RaceRegistrationListResponse> getMyRegistrations(String status) {
         Integer ownerId = authService.getCurrentUserId();
 
         return findRegistrationsByOwner(ownerId, status)
                 .stream()
                 .filter(registration -> !isDeleted(registration.getStatus()))
-                .map(raceRegistrationMapper::toResponse)
+                .map(raceRegistrationMapper::toListResponse)
                 .toList();
     }
 
