@@ -8,5 +8,7 @@ import lombok.Data;
 public class VnpayCreatePaymentResponse {
 
     private String txnRef;
+    private String transactionRef;
     private String paymentUrl;
+    private PaymentTransactionResponse transaction;
 }

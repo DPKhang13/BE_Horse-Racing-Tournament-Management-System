@@ -6,14 +6,13 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
-import java.time.Instant;
 import java.time.LocalDate;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class TournamentResponse {
+public class TournamentSummaryResponse {
 
     private Integer id;
 
@@ -31,13 +30,5 @@ public class TournamentResponse {
 
     private String status;
 
-    private Integer createdByUserId;
-
-    private Integer createdBy;
-
-    private String createdByUsername;
-
     private String createdByFullName;
-
-    private Instant createdAt;
 }

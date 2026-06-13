@@ -2,7 +2,9 @@ package com.group5.htms.controller;
 
 import com.group5.htms.dto.tournament.request.TournamentCreateRequest;
 import com.group5.htms.dto.tournament.request.TournamentUpdateRequest;
+import com.group5.htms.dto.tournament.response.TournamentDetailResponse;
 import com.group5.htms.dto.tournament.response.TournamentResponse;
+import com.group5.htms.dto.tournament.response.TournamentSummaryResponse;
 import com.group5.htms.service.TournamentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -43,7 +45,7 @@ public class TournamentController {
     }
 
     @GetMapping("/getId/{tournamentId}")
-    public ResponseEntity<TournamentResponse> getTournamentById(
+    public ResponseEntity<TournamentDetailResponse> getTournamentById(
             @PathVariable Integer tournamentId
     ) {
         return ResponseEntity.ok(
@@ -52,7 +54,7 @@ public class TournamentController {
     }
 
     @GetMapping("getAll")
-    public ResponseEntity<List<TournamentResponse>> getAllTournaments(
+    public ResponseEntity<List<TournamentSummaryResponse>> getAllTournaments(
             @RequestParam(required = false) String status
     ) {
         return ResponseEntity.ok(

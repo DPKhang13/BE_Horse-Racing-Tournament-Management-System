@@ -15,9 +15,15 @@ public class PrizeResponse {
 
     private Integer id;
 
+    private Integer prizeId;
+
     private Integer tournamentId;
 
     private String tournamentName;
+
+    private String tournamentStatus;
+
+    private BigDecimal prizePool;
 
     private Integer finishPosition;
 

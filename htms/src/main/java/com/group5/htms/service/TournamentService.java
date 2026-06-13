@@ -2,7 +2,9 @@ package com.group5.htms.service;
 
 import com.group5.htms.dto.tournament.request.TournamentCreateRequest;
 import com.group5.htms.dto.tournament.request.TournamentUpdateRequest;
+import com.group5.htms.dto.tournament.response.TournamentDetailResponse;
 import com.group5.htms.dto.tournament.response.TournamentResponse;
+import com.group5.htms.dto.tournament.response.TournamentSummaryResponse;
 
 import java.util.List;
 
@@ -12,9 +14,9 @@ public interface TournamentService {
 
     TournamentResponse updateTournament(Integer tournamentId, TournamentUpdateRequest request);
 
-    TournamentResponse getTournamentById(Integer tournamentId);
+    TournamentDetailResponse getTournamentById(Integer tournamentId);
 
-    List<TournamentResponse> getAllTournaments(String status);
+    List<TournamentSummaryResponse> getAllTournaments(String status);
 
     //void deleteTournament(Integer tournamentId);
 
