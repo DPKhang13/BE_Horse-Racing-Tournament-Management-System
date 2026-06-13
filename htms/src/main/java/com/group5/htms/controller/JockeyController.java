@@ -37,10 +37,7 @@ public class JockeyController {
             description = "Lấy bảng xếp hạng jockey theo ranking points, total wins và experience years."
     )
     @GetMapping("/ranking")
-    public ResponseEntity<List<JockeyRankingResponse>> getJockeyRanking(
-            @RequestParam(required = false) String status,
-            @RequestParam(required = false) Integer limit
-    ) {
-        return ResponseEntity.ok(jockeyService.getJockeyRanking(status, limit));
+    public ResponseEntity<List<JockeyRankingResponse>> getJockeyRanking() {
+        return ResponseEntity.ok(jockeyService.getJockeyRanking());
     }
 }

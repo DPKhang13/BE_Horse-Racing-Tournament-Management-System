@@ -8,5 +8,5 @@ import java.util.List;
 public interface JockeyService {
     List<JockeyResponse> getAllJockeys(String status);
 
-    List<JockeyRankingResponse> getJockeyRanking(String status, Integer limit);
+    List<JockeyRankingResponse> getJockeyRanking();
 }

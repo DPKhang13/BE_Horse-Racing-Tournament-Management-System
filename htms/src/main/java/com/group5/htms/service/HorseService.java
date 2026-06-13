@@ -10,7 +10,7 @@ import java.util.List;
 public interface HorseService {
     List<HorseResponse> getAllHorses();
 
-    List<HorseRankingResponse> getHorseRanking(String status, Integer limit);
+    List<HorseRankingResponse> getHorseRanking();
 
     HorseResponse getHorseById(Integer id);
 
