@@ -1,4 +1,4 @@
-package com.group5.htms.dto.auth;
+package com.group5.htms.dto.auth.response;
 
 import lombok.Builder;
 import lombok.Data;

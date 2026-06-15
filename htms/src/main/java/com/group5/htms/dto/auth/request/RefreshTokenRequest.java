@@ -1,4 +1,4 @@
-package com.group5.htms.dto.auth;
+package com.group5.htms.dto.auth.request;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;

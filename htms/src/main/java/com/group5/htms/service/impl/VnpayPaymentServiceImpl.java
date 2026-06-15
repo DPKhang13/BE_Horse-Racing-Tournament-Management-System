@@ -1,6 +1,7 @@
 package com.group5.htms.service.impl;
 
 import com.group5.htms.dto.payment.request.VnpayCreatePaymentRequest;
+import com.group5.htms.dto.payment.response.PaymentTransactionResponse;
 import com.group5.htms.dto.payment.response.VnpayCreatePaymentResponse;
 import com.group5.htms.dto.payment.response.VnpayReturnResponse;
 import com.group5.htms.entity.Users;
@@ -116,7 +117,9 @@ public class VnpayPaymentServiceImpl implements VnpayPaymentService {
 
         return VnpayCreatePaymentResponse.builder()
                 .txnRef(gatewayTxnRef)
+                .transactionRef(gatewayTxnRef)
                 .paymentUrl(paymentUrl)
+                .transaction(toPaymentTransactionResponse(savedTransaction))
                 .build();
     }
 
@@ -143,10 +146,14 @@ public class VnpayPaymentServiceImpl implements VnpayPaymentService {
                 && VnpayResponseCodeStatus.SUCCESS.getValue().equals(responseCode)
                 && VnpayResponseCodeStatus.SUCCESS.getValue().equals(transactionStatus);
 
+        String txnRef = VnpayUtil.getFirstValue(parameterMap, "vnp_TxnRef");
+        WalletTransactions transaction = findTransactionByGatewayTxnRef(txnRef);
+
         return VnpayReturnResponse.builder()
                 .validSignature(validSignature)
                 .success(success)
-                .txnRef(VnpayUtil.getFirstValue(parameterMap, "vnp_TxnRef"))
+                .txnRef(txnRef)
+                .transactionRef(txnRef)
                 .amount(VnpayUtil.getFirstValue(parameterMap, "vnp_Amount"))
                 .responseCode(responseCode)
                 .transactionStatus(transactionStatus)
@@ -154,6 +161,7 @@ public class VnpayPaymentServiceImpl implements VnpayPaymentService {
                 .bankCode(VnpayUtil.getFirstValue(parameterMap, "vnp_BankCode"))
                 .payDate(VnpayUtil.getFirstValue(parameterMap, "vnp_PayDate"))
                 .message(success ? "Payment success" : "Payment failed or invalid signature")
+                .transaction(toPaymentTransactionResponse(transaction))
                 .build();
     }
 
@@ -197,7 +205,7 @@ public class VnpayPaymentServiceImpl implements VnpayPaymentService {
         }
 
         WalletTransactions transaction = walletTransactionsRepository
-                .findByGatewayRefForUpdate(
+                .findFirstByGatewayProviderAndGatewayTxnRef(
                         PaymentGatewayProvider.VNPAY.getValue(),
                         gatewayTxnRef
                 )
@@ -325,7 +333,7 @@ public class VnpayPaymentServiceImpl implements VnpayPaymentService {
 
     private void completeTopUpTransaction(WalletTransactions transaction) {
         Wallets wallet = walletsRepository
-                .findByIdForUpdate(transaction.getWallets().getId())
+                .findFirstById(transaction.getWallets().getId())
                 .orElseThrow(() -> new BadRequestException("Wallet not found"));
 
         BigDecimal pointsBefore = safeMoney(wallet.getPointBalance());
@@ -426,6 +434,51 @@ public class VnpayPaymentServiceImpl implements VnpayPaymentService {
                 .toUpperCase();
 
         return "TOPUP-" + transactionId + "-" + randomSuffix;
+    }
+
+    private WalletTransactions findTransactionByGatewayTxnRef(String gatewayTxnRef) {
+        if (gatewayTxnRef == null || gatewayTxnRef.isBlank()) {
+            return null;
+        }
+
+        return walletTransactionsRepository
+                .findByGatewayProviderAndGatewayTxnRef(
+                        PaymentGatewayProvider.VNPAY.getValue(),
+                        gatewayTxnRef
+                )
+                .orElse(null);
+    }
+
+    private PaymentTransactionResponse toPaymentTransactionResponse(
+            WalletTransactions transaction
+    ) {
+        if (transaction == null) {
+            return null;
+        }
+
+        return PaymentTransactionResponse.builder()
+                .txId(transaction.getId())
+                .walletId(transaction.getWallets() != null
+                        ? transaction.getWallets().getId()
+                        : null)
+                .userId(transaction.getUsers() != null
+                        ? transaction.getUsers().getId()
+                        : null)
+                .txType(transaction.getTxType())
+                .cashAmount(transaction.getCashAmount())
+                .pointsAmount(transaction.getPointsAmount())
+                .exchangeRate(transaction.getExchangeRate())
+                .pointsBefore(transaction.getPointsBefore())
+                .pointsAfter(transaction.getPointsAfter())
+                .status(transaction.getStatus())
+                .refType(transaction.getRefType())
+                .refId(transaction.getRefId())
+                .createdBy(transaction.getCreatedBy() != null
+                        ? transaction.getCreatedBy().getId()
+                        : null)
+                .createdAt(transaction.getCreatedAt())
+                .updatedAt(transaction.getUpdatedAt())
+                .build();
     }
 
     private String normalizeLocale(String locale) {
