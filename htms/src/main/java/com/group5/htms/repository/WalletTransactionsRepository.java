@@ -4,8 +4,6 @@ import com.group5.htms.entity.WalletTransactions;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -29,15 +27,9 @@ public interface WalletTransactionsRepository extends JpaRepository<WalletTransa
      Khi transaction đang được xử lý, row này bị lock trong DB transaction.
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("""
-            SELECT tx
-            FROM WalletTransactions tx
-            WHERE tx.gatewayProvider = :gatewayProvider
-              AND tx.gatewayTxnRef = :gatewayTxnRef
-            """)
-    Optional<WalletTransactions> findByGatewayRefForUpdate(
-            @Param("gatewayProvider") String gatewayProvider,
-            @Param("gatewayTxnRef") String gatewayTxnRef
+    Optional<WalletTransactions> findFirstByGatewayProviderAndGatewayTxnRef(
+            String gatewayProvider,
+            String gatewayTxnRef
     );
 
     /*

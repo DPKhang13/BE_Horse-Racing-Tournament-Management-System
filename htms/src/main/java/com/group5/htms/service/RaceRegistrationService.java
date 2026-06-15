@@ -3,14 +3,15 @@ package com.group5.htms.service;
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationApprovalRequest;
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationCreateRequest;
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationUpdateRequest;
+import com.group5.htms.dto.raceregistration.response.RaceRegistrationListResponse;
 import com.group5.htms.dto.raceregistration.response.RaceRegistrationResponse;
 
 import java.util.List;
 
 public interface RaceRegistrationService {
-    List<RaceRegistrationResponse> getAllRegistrations();
+    List<RaceRegistrationListResponse> getAllRegistrations();
 
-    List<RaceRegistrationResponse> getMyRegistrations(String status);
+    List<RaceRegistrationListResponse> getMyRegistrations(String status);
 
     RaceRegistrationResponse getRegistrationById(Integer id);
 

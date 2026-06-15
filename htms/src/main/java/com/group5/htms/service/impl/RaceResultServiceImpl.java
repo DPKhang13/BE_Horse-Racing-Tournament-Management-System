@@ -4,6 +4,7 @@ import com.group5.htms.exception.ResourceNotFoundException;
 import com.group5.htms.dto.raceresult.request.RaceResultCreateRequest;
 import com.group5.htms.dto.raceresult.request.RaceResultPublishRequest;
 import com.group5.htms.dto.raceresult.request.RaceResultUpdateRequest;
+import com.group5.htms.dto.raceresult.response.RaceResultListResponse;
 import com.group5.htms.dto.raceresult.response.RaceResultResponse;
 import com.group5.htms.entity.JockeyHorseAssignments;
 import com.group5.htms.entity.RaceResults;
@@ -30,11 +31,11 @@ public class RaceResultServiceImpl implements RaceResultService {
     private final RaceResultMapper raceResultMapper;
 
     @Override
-    public List<RaceResultResponse> getAllResults() {
+    public List<RaceResultListResponse> getAllResults() {
         return raceResultsRepository.findAll()
                 .stream()
                 .filter(result -> !isDeleted(result.getStatus()))
-                .map(raceResultMapper::toResponse)
+                .map(raceResultMapper::toListResponse)
                 .toList();
     }
 

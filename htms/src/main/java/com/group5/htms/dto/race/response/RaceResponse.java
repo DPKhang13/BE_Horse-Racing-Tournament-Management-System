@@ -9,6 +9,7 @@ import java.time.Instant;
 @Builder
 public class RaceResponse {
     private Integer id;
+    private Integer raceId;
     private Integer tournamentId;
     private Integer scheduleId;
     private String name;
@@ -23,4 +24,13 @@ public class RaceResponse {
     private Integer maxReferees;
     private String pointRuleNote;
     private String status;
+    private String tournamentName;
+    private java.time.LocalDate raceDate;
+    private Integer dayNumber;
+    private String scheduleTitle;
+    private String scheduleNote;
+    private String location;
+    private Long registeredHorseCount;
+    private Long acceptedJockeyCount;
+    private Long assignedRefereeCount;
 }

@@ -9,6 +9,7 @@ import java.time.Instant;
 @Getter
 public class NotificationResponse {
     private Integer id;
+    private Integer notificationId;
     private Integer userId;
     private String title;
     private String message;
@@ -17,4 +18,6 @@ public class NotificationResponse {
     private String refType;
     private Boolean isRead;
     private Instant createdAt;
+    private String userFullName;
+    private String userRoleType;
 }

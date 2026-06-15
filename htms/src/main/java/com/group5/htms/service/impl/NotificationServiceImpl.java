@@ -3,6 +3,7 @@ package com.group5.htms.service.impl;
 import com.group5.htms.exception.ResourceNotFoundException;
 import com.group5.htms.dto.notification.request.NotificationCreateRequest;
 import com.group5.htms.dto.notification.request.NotificationUpdateRequest;
+import com.group5.htms.dto.notification.response.NotificationListResponse;
 import com.group5.htms.dto.notification.response.NotificationResponse;
 import com.group5.htms.entity.Notifications;
 import com.group5.htms.mapper.NotificationMapper;
@@ -25,12 +26,12 @@ public class NotificationServiceImpl implements NotificationService {
     private final NotificationMapper notificationMapper;
 
     @Override
-    public List<NotificationResponse> getAllNotifications() {
+    public List<NotificationListResponse> getAllNotifications() {
         Integer currentUserId = authService.getCurrentUserId();
 
         return notificationsRepository.findByUsers_Id(currentUserId)
                 .stream()
-                .map(notificationMapper::toResponse)
+                .map(notificationMapper::toListResponse)
                 .toList();
     }
 

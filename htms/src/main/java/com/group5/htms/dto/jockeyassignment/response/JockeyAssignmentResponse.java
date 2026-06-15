@@ -9,6 +9,8 @@ import java.time.Instant;
 @Getter
 public class JockeyAssignmentResponse {
     private Integer id;
+    private Integer assignmentId;
+    private Integer regId;
     private Integer registrationId;
     private Integer raceId;
     private Integer jockeyId;
@@ -16,4 +18,15 @@ public class JockeyAssignmentResponse {
     private String status;
     private Instant invitedAt;
     private Instant respondedAt;
+    private String raceName;
+    private Integer raceNumber;
+    private Instant scheduledAt;
+    private Integer horseId;
+    private String horseName;
+    private String horseAvatarUrl;
+    private Integer ownerId;
+    private String ownerFullName;
+    private String ownerStableName;
+    private String jockeyFullName;
+    private String jockeyAvatarUrl;
 }

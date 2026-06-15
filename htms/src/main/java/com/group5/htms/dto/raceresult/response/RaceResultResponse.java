@@ -10,6 +10,7 @@ import java.time.Instant;
 @Getter
 public class RaceResultResponse {
     private Integer id;
+    private Integer resultId;
     private Integer assignmentId;
     private Integer raceId;
     private Integer horseId;
@@ -24,4 +25,20 @@ public class RaceResultResponse {
     private String status;
     private Instant recordedAt;
     private Instant publishedAt;
+    private String raceName;
+    private Integer raceNumber;
+    private Instant scheduledAt;
+    private Double distanceM;
+    private String trackType;
+    private Integer tournamentId;
+    private String tournamentName;
+    private String location;
+    private String horseName;
+    private String horseAvatarUrl;
+    private String ownerFullName;
+    private String ownerStableName;
+    private Integer jockeyId;
+    private String jockeyFullName;
+    private Integer gateNumber;
+    private String reportVerdict;
 }

@@ -17,6 +17,8 @@ public class TournamentResponse {
 
     private Integer id;
 
+    private Integer tournamentId;
+
     private String name;
 
     private String location;
@@ -30,6 +32,8 @@ public class TournamentResponse {
     private String status;
 
     private Integer createdByUserId;
+
+    private Integer createdBy;
 
     private String createdByUsername;
 

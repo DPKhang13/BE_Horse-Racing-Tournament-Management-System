@@ -7,6 +7,7 @@ import lombok.Getter;
 @Builder
 public class JockeyResponse {
     private Integer id;
+    private Integer jockeyId;
     private String username;
     private String fullName;
     private String email;
@@ -17,4 +18,6 @@ public class JockeyResponse {
     private Integer totalWins;
     private Integer experienceYears;
     private String status;
+    private String userStatus;
+    private java.time.Instant createdAt;
 }

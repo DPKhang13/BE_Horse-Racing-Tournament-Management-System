@@ -2,15 +2,16 @@ package com.group5.htms.service;
 
 import com.group5.htms.dto.horse.request.HorseCreateRequest;
 import com.group5.htms.dto.horse.request.HorseUpdateRequest;
+import com.group5.htms.dto.horse.response.HorseListResponse;
 import com.group5.htms.dto.horse.response.HorseRankingResponse;
 import com.group5.htms.dto.horse.response.HorseResponse;
 
 import java.util.List;
 
 public interface HorseService {
-    List<HorseResponse> getAllHorses();
+    List<HorseListResponse> getAllHorses();
 
-    List<HorseRankingResponse> getHorseRanking(String status, Integer limit);
+    List<HorseRankingResponse> getHorseRanking();
 
     HorseResponse getHorseById(Integer id);
 

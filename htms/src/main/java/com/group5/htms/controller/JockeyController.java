@@ -1,7 +1,7 @@
 package com.group5.htms.controller;
 
+import com.group5.htms.dto.jockey.response.JockeyListResponse;
 import com.group5.htms.dto.jockey.response.JockeyRankingResponse;
-import com.group5.htms.dto.jockey.response.JockeyResponse;
 import com.group5.htms.service.JockeyService;
 import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
@@ -26,7 +26,7 @@ public class JockeyController {
     )
     @GetMapping("/get-all")
     @PreAuthorize("hasRole('HORSE_OWNER')")
-    public ResponseEntity<List<JockeyResponse>> getAllJockeys(
+    public ResponseEntity<List<JockeyListResponse>> getAllJockeys(
             @RequestParam(required = false) String status
     ) {
         return ResponseEntity.ok(jockeyService.getAllJockeys(status));
@@ -37,10 +37,7 @@ public class JockeyController {
             description = "Lấy bảng xếp hạng jockey theo ranking points, total wins và experience years."
     )
     @GetMapping("/ranking")
-    public ResponseEntity<List<JockeyRankingResponse>> getJockeyRanking(
-            @RequestParam(required = false) String status,
-            @RequestParam(required = false) Integer limit
-    ) {
-        return ResponseEntity.ok(jockeyService.getJockeyRanking(status, limit));
+    public ResponseEntity<List<JockeyRankingResponse>> getJockeyRanking() {
+        return ResponseEntity.ok(jockeyService.getJockeyRanking());
     }
 }

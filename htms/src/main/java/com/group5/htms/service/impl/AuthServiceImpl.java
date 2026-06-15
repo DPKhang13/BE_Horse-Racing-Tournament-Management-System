@@ -1,10 +1,10 @@
 package com.group5.htms.service.impl;
 
 import com.group5.htms.config.CustomUserDetailsConfig;
-import com.group5.htms.dto.auth.AuthResponse;
-import com.group5.htms.dto.auth.LoginRequest;
-import com.group5.htms.dto.auth.RegisterRequest;
-import com.group5.htms.dto.auth.UserMeResponse;
+import com.group5.htms.dto.auth.response.AuthResponse;
+import com.group5.htms.dto.auth.request.LoginRequest;
+import com.group5.htms.dto.auth.request.RegisterRequest;
+import com.group5.htms.dto.auth.response.UserMeResponse;
 import com.group5.htms.dto.otpverify.request.ResendOtpRequest;
 import com.group5.htms.dto.otpverify.request.VerifyOtpRequest;
 import com.group5.htms.dto.otpverify.response.OtpVerifyResponse;
@@ -15,6 +15,9 @@ import com.group5.htms.enums.UserStatus;
 import com.group5.htms.exception.BadRequestException;
 import com.group5.htms.exception.UnauthorizedException;
 import com.group5.htms.mapper.AuthMapper;
+import com.group5.htms.repository.HorseOwnerProfilesRepository;
+import com.group5.htms.repository.JockeyProfilesRepository;
+import com.group5.htms.repository.RefereeProfilesRepository;
 import com.group5.htms.repository.UsersRepository;
 import com.group5.htms.service.AuthService;
 import com.group5.htms.service.OtpMailService;
@@ -31,8 +34,6 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -51,6 +52,9 @@ public class AuthServiceImpl implements AuthService {
     private final RefreshTokenServiceImpl refreshTokenService;
     private final AuthMapper authMapper;
     private final OtpMailService otpMailService;
+    private final HorseOwnerProfilesRepository horseOwnerProfilesRepository;
+    private final JockeyProfilesRepository jockeyProfilesRepository;
+    private final RefereeProfilesRepository refereeProfilesRepository;
     /*
      * POST /api/auth/register
      1. Check username/email trùng.
@@ -223,7 +227,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional(readOnly = true)
     public UserMeResponse me() {
-        return authMapper.toUserMeResponse(getCurrentUser());
+        return toUserMeResponseWithProfile(getCurrentUser());
     }
 
     @Override
@@ -293,8 +297,45 @@ public class AuthServiceImpl implements AuthService {
                 .accessToken(accessToken)      // giữ lại để test Swagger/Postman
                 .refreshToken(refreshToken)    // production có thể bỏ khỏi response
                 .expiresIn(jwtUtil.getAccessTokenAge() / 1000)
-                .user(authMapper.toUserMeResponse(user))
+                .user(toUserMeResponseWithProfile(user))
                 .build();
+    }
+
+    private UserMeResponse toUserMeResponseWithProfile(Users user) {
+        if (user == null || user.getRoleType() == null) {
+            return authMapper.toUserMeResponse(user);
+        }
+
+        String roleType = user.getRoleType().trim().toLowerCase();
+
+        if (RoleType.HORSE_OWNER.getValue().equals(roleType)) {
+            return authMapper.toUserMeResponse(
+                    user,
+                    horseOwnerProfilesRepository.findById(user.getId()).orElse(null),
+                    null,
+                    null
+            );
+        }
+
+        if (RoleType.JOCKEY.getValue().equals(roleType)) {
+            return authMapper.toUserMeResponse(
+                    user,
+                    null,
+                    jockeyProfilesRepository.findById(user.getId()).orElse(null),
+                    null
+            );
+        }
+
+        if (RoleType.RACE_REFEREE.getValue().equals(roleType)) {
+            return authMapper.toUserMeResponse(
+                    user,
+                    null,
+                    null,
+                    refereeProfilesRepository.findById(user.getId()).orElse(null)
+            );
+        }
+
+        return authMapper.toUserMeResponse(user);
     }
 
     /*
