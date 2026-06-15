@@ -2,6 +2,7 @@ package com.group5.htms.mapper;
 
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationCreateRequest;
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationUpdateRequest;
+import com.group5.htms.dto.raceregistration.response.RaceRegistrationListResponse;
 import com.group5.htms.dto.raceregistration.response.RaceRegistrationResponse;
 import com.group5.htms.entity.HorseOwnerProfiles;
 import com.group5.htms.entity.Horses;
@@ -69,8 +70,12 @@ public class RaceRegistrationMapper {
     }
 
     public RaceRegistrationResponse toResponse(RaceRegistrations registration) {
+        JockeyProfiles jockey = registration.getJockey();
+        Users approvedBy = registration.getApprovedBy();
+
         return RaceRegistrationResponse.builder()
                 .id(registration.getId())
+                .regId(registration.getId())
                 .tournamentId(registration.getTournaments().getId())
                 .raceId(registration.getRaces().getId())
                 .horseId(registration.getHorses().getId())
@@ -81,7 +86,43 @@ public class RaceRegistrationMapper {
                 .ownerConfirmedAt(registration.getOwnerConfirmedAt())
                 .registeredAt(registration.getRegisteredAt())
                 .approvedAt(registration.getApprovedAt())
-                .approvedById(registration.getApprovedBy() == null ? null : registration.getApprovedBy().getId())
+                .approvedById(approvedBy == null ? null : approvedBy.getId())
+                .tournamentName(registration.getTournaments().getName())
+                .raceName(registration.getRaces().getName())
+                .raceNumber(registration.getRaces().getRaceNumber())
+                .scheduledAt(registration.getRaces().getScheduledAt())
+                .horseName(registration.getHorses().getName())
+                .horseAvatarUrl(registration.getHorses().getAvatarUrl())
+                .ownerFullName(registration.getOwner().getUsers().getFullName())
+                .ownerStableName(registration.getOwner().getStableName())
+                .jockeyFullName(jockey == null ? null : jockey.getUsers().getFullName())
+                .jockeyStatus(jockey == null ? null : jockey.getStatus())
+                .approvedByFullName(approvedBy == null ? null : approvedBy.getFullName())
+                .build();
+    }
+
+    public RaceRegistrationListResponse toListResponse(RaceRegistrations registration) {
+        JockeyProfiles jockey = registration.getJockey();
+
+        return RaceRegistrationListResponse.builder()
+                .regId(registration.getId())
+                .tournamentId(registration.getTournaments().getId())
+                .raceId(registration.getRaces().getId())
+                .horseId(registration.getHorses().getId())
+                .ownerId(registration.getOwner().getId())
+                .jockeyId(jockey == null ? null : jockey.getId())
+                .status(registration.getStatus())
+                .ownerConfirmationStatus(registration.getOwnerConfirmationStatus())
+                .registeredAt(registration.getRegisteredAt())
+                .tournamentName(registration.getTournaments().getName())
+                .raceName(registration.getRaces().getName())
+                .raceNumber(registration.getRaces().getRaceNumber())
+                .scheduledAt(registration.getRaces().getScheduledAt())
+                .horseName(registration.getHorses().getName())
+                .horseAvatarUrl(registration.getHorses().getAvatarUrl())
+                .ownerFullName(registration.getOwner().getUsers().getFullName())
+                .ownerStableName(registration.getOwner().getStableName())
+                .jockeyFullName(jockey == null ? null : jockey.getUsers().getFullName())
                 .build();
     }
 

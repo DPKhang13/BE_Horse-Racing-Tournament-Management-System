@@ -2,6 +2,7 @@ package com.group5.htms.controller;
 
 import com.group5.htms.dto.horse.request.HorseCreateRequest;
 import com.group5.htms.dto.horse.request.HorseUpdateRequest;
+import com.group5.htms.dto.horse.response.HorseListResponse;
 import com.group5.htms.dto.horse.response.HorseRankingResponse;
 import com.group5.htms.dto.horse.response.HorseResponse;
 import com.group5.htms.service.HorseService;
@@ -34,7 +35,7 @@ public class HorseController {
             description = "Lấy danh sách tất cả ngựa trong hệ thống."
     )
     @GetMapping("/get-all")
-    public ResponseEntity<List<HorseResponse>> getAllHorses() {
+    public ResponseEntity<List<HorseListResponse>> getAllHorses() {
         return ResponseEntity.ok(horseService.getAllHorses());
     }
 

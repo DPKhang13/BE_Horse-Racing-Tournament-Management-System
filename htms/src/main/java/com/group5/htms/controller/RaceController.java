@@ -1,6 +1,6 @@
 package com.group5.htms.controller;
 
-import com.group5.htms.dto.race.response.RaceResponse;
+import com.group5.htms.dto.race.response.RaceListResponse;
 import com.group5.htms.service.RaceService;
 import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
@@ -26,7 +26,7 @@ public class RaceController {
     )
     @GetMapping("/get-by-tournament/{tournamentId}")
     @PreAuthorize("hasRole('HORSE_OWNER')")
-    public ResponseEntity<List<RaceResponse>> getRacesByTournament(
+    public ResponseEntity<List<RaceListResponse>> getRacesByTournament(
             @PathVariable Integer tournamentId,
             @RequestParam(required = false) String status
     ) {

@@ -1,4 +1,4 @@
-package com.group5.htms.dto.jockeyassignment.response;
+package com.group5.htms.dto.raceregistration.response;
 
 import lombok.Builder;
 import lombok.Getter;
@@ -7,26 +7,23 @@ import java.time.Instant;
 
 @Builder
 @Getter
-public class JockeyAssignmentResponse {
-    private Integer id;
-    private Integer assignmentId;
+public class RaceRegistrationListResponse {
     private Integer regId;
-    private Integer registrationId;
+    private Integer tournamentId;
     private Integer raceId;
+    private Integer horseId;
+    private Integer ownerId;
     private Integer jockeyId;
-    private Integer gateNumber;
     private String status;
-    private Instant invitedAt;
-    private Instant respondedAt;
+    private String ownerConfirmationStatus;
+    private Instant registeredAt;
+    private String tournamentName;
     private String raceName;
     private Integer raceNumber;
     private Instant scheduledAt;
-    private Integer horseId;
     private String horseName;
     private String horseAvatarUrl;
-    private Integer ownerId;
     private String ownerFullName;
     private String ownerStableName;
     private String jockeyFullName;
-    private String jockeyAvatarUrl;
 }

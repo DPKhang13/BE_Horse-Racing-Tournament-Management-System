@@ -3,6 +3,7 @@ package com.group5.htms.controller;
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationApprovalRequest;
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationCreateRequest;
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationUpdateRequest;
+import com.group5.htms.dto.raceregistration.response.RaceRegistrationListResponse;
 import com.group5.htms.dto.raceregistration.response.RaceRegistrationResponse;
 import com.group5.htms.service.RaceRegistrationService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -31,14 +32,14 @@ public class RaceRegistrationController {
 
     @Operation(summary = "Get all race registrations", description = "Lấy danh sách tất cả đăng ký ngựa vào race.")
     @GetMapping("/get-all")
-    public ResponseEntity<List<RaceRegistrationResponse>> getAllRegistrations() {
+    public ResponseEntity<List<RaceRegistrationListResponse>> getAllRegistrations() {
         return ResponseEntity.ok(raceRegistrationService.getAllRegistrations());
     }
 
     @Operation(summary = "Get my race registrations", description = "Lấy danh sách đăng ký tham gia giải/race của horse owner đang đăng nhập.")
     @GetMapping("/get-my-registrations")
     @PreAuthorize("hasRole('HORSE_OWNER')")
-    public ResponseEntity<List<RaceRegistrationResponse>> getMyRegistrations(
+    public ResponseEntity<List<RaceRegistrationListResponse>> getMyRegistrations(
             @RequestParam(required = false) String status
     ) {
         return ResponseEntity.ok(raceRegistrationService.getMyRegistrations(status));

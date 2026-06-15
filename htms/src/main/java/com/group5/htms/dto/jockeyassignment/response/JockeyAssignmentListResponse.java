@@ -7,11 +7,9 @@ import java.time.Instant;
 
 @Builder
 @Getter
-public class JockeyAssignmentResponse {
-    private Integer id;
+public class JockeyAssignmentListResponse {
     private Integer assignmentId;
     private Integer regId;
-    private Integer registrationId;
     private Integer raceId;
     private Integer jockeyId;
     private Integer gateNumber;

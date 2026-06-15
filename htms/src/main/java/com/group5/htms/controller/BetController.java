@@ -3,6 +3,7 @@ package com.group5.htms.controller;
 import com.group5.htms.dto.bet.request.BetCheckRequest;
 import com.group5.htms.dto.bet.request.BetCreateRequest;
 import com.group5.htms.dto.bet.request.BetUpdateRequest;
+import com.group5.htms.dto.bet.response.BetListResponse;
 import com.group5.htms.dto.bet.response.BetResponse;
 import com.group5.htms.service.BetService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -30,7 +31,7 @@ public class BetController {
 
     @Operation(summary = "Get all bets", description = "Lấy danh sách tất cả bet.")
     @GetMapping("/get-all")
-    public ResponseEntity<List<BetResponse>> getAllBets() {
+    public ResponseEntity<List<BetListResponse>> getAllBets() {
         return ResponseEntity.ok(betService.getAllBets());
     }
 

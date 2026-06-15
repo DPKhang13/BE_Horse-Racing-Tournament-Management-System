@@ -3,6 +3,7 @@ package com.group5.htms.controller;
 import com.group5.htms.dto.jockeyassignment.request.JockeyInvitationCreateRequest;
 import com.group5.htms.dto.jockeyassignment.request.JockeyInvitationResponseRequest;
 import com.group5.htms.dto.jockeyassignment.request.JockeyInvitationUpdateRequest;
+import com.group5.htms.dto.jockeyassignment.response.JockeyAssignmentListResponse;
 import com.group5.htms.dto.jockeyassignment.response.JockeyAssignmentResponse;
 import com.group5.htms.service.JockeyAssignmentService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -31,14 +32,14 @@ public class JockeyAssignmentController {
 
     @Operation(summary = "Get all jockey assignments", description = "Lấy danh sách tất cả lời mời/assignment jockey.")
     @GetMapping("/get-all")
-    public ResponseEntity<List<JockeyAssignmentResponse>> getAllAssignments() {
+    public ResponseEntity<List<JockeyAssignmentListResponse>> getAllAssignments() {
         return ResponseEntity.ok(jockeyAssignmentService.getAllAssignments());
     }
 
     @Operation(summary = "Get my jockey invitations", description = "Lấy danh sách lời mời của jockey đang đăng nhập.")
     @GetMapping("/get-my-invitations")
     @PreAuthorize("hasRole('JOCKEY')")
-    public ResponseEntity<List<JockeyAssignmentResponse>> getMyInvitations(
+    public ResponseEntity<List<JockeyAssignmentListResponse>> getMyInvitations(
             @RequestParam(required = false) String status
     ) {
         return ResponseEntity.ok(jockeyAssignmentService.getMyInvitations(status));
@@ -47,7 +48,7 @@ public class JockeyAssignmentController {
     @Operation(summary = "Get sent jockey invitations", description = "Lấy danh sách jockey mà horse owner đang đăng nhập đã mời.")
     @GetMapping("/get-sent-invitations")
     @PreAuthorize("hasRole('HORSE_OWNER')")
-    public ResponseEntity<List<JockeyAssignmentResponse>> getSentInvitations(
+    public ResponseEntity<List<JockeyAssignmentListResponse>> getSentInvitations(
             @RequestParam(required = false) String status
     ) {
         return ResponseEntity.ok(jockeyAssignmentService.getSentInvitations(status));

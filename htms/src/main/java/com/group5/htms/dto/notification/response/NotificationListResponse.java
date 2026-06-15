@@ -7,8 +7,7 @@ import java.time.Instant;
 
 @Builder
 @Getter
-public class NotificationResponse {
-    private Integer id;
+public class NotificationListResponse {
     private Integer notificationId;
     private Integer userId;
     private String title;
@@ -18,6 +17,4 @@ public class NotificationResponse {
     private String refType;
     private Boolean isRead;
     private Instant createdAt;
-    private String userFullName;
-    private String userRoleType;
 }

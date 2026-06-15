@@ -2,10 +2,12 @@ package com.group5.htms.mapper;
 
 import com.group5.htms.dto.horse.request.HorseCreateRequest;
 import com.group5.htms.dto.horse.request.HorseUpdateRequest;
+import com.group5.htms.dto.horse.response.HorseListResponse;
 import com.group5.htms.dto.horse.response.HorseRankingResponse;
 import com.group5.htms.dto.horse.response.HorseResponse;
 import com.group5.htms.entity.HorseOwnerProfiles;
 import com.group5.htms.entity.Horses;
+import com.group5.htms.entity.Users;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -65,9 +67,13 @@ public class HorseMapper {
     }
 
     public HorseResponse toResponse(Horses horse) {
+        HorseOwnerProfiles owner = horse.getOwner();
+        Users ownerUser = owner.getUsers();
+
         return HorseResponse.builder()
                 .id(horse.getId())
-                .ownerId(horse.getOwner().getId())
+                .horseId(horse.getId())
+                .ownerId(owner.getId())
                 .name(horse.getName())
                 .breed(horse.getBreed())
                 .age(horse.getAge())
@@ -78,13 +84,42 @@ public class HorseMapper {
                 .totalWins(horse.getTotalWins())
                 .status(horse.getStatus())
                 .registeredAt(horse.getRegisteredAt())
+                .ownerFullName(ownerUser.getFullName())
+                .ownerEmail(ownerUser.getEmail())
+                .ownerPhone(ownerUser.getPhone())
+                .ownerStableName(owner.getStableName())
+                .ownerLicenseNumber(owner.getLicenseNumber())
+                .build();
+    }
+
+    public HorseListResponse toListResponse(Horses horse) {
+        HorseOwnerProfiles owner = horse.getOwner();
+        Users ownerUser = owner.getUsers();
+
+        return HorseListResponse.builder()
+                .horseId(horse.getId())
+                .ownerId(owner.getId())
+                .name(horse.getName())
+                .breed(horse.getBreed())
+                .rankGroup(horse.getRankGroup())
+                .rankingPoints(horse.getRankingPoints())
+                .avatarUrl(horse.getAvatarUrl())
+                .totalWins(horse.getTotalWins())
+                .status(horse.getStatus())
+                .ownerFullName(ownerUser.getFullName())
+                .ownerStableName(owner.getStableName())
                 .build();
     }
 
     public HorseRankingResponse toRankingResponse(Horses horse, Integer rank) {
+        HorseOwnerProfiles owner = horse.getOwner();
+        Users ownerUser = owner.getUsers();
+
         return HorseRankingResponse.builder()
                 .rank(rank)
                 .id(horse.getId())
+                .horseId(horse.getId())
+                .ownerId(owner.getId())
                 .name(horse.getName())
                 .breed(horse.getBreed())
                 .rankGroup(horse.getRankGroup())
@@ -92,6 +127,11 @@ public class HorseMapper {
                 .totalWins(horse.getTotalWins())
                 .avatarUrl(horse.getAvatarUrl())
                 .status(horse.getStatus())
+                .ownerFullName(ownerUser.getFullName())
+                .ownerEmail(ownerUser.getEmail())
+                .ownerPhone(ownerUser.getPhone())
+                .ownerStableName(owner.getStableName())
+                .ownerLicenseNumber(owner.getLicenseNumber())
                 .build();
     }
 

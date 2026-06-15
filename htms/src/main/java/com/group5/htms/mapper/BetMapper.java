@@ -2,6 +2,7 @@ package com.group5.htms.mapper;
 
 import com.group5.htms.dto.bet.request.BetCreateRequest;
 import com.group5.htms.dto.bet.request.BetUpdateRequest;
+import com.group5.htms.dto.bet.response.BetListResponse;
 import com.group5.htms.dto.bet.response.BetResponse;
 import com.group5.htms.entity.BetOptions;
 import com.group5.htms.entity.Bets;
@@ -58,10 +59,13 @@ public class BetMapper {
     }
 
     public BetResponse toResponse(Bets bet) {
+        BetOptions option = bet.getOption();
+
         return BetResponse.builder()
                 .id(bet.getId())
+                .betId(bet.getId())
                 .userId(bet.getUsers().getId())
-                .optionId(bet.getOption().getId())
+                .optionId(option.getId())
                 .betType(bet.getBetType())
                 .betPoints(bet.getBetPoints())
                 .betRate(bet.getBetRate())
@@ -69,6 +73,47 @@ public class BetMapper {
                 .status(bet.getStatus())
                 .placedAt(bet.getPlacedAt())
                 .settledAt(bet.getSettledAt())
+                .raceId(option.getRaces().getId())
+                .raceName(option.getRaces().getName())
+                .raceNumber(option.getRaces().getRaceNumber())
+                .scheduledAt(option.getRaces().getScheduledAt())
+                .predictionClosesAt(option.getRaces().getPredictionClosesAt())
+                .assignmentId(option.getAssignment().getId())
+                .horseId(option.getHorses().getId())
+                .horseName(option.getHorses().getName())
+                .currentRate(option.getCurrentRate())
+                .totalBetPoints(option.getTotalBetPoints())
+                .totalBetCount(option.getTotalBetCount())
+                .jockeyId(option.getAssignment().getJockey().getId())
+                .jockeyFullName(option.getAssignment().getJockey().getUsers().getFullName())
+                .userFullName(bet.getUsers().getFullName())
+                .build();
+    }
+
+    public BetListResponse toListResponse(Bets bet) {
+        BetOptions option = bet.getOption();
+
+        return BetListResponse.builder()
+                .betId(bet.getId())
+                .userId(bet.getUsers().getId())
+                .optionId(option.getId())
+                .betType(bet.getBetType())
+                .betPoints(bet.getBetPoints())
+                .betRate(bet.getBetRate())
+                .rewardPoints(bet.getRewardPoints())
+                .status(bet.getStatus())
+                .placedAt(bet.getPlacedAt())
+                .settledAt(bet.getSettledAt())
+                .raceId(option.getRaces().getId())
+                .raceName(option.getRaces().getName())
+                .raceNumber(option.getRaces().getRaceNumber())
+                .scheduledAt(option.getRaces().getScheduledAt())
+                .assignmentId(option.getAssignment().getId())
+                .horseId(option.getHorses().getId())
+                .horseName(option.getHorses().getName())
+                .jockeyId(option.getAssignment().getJockey().getId())
+                .jockeyFullName(option.getAssignment().getJockey().getUsers().getFullName())
+                .userFullName(bet.getUsers().getFullName())
                 .build();
     }
 
