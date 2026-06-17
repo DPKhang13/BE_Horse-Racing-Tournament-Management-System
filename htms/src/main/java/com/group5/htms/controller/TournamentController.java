@@ -23,7 +23,7 @@ public class TournamentController {
 
     private final TournamentService tournamentService;
 
-    @PostMapping("/create")
+    @PostMapping("/create-tournament")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<TournamentResponse> createTournament(
             @Valid @RequestBody TournamentCreateRequest request
@@ -33,7 +33,7 @@ public class TournamentController {
                 .body(tournamentService.createTournament(request));
     }
 
-    @PutMapping("/update/{tournamentId}")
+    @PutMapping("/update-tournament/{tournamentId}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<TournamentResponse> updateTournament(
             @PathVariable Integer tournamentId,
@@ -44,7 +44,7 @@ public class TournamentController {
         );
     }
 
-    @GetMapping("/getId/{tournamentId}")
+    @GetMapping("/get-tournament/{tournamentId}")
     public ResponseEntity<TournamentDetailResponse> getTournamentById(
             @PathVariable Integer tournamentId
     ) {
@@ -53,7 +53,7 @@ public class TournamentController {
         );
     }
 
-    @GetMapping("getAll")
+    @GetMapping("/get-tournament-list")
     public ResponseEntity<List<TournamentSummaryResponse>> getAllTournaments(
             @RequestParam(required = false) String status
     ) {
@@ -74,7 +74,7 @@ public class TournamentController {
 //        );
 //    }
 
-    @PatchMapping("/cancel/{tournamentId}")
+    @PatchMapping("/cancel-tournament/{tournamentId}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<TournamentResponse> cancelTournament(
             @PathVariable Integer tournamentId

@@ -53,8 +53,8 @@ public class SecurityConfig {
                                 "/api/auth/refresh-token",
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",
-                                "/api/payments/vnpay/return",
-                                "/api/payments/vnpay/ipn"
+                                "/api/payments/vnpay/handle-payment-return",
+                                "/api/payments/vnpay/handle-payment-ipn"
                         ).permitAll()
 
                         // Cần accessToken

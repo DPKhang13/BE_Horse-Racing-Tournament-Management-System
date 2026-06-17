@@ -2,6 +2,7 @@ package com.group5.htms.service.impl;
 
 import com.group5.htms.dto.prize.request.PrizeCreateRequest;
 import com.group5.htms.dto.prize.request.PrizeItemRequest;
+import com.group5.htms.dto.prize.request.PrizeUpdateRequest;
 import com.group5.htms.dto.prize.response.PrizeResponse;
 import com.group5.htms.entity.PrizeDistributions;
 import com.group5.htms.entity.Tournaments;
@@ -35,26 +36,18 @@ public class PrizeServiceImpl implements PrizeService {
             Integer tournamentId,
             PrizeCreateRequest request
     ) {
-        if (tournamentId == null) {
-            throw new BadRequestException("Tournament id is required");
-        }
-
         if (request == null || request.getPrizes() == null || request.getPrizes().isEmpty()) {
             throw new BadRequestException("Prize list must not be empty");
         }
 
-        Tournaments tournament = tournamentsRepository.findById(tournamentId)
-                .orElseThrow(() -> new BadRequestException("Tournament not found"));
+        Tournaments tournament = getTournamentEntity(tournamentId);
 
-        validateTournamentCanCreatePrize(tournament);
+        validateTournamentCanManagePrize(tournament);
 
-        validatePrizePositionsOnlyTopThree(request.getPrizes());
-
+        validatePrizeItems(request.getPrizes());
         validateDuplicateFinishPositionInRequest(request.getPrizes());
-
         validateDuplicateFinishPositionInDatabase(tournamentId, request.getPrizes());
-
-        validateTotalPrizeAmount(tournament, request.getPrizes());
+        validateTotalPrizeAmountForCreate(tournament, request.getPrizes());
 
         List<PrizeDistributions> prizes = request.getPrizes()
                 .stream()
@@ -81,13 +74,7 @@ public class PrizeServiceImpl implements PrizeService {
     @Override
     @Transactional(readOnly = true)
     public List<PrizeResponse> getPrizesByTournament(Integer tournamentId) {
-        if (tournamentId == null) {
-            throw new BadRequestException("Tournament id is required");
-        }
-
-        if (!tournamentsRepository.existsById(tournamentId)) {
-            throw new BadRequestException("Tournament not found");
-        }
+        getTournamentEntity(tournamentId);
 
         return prizeRepository
                 .findByTournamentsIdOrderByFinishPositionAsc(tournamentId)
@@ -96,7 +83,83 @@ public class PrizeServiceImpl implements PrizeService {
                 .toList();
     }
 
-    private void validateTournamentCanCreatePrize(Tournaments tournament) {
+    @Override
+    @Transactional(readOnly = true)
+    public PrizeResponse getPrizeById(Integer tournamentId, Integer prizeId) {
+        return prizeMapper.toResponse(getPrizeEntity(tournamentId, prizeId));
+    }
+
+    @Override
+    @Transactional
+    public PrizeResponse updatePrize(
+            Integer tournamentId,
+            Integer prizeId,
+            PrizeUpdateRequest request
+    ) {
+        if (request == null) {
+            throw new BadRequestException("Prize update request is required");
+        }
+
+        validateUpdateRequestHasAtLeastOneField(request);
+
+        PrizeDistributions prize = getPrizeEntity(tournamentId, prizeId);
+        Tournaments tournament = prize.getTournaments();
+
+        validateTournamentCanManagePrize(tournament);
+
+        Integer newFinishPosition = request.getFinishPosition() == null
+                ? prize.getFinishPosition()
+                : request.getFinishPosition();
+
+        BigDecimal newAmount = request.getAmount() == null
+                ? prize.getAmount()
+                : request.getAmount();
+
+        validatePrizePositionOnlyTopThree(newFinishPosition);
+        validatePrizeNameIfPresent(request.getPrizeName());
+        validateDuplicateFinishPositionForUpdate(
+                tournamentId,
+                prizeId,
+                newFinishPosition
+        );
+        validateTotalPrizeAmountForUpdate(tournament, prizeId, newAmount);
+
+        prizeMapper.updateEntity(prize, request);
+
+        return prizeMapper.toResponse(prizeRepository.save(prize));
+    }
+
+    @Override
+    @Transactional
+    public void deletePrize(Integer tournamentId, Integer prizeId) {
+        PrizeDistributions prize = getPrizeEntity(tournamentId, prizeId);
+
+        validateTournamentCanManagePrize(prize.getTournaments());
+
+        prizeRepository.delete(prize);
+    }
+
+    private Tournaments getTournamentEntity(Integer tournamentId) {
+        if (tournamentId == null) {
+            throw new BadRequestException("Tournament id is required");
+        }
+
+        return tournamentsRepository.findById(tournamentId)
+                .orElseThrow(() -> new BadRequestException("Tournament not found"));
+    }
+
+    private PrizeDistributions getPrizeEntity(Integer tournamentId, Integer prizeId) {
+        if (prizeId == null) {
+            throw new BadRequestException("Prize id is required");
+        }
+
+        getTournamentEntity(tournamentId);
+
+        return prizeRepository.findByIdAndTournamentsId(prizeId, tournamentId)
+                .orElseThrow(() -> new BadRequestException("Prize not found in this tournament"));
+    }
+
+    private void validateTournamentCanManagePrize(Tournaments tournament) {
         if (tournament == null) {
             throw new BadRequestException("Tournament not found");
         }
@@ -104,7 +167,19 @@ public class PrizeServiceImpl implements PrizeService {
         String status = tournament.getStatus();
 
         if (status == null || !TOURNAMENT_STATUS_UPCOMING.equalsIgnoreCase(status.trim())) {
-            throw new BadRequestException("Prize distributions can only be created for upcoming tournaments");
+            throw new BadRequestException("Prize distributions can only be managed for upcoming tournaments");
+        }
+    }
+
+    private void validatePrizeItems(List<PrizeItemRequest> prizes) {
+        for (PrizeItemRequest prize : prizes) {
+            if (prize == null) {
+                throw new BadRequestException("Prize item must not be null");
+            }
+
+            validatePrizePositionOnlyTopThree(prize.getFinishPosition());
+            validatePrizeNameRequired(prize.getPrizeName());
+            validatePrizeAmount(prize.getAmount());
         }
     }
 
@@ -143,7 +218,7 @@ public class PrizeServiceImpl implements PrizeService {
         }
     }
 
-    private void validateTotalPrizeAmount(
+    private void validateTotalPrizeAmountForCreate(
             Tournaments tournament,
             List<PrizeItemRequest> newPrizes
     ) {
@@ -171,15 +246,88 @@ public class PrizeServiceImpl implements PrizeService {
             );
         }
     }
-    private void validatePrizePositionsOnlyTopThree(
-            List<PrizeItemRequest> prizes
-    ) {
-        for (PrizeItemRequest prize : prizes) {
-            Integer finishPosition = prize.getFinishPosition();
+    private void validatePrizePositionOnlyTopThree(Integer finishPosition) {
+        if (finishPosition == null || finishPosition < 1 || finishPosition > 3) {
+            throw new BadRequestException("Only finish positions 1, 2 and 3 can receive prizes");
+        }
+    }
 
-            if (finishPosition == null || finishPosition < 1 || finishPosition > 3) {
-                throw new BadRequestException("Only finish positions 1, 2 and 3 can receive prizes");
-            }
+    private void validateDuplicateFinishPositionForUpdate(
+            Integer tournamentId,
+            Integer prizeId,
+            Integer finishPosition
+    ) {
+        if (prizeRepository.existsByTournamentsIdAndFinishPositionAndIdNot(
+                tournamentId,
+                finishPosition,
+                prizeId
+        )) {
+            throw new BadRequestException(
+                    "Prize for finish position "
+                            + finishPosition
+                            + " already exists in this tournament"
+            );
+        }
+    }
+
+    private void validateTotalPrizeAmountForUpdate(
+            Tournaments tournament,
+            Integer updatingPrizeId,
+            BigDecimal newAmount
+    ) {
+        validatePrizeAmount(newAmount);
+
+        BigDecimal tournamentPrizePool = tournament.getPrizePool() == null
+                ? BigDecimal.ZERO
+                : tournament.getPrizePool();
+
+        BigDecimal otherPrizeTotal = prizeRepository
+                .findByTournamentsIdOrderByFinishPositionAsc(tournament.getId())
+                .stream()
+                .filter(prize -> !prize.getId().equals(updatingPrizeId))
+                .map(PrizeDistributions::getAmount)
+                .filter(amount -> amount != null)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        if (otherPrizeTotal.add(newAmount).compareTo(tournamentPrizePool) > 0) {
+            throw new BadRequestException("Total prize amount exceeds tournament prize pool");
+        }
+    }
+
+    private void validateUpdateRequestHasAtLeastOneField(PrizeUpdateRequest request) {
+        if (request.getFinishPosition() == null
+                && request.getPrizeName() == null
+                && request.getAmount() == null
+                && request.getNote() == null) {
+            throw new BadRequestException("At least one prize field is required for update");
+        }
+    }
+
+    private void validatePrizeNameRequired(String prizeName) {
+        if (prizeName == null || prizeName.trim().isBlank()) {
+            throw new BadRequestException("Prize name is required");
+        }
+    }
+
+    private void validatePrizeNameIfPresent(String prizeName) {
+        if (prizeName != null && prizeName.trim().isBlank()) {
+            throw new BadRequestException("Prize name must not be blank");
+        }
+    }
+
+    private void validatePrizeAmount(BigDecimal amount) {
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BadRequestException("Prize amount must be greater than 0");
+        }
+
+        BigDecimal normalizedAmount = amount.stripTrailingZeros();
+        int scale = Math.max(normalizedAmount.scale(), 0);
+        int integerDigits = Math.max(normalizedAmount.precision() - scale, 0);
+
+        if (integerDigits > 16 || scale > 2) {
+            throw new BadRequestException(
+                    "Prize amount must have at most 16 integer digits and 2 decimal places"
+            );
         }
     }
 }
