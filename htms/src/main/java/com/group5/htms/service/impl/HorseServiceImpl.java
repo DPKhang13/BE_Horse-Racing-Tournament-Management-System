@@ -6,6 +6,7 @@ import com.group5.htms.dto.horse.request.HorseUpdateRequest;
 import com.group5.htms.dto.horse.response.HorseListResponse;
 import com.group5.htms.dto.horse.response.HorseRankingResponse;
 import com.group5.htms.dto.horse.response.HorseResponse;
+import com.group5.htms.entity.HorseOwnerProfiles;
 import com.group5.htms.entity.Horses;
 import com.group5.htms.mapper.HorseMapper;
 import com.group5.htms.repository.HorseOwnerProfilesRepository;
@@ -59,9 +60,10 @@ public class HorseServiceImpl implements HorseService {
     @Transactional
     public HorseResponse createHorse(HorseCreateRequest request) {
         Integer ownerId = authService.getCurrentUserId();
-        validateOwnerProfileExists(ownerId);
+        HorseOwnerProfiles owner = findOwnerProfile(ownerId);
         request.setOwnerId(ownerId);
         Horses horse = horseMapper.toEntity(request);
+        horse.setOwner(owner);
 
         return horseMapper.toResponse(horsesRepository.save(horse));
     }
@@ -101,10 +103,9 @@ public class HorseServiceImpl implements HorseService {
         return horse;
     }
 
-    private void validateOwnerProfileExists(Integer ownerId) {
-        if (!horseOwnerProfilesRepository.existsById(ownerId)) {
-            throw new ResourceNotFoundException("Horse owner profile not found");
-        }
+    private HorseOwnerProfiles findOwnerProfile(Integer ownerId) {
+        return horseOwnerProfilesRepository.findById(ownerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Horse owner profile not found"));
     }
 
     private boolean isDeleted(String status) {
