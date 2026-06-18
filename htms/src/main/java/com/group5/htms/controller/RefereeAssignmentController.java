@@ -25,7 +25,7 @@ public class RefereeAssignmentController {
 
     private final RefereeAssignmentService refereeAssignmentService;
 
-    @PostMapping("/{raceId}/referees")
+    @PostMapping("/{raceId}/create-referee-assignment")
     public ResponseEntity<RefereeAssignmentResponse> assignRefereeToRace(
             @PathVariable Integer raceId,
             @Valid @RequestBody RefereeAssignmentCreateRequest request
@@ -37,7 +37,7 @@ public class RefereeAssignmentController {
                 .body(refereeAssignmentService.assignRefereeToRace(raceId, request));
     }
 
-    @GetMapping("/{raceId}/referees")
+    @GetMapping("/{raceId}/get-referee-assignment-list")
     public ResponseEntity<List<RefereeAssignmentResponse>> getRefereesByRace(
             @PathVariable Integer raceId
     ) {

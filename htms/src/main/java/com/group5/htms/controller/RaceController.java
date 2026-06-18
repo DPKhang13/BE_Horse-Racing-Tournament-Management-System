@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/races")
+@RequestMapping("/api/tournaments")
 @RequiredArgsConstructor
 public class RaceController {
     private final RaceService raceService;
@@ -24,7 +24,7 @@ public class RaceController {
             summary = "Get races by tournament",
             description = "Lấy danh sách race thuộc một tournament để chủ ngựa chọn khi đăng ký giải đấu."
     )
-    @GetMapping("/get-by-tournament/{tournamentId}")
+    @GetMapping("/{tournamentId}/get-race-list")
     @PreAuthorize("hasRole('HORSE_OWNER')")
     public ResponseEntity<List<RaceListResponse>> getRacesByTournament(
             @PathVariable Integer tournamentId,

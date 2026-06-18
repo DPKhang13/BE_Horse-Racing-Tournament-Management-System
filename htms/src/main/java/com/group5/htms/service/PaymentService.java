@@ -7,7 +7,7 @@ import jakarta.servlet.http.HttpServletRequest;
 
 import java.util.Map;
 
-public interface VnpayPaymentService {
+public interface PaymentService {
 
     VnpayCreatePaymentResponse createPaymentUrl(
             VnpayCreatePaymentRequest request,

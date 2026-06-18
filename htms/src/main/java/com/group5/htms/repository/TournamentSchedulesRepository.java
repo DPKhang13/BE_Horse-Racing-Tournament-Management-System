@@ -10,4 +10,20 @@ import java.util.List;
 public interface TournamentSchedulesRepository extends JpaRepository<TournamentSchedules, Integer> {
 
     List<TournamentSchedules> findByTournamentsIdOrderByRaceDateAscDayNumberAsc(Integer tournamentId);
+
+    boolean existsByTournamentsIdAndDayNumber(Integer tournamentId, Integer dayNumber);
+
+    boolean existsByTournamentsIdAndRaceDate(Integer tournamentId, java.time.LocalDate raceDate);
+
+    boolean existsByTournamentsIdAndDayNumberAndIdNot(
+            Integer tournamentId,
+            Integer dayNumber,
+            Integer scheduleId
+    );
+
+    boolean existsByTournamentsIdAndRaceDateAndIdNot(
+            Integer tournamentId,
+            java.time.LocalDate raceDate,
+            Integer scheduleId
+    );
 }

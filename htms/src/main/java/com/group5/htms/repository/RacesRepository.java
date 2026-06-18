@@ -11,4 +11,14 @@ public interface RacesRepository extends JpaRepository<Races, Integer> {
     List<Races> findBySchedule_Tournaments_IdOrderByScheduledAtAsc(Integer tournamentId);
 
     List<Races> findBySchedule_Tournaments_IdAndStatusIgnoreCaseOrderByScheduledAtAsc(Integer tournamentId, String status);
+
+    boolean existsByScheduleIdAndRaceNumber(Integer scheduleId, Integer raceNumber);
+
+    boolean existsByScheduleIdAndRaceNumberAndIdNot(
+            Integer scheduleId,
+            Integer raceNumber,
+            Integer raceId
+    );
+
+    long countByScheduleId(Integer scheduleId);
 }

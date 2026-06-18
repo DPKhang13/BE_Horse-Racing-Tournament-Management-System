@@ -1,6 +1,7 @@
 package com.group5.htms.mapper;
 
 import com.group5.htms.dto.prize.request.PrizeItemRequest;
+import com.group5.htms.dto.prize.request.PrizeUpdateRequest;
 import com.group5.htms.dto.prize.response.PrizeResponse;
 import com.group5.htms.entity.PrizeDistributions;
 import com.group5.htms.entity.Tournaments;
@@ -45,6 +46,28 @@ public class PrizeMapper {
                 .amount(prize.getAmount())
                 .note(prize.getNote())
                 .build();
+    }
+
+    public void updateEntity(PrizeDistributions prize, PrizeUpdateRequest request) {
+        if (prize == null || request == null) {
+            return;
+        }
+
+        if (request.getFinishPosition() != null) {
+            prize.setFinishPosition(request.getFinishPosition());
+        }
+
+        if (request.getPrizeName() != null) {
+            prize.setPrizeName(clean(request.getPrizeName()));
+        }
+
+        if (request.getAmount() != null) {
+            prize.setAmount(request.getAmount());
+        }
+
+        if (request.getNote() != null) {
+            prize.setNote(clean(request.getNote()));
+        }
     }
 
     private Tournaments toTournamentShell(Integer tournamentId) {
