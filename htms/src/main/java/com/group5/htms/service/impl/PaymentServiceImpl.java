@@ -18,7 +18,7 @@ import com.group5.htms.exception.UnauthorizedException;
 import com.group5.htms.repository.UsersRepository;
 import com.group5.htms.repository.WalletTransactionsRepository;
 import com.group5.htms.repository.WalletsRepository;
-import com.group5.htms.service.VnpayPaymentService;
+import com.group5.htms.service.PaymentService;
 import com.group5.htms.util.VnpayUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import com.group5.htms.config.VnpayConfig;
@@ -35,12 +35,10 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class VnpayPaymentServiceImpl implements VnpayPaymentService {
+public class PaymentServiceImpl implements PaymentService {
 
     private static final BigDecimal DEFAULT_EXCHANGE_RATE = BigDecimal.ONE;
 
@@ -54,7 +52,7 @@ public class VnpayPaymentServiceImpl implements VnpayPaymentService {
     private final WalletTransactionsRepository walletTransactionsRepository;
 
     /*
-     * POST /api/payments/vnpay/create-payment
+     * POST /api/payments/vnpay/create-payment-url
      *
      * Flow:
      * 1. Lấy user đang login.
@@ -93,7 +91,6 @@ public class VnpayPaymentServiceImpl implements VnpayPaymentService {
                 .pointsAfter(currentBalance)
                 .status(WalletTransactionStatus.PENDING.getValue())
                 .refType(PaymentGatewayProvider.VNPAY.getValue())
-                .gatewayProvider(PaymentGatewayProvider.VNPAY.getValue())
                 .createdBy(currentUser)
                 .createdAt(Instant.now())
                 .build();
@@ -101,9 +98,9 @@ public class VnpayPaymentServiceImpl implements VnpayPaymentService {
         WalletTransactions savedTransaction =
                 walletTransactionsRepository.save(transaction);
 
-        String gatewayTxnRef = generateGatewayTxnRef(savedTransaction.getId());
+        String transactionRef = generateTransactionRef(savedTransaction.getId());
 
-        savedTransaction.setGatewayTxnRef(gatewayTxnRef);
+        savedTransaction.setRefId(savedTransaction.getId());
 
         walletTransactionsRepository.save(savedTransaction);
 
@@ -112,12 +109,12 @@ public class VnpayPaymentServiceImpl implements VnpayPaymentService {
                 httpServletRequest,
                 currentUser,
                 cashAmount,
-                gatewayTxnRef
+                transactionRef
         );
 
         return VnpayCreatePaymentResponse.builder()
-                .txnRef(gatewayTxnRef)
-                .transactionRef(gatewayTxnRef)
+                .txnRef(transactionRef)
+                .transactionRef(transactionRef)
                 .paymentUrl(paymentUrl)
                 .transaction(toPaymentTransactionResponse(savedTransaction))
                 .build();
@@ -147,7 +144,7 @@ public class VnpayPaymentServiceImpl implements VnpayPaymentService {
                 && VnpayResponseCodeStatus.SUCCESS.getValue().equals(transactionStatus);
 
         String txnRef = VnpayUtil.getFirstValue(parameterMap, "vnp_TxnRef");
-        WalletTransactions transaction = findTransactionByGatewayTxnRef(txnRef);
+        WalletTransactions transaction = findTransactionByTransactionRef(txnRef);
 
         return VnpayReturnResponse.builder()
                 .validSignature(validSignature)
@@ -194,24 +191,26 @@ public class VnpayPaymentServiceImpl implements VnpayPaymentService {
             );
         }
 
-        String gatewayTxnRef =
+        String transactionRef =
                 VnpayUtil.getFirstValue(parameterMap, "vnp_TxnRef");
 
-        if (gatewayTxnRef == null || gatewayTxnRef.isBlank()) {
+        if (transactionRef == null || transactionRef.isBlank()) {
             return Map.of(
                     "RspCode", VnpayResponseCodeStatus.ORDER_NOT_FOUND.getValue(),
                     "Message", "Order not found"
             );
         }
 
-        WalletTransactions transaction = walletTransactionsRepository
-                .findFirstByGatewayProviderAndGatewayTxnRef(
-                        PaymentGatewayProvider.VNPAY.getValue(),
-                        gatewayTxnRef
-                )
-                .orElse(null);
+        WalletTransactions transaction = findTransactionByTransactionRefForUpdate(transactionRef);
 
         if (transaction == null) {
+            return Map.of(
+                    "RspCode", VnpayResponseCodeStatus.ORDER_NOT_FOUND.getValue(),
+                    "Message", "Order not found"
+            );
+        }
+
+        if (!isVnpayTopUpTransaction(transaction)) {
             return Map.of(
                     "RspCode", VnpayResponseCodeStatus.ORDER_NOT_FOUND.getValue(),
                     "Message", "Order not found"
@@ -222,10 +221,6 @@ public class VnpayPaymentServiceImpl implements VnpayPaymentService {
 
         if (vnpayAmount == null
                 || vnpayAmount.compareTo(transaction.getCashAmount()) != 0) {
-
-            saveGatewayResponse(transaction, parameterMap);
-
-            walletTransactionsRepository.save(transaction);
 
             return Map.of(
                     "RspCode", VnpayResponseCodeStatus.INVALID_AMOUNT.getValue(),
@@ -246,8 +241,6 @@ public class VnpayPaymentServiceImpl implements VnpayPaymentService {
                     "Message", "Order already confirmed"
             );
         }
-
-        saveGatewayResponse(transaction, parameterMap);
 
         String responseCode =
                 VnpayUtil.getFirstValue(parameterMap, "vnp_ResponseCode");
@@ -336,6 +329,8 @@ public class VnpayPaymentServiceImpl implements VnpayPaymentService {
                 .findFirstById(transaction.getWallets().getId())
                 .orElseThrow(() -> new BadRequestException("Wallet not found"));
 
+        validateWalletActive(wallet);
+
         BigDecimal pointsBefore = safeMoney(wallet.getPointBalance());
 
         BigDecimal pointsAfter =
@@ -352,33 +347,6 @@ public class VnpayPaymentServiceImpl implements VnpayPaymentService {
 
     private void failTopUpTransaction(WalletTransactions transaction) {
         transaction.setStatus(WalletTransactionStatus.FAILED.getValue());
-    }
-
-    private void saveGatewayResponse(
-            WalletTransactions transaction,
-            Map<String, String[]> parameterMap
-    ) {
-        transaction.setGatewayTransactionNo(
-                VnpayUtil.getFirstValue(parameterMap, "vnp_TransactionNo")
-        );
-
-        transaction.setGatewayResponseCode(
-                VnpayUtil.getFirstValue(parameterMap, "vnp_ResponseCode")
-        );
-
-        transaction.setGatewayTransactionStatus(
-                VnpayUtil.getFirstValue(parameterMap, "vnp_TransactionStatus")
-        );
-
-        transaction.setGatewayBankCode(
-                VnpayUtil.getFirstValue(parameterMap, "vnp_BankCode")
-        );
-
-        transaction.setGatewayPayDate(
-                VnpayUtil.getFirstValue(parameterMap, "vnp_PayDate")
-        );
-
-        transaction.setGatewayRawResponse(buildRawResponse(parameterMap));
     }
 
     private BigDecimal extractVnpayAmount(Map<String, String[]> parameterMap) {
@@ -413,40 +381,65 @@ public class VnpayPaymentServiceImpl implements VnpayPaymentService {
     }
 
     private Wallets getOrCreateWallet(Users user) {
-        return walletsRepository.findByUsersId(user.getId())
+        Wallets wallet = walletsRepository.findByUsersId(user.getId())
                 .orElseGet(() -> {
-                    Wallets wallet = Wallets.builder()
+                    Wallets newWallet = Wallets.builder()
                             .users(user)
                             .pointBalance(BigDecimal.ZERO)
                             .status(WalletStatus.ACTIVE.getValue())
                             .createdAt(Instant.now())
                             .build();
 
-                    return walletsRepository.save(wallet);
+                    return walletsRepository.save(newWallet);
                 });
+
+        validateWalletActive(wallet);
+
+        return wallet;
     }
 
-    private String generateGatewayTxnRef(Integer transactionId) {
-        String randomSuffix = UUID.randomUUID()
-                .toString()
-                .replace("-", "")
-                .substring(0, 8)
-                .toUpperCase();
-
-        return "TOPUP-" + transactionId + "-" + randomSuffix;
+    private String generateTransactionRef(Integer transactionId) {
+        return "TOPUP-" + transactionId;
     }
 
-    private WalletTransactions findTransactionByGatewayTxnRef(String gatewayTxnRef) {
-        if (gatewayTxnRef == null || gatewayTxnRef.isBlank()) {
+    private WalletTransactions findTransactionByTransactionRef(String transactionRef) {
+        Integer transactionId = extractTransactionId(transactionRef);
+
+        if (transactionId == null) {
             return null;
         }
 
-        return walletTransactionsRepository
-                .findByGatewayProviderAndGatewayTxnRef(
-                        PaymentGatewayProvider.VNPAY.getValue(),
-                        gatewayTxnRef
-                )
+        return walletTransactionsRepository.findById(transactionId)
                 .orElse(null);
+    }
+
+    private WalletTransactions findTransactionByTransactionRefForUpdate(String transactionRef) {
+        Integer transactionId = extractTransactionId(transactionRef);
+
+        if (transactionId == null) {
+            return null;
+        }
+
+        return walletTransactionsRepository.findFirstById(transactionId)
+                .orElse(null);
+    }
+
+    private Integer extractTransactionId(String transactionRef) {
+        if (transactionRef == null || transactionRef.isBlank()) {
+            return null;
+        }
+
+        String[] parts = transactionRef.trim().split("-");
+
+        if (parts.length != 2 || !"TOPUP".equalsIgnoreCase(parts[0])) {
+            return null;
+        }
+
+        try {
+            return Integer.valueOf(parts[1]);
+        } catch (NumberFormatException ex) {
+            return null;
+        }
     }
 
     private PaymentTransactionResponse toPaymentTransactionResponse(
@@ -505,27 +498,22 @@ public class VnpayPaymentServiceImpl implements VnpayPaymentService {
         return value == null ? BigDecimal.ZERO : value;
     }
 
+    private boolean isVnpayTopUpTransaction(WalletTransactions transaction) {
+        return WalletTransactionType.TOPUP.getValue().equalsIgnoreCase(transaction.getTxType())
+                && PaymentGatewayProvider.VNPAY.getValue().equalsIgnoreCase(transaction.getRefType());
+    }
+
+    private void validateWalletActive(Wallets wallet) {
+        if (wallet.getStatus() == null
+                || !WalletStatus.ACTIVE.getValue().equalsIgnoreCase(wallet.getStatus())) {
+            throw new BadRequestException("Wallet is not active");
+        }
+    }
+
     /*
      * Lưu raw response để debug/audit.
      *
      * Không lưu vnp_SecureHash vào raw response.
      * Không expose field gatewayRawResponse ra API public.
      */
-    private String buildRawResponse(Map<String, String[]> parameterMap) {
-        return parameterMap.entrySet()
-                .stream()
-                .filter(entry -> entry.getKey() != null)
-                .filter(entry -> !"vnp_SecureHash".equals(entry.getKey()))
-                .filter(entry -> !"vnp_SecureHashType".equals(entry.getKey()))
-                .map(entry -> {
-                    String value = entry.getValue() != null
-                            && entry.getValue().length > 0
-                            ? entry.getValue()[0]
-                            : "";
-
-                    return entry.getKey() + "=" + value;
-                })
-                .sorted()
-                .collect(Collectors.joining("&"));
-    }
 }
