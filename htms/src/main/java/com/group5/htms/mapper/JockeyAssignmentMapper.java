@@ -20,9 +20,8 @@ public class JockeyAssignmentMapper {
                 .races(toRace(request.getRaceId()))
                 .jockey(toJockey(request.getJockeyId()))
                 .gateNumber(request.getGateNumber())
-                .status(defaultText(request.getStatus(), "pending"))
-                .invitedAt(defaultInstant(request.getInvitedAt()))
-                .respondedAt(request.getRespondedAt())
+                .status("pending")
+                .invitedAt(Instant.now())
                 .build();
     }
 

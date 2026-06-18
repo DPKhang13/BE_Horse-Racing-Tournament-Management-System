@@ -50,9 +50,6 @@ public class BetServiceImpl implements BetService {
     @Transactional
     public BetResponse createBet(BetCreateRequest request) {
         request.setUserId(authService.getCurrentUserId());
-        request.setRewardPoints(null);
-        request.setStatus(null);
-        request.setSettledAt(null);
         validateCreateReferences(request);
         Bets bet = betMapper.toEntity(request);
 

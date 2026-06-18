@@ -23,11 +23,11 @@ public class HorseMapper {
                 .age(request.getAge())
                 .weightKg(request.getWeightKg())
                 .rankGroup(trim(request.getRankGroup()))
-                .rankingPoints(defaultZero(request.getRankingPoints()))
+                .rankingPoints(0)
                 .avatarUrl(trim(request.getAvatarUrl()))
-                .totalWins(defaultZero(request.getTotalWins()))
-                .status(defaultStatus(request.getStatus()))
-                .registeredAt(defaultRegisteredAt(request.getRegisteredAt()))
+                .totalWins(0)
+                .status("active")
+                .registeredAt(Instant.now())
                 .build();
     }
 

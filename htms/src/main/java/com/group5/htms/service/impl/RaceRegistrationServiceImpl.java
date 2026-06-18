@@ -5,7 +5,12 @@ import com.group5.htms.dto.raceregistration.request.RaceRegistrationCreateReques
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationUpdateRequest;
 import com.group5.htms.dto.raceregistration.response.RaceRegistrationListResponse;
 import com.group5.htms.dto.raceregistration.response.RaceRegistrationResponse;
+import com.group5.htms.entity.HorseOwnerProfiles;
+import com.group5.htms.entity.Horses;
+import com.group5.htms.entity.JockeyProfiles;
 import com.group5.htms.entity.RaceRegistrations;
+import com.group5.htms.entity.Races;
+import com.group5.htms.entity.Tournaments;
 import com.group5.htms.entity.Users;
 import com.group5.htms.exception.BadRequestException;
 import com.group5.htms.exception.ResourceNotFoundException;
@@ -71,15 +76,14 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
     public RaceRegistrationResponse createRegistration(RaceRegistrationCreateRequest request) {
         Integer ownerId = authService.getCurrentUserId();
         request.setOwnerId(ownerId);
-        request.setStatus(null);
-        request.setApprovedAt(null);
-        request.setApprovedById(null);
         validateCreateReferences(request);
         validateRaceBelongsToTournament(request.getRaceId(), request.getTournamentId());
         validateHorseBelongsToOwner(request.getHorseId(), ownerId);
         RaceRegistrations registration = raceRegistrationMapper.toEntity(request);
+        attachCreateReferences(registration, request);
+        RaceRegistrations savedRegistration = raceRegistrationsRepository.save(registration);
 
-        return raceRegistrationMapper.toResponse(raceRegistrationsRepository.save(registration));
+        return raceRegistrationMapper.toResponse(savedRegistration);
     }
 
     @Override
@@ -155,6 +159,28 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
         validateOwnerExists(request.getOwnerId());
         if (request.getJockeyId() != null) {
             validateJockeyExists(request.getJockeyId());
+        }
+    }
+
+    private void attachCreateReferences(RaceRegistrations registration, RaceRegistrationCreateRequest request) {
+        Tournaments tournament = tournamentsRepository.findById(request.getTournamentId())
+                .orElseThrow(() -> new ResourceNotFoundException("Tournament not found"));
+        Races race = racesRepository.findById(request.getRaceId())
+                .orElseThrow(() -> new ResourceNotFoundException("Race not found"));
+        Horses horse = horsesRepository.findById(request.getHorseId())
+                .orElseThrow(() -> new ResourceNotFoundException("Horse not found"));
+        HorseOwnerProfiles owner = horseOwnerProfilesRepository.findById(request.getOwnerId())
+                .orElseThrow(() -> new ResourceNotFoundException("Horse owner profile not found"));
+
+        registration.setTournaments(tournament);
+        registration.setRaces(race);
+        registration.setHorses(horse);
+        registration.setOwner(owner);
+
+        if (request.getJockeyId() != null) {
+            JockeyProfiles jockey = jockeyProfilesRepository.findById(request.getJockeyId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Jockey profile not found"));
+            registration.setJockey(jockey);
         }
     }
 

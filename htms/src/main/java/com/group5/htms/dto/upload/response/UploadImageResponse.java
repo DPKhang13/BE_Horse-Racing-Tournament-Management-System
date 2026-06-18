@@ -6,6 +6,7 @@ import lombok.Getter;
 @Builder
 @Getter
 public class UploadImageResponse {
+    private Integer entityId;
     private String url;
     private String secureUrl;
     private String publicId;

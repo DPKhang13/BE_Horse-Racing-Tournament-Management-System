@@ -6,6 +6,9 @@ import com.group5.htms.dto.jockeyassignment.request.JockeyInvitationUpdateReques
 import com.group5.htms.dto.jockeyassignment.response.JockeyAssignmentListResponse;
 import com.group5.htms.dto.jockeyassignment.response.JockeyAssignmentResponse;
 import com.group5.htms.entity.JockeyHorseAssignments;
+import com.group5.htms.entity.JockeyProfiles;
+import com.group5.htms.entity.RaceRegistrations;
+import com.group5.htms.entity.Races;
 import com.group5.htms.exception.BadRequestException;
 import com.group5.htms.exception.ResourceNotFoundException;
 import com.group5.htms.mapper.JockeyAssignmentMapper;
@@ -28,6 +31,8 @@ import java.util.Objects;
 @RequiredArgsConstructor
 public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
     private static final String STATUS_DELETED = "deleted";
+    private static final String STATUS_ACCEPTED = "accepted";
+    private static final String JOCKEY_STATUS_UNAVAILABLE = "unavailable";
 
     private final JockeyHorseAssignmentsRepository jockeyHorseAssignmentsRepository;
     private final RaceRegistrationsRepository raceRegistrationsRepository;
@@ -79,6 +84,7 @@ public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
         validateRegistrationBelongsToCurrentOwner(request.getRegistrationId());
         validateRaceMatchesRegistration(request.getRaceId(), request.getRegistrationId());
         JockeyHorseAssignments assignment = jockeyAssignmentMapper.toEntity(request);
+        attachCreateReferences(assignment, request);
 
         return jockeyAssignmentMapper.toResponse(jockeyHorseAssignmentsRepository.save(assignment));
     }
@@ -108,8 +114,12 @@ public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
     public JockeyAssignmentResponse respondInvitation(Integer id, JockeyInvitationResponseRequest request) {
         JockeyHorseAssignments assignment = findAssignmentForCurrentJockey(id);
 
-        assignment.setStatus(request.getStatus().trim());
+        String responseStatus = request.getStatus().trim();
+        assignment.setStatus(responseStatus);
         assignment.setRespondedAt(request.getRespondedAt() == null ? Instant.now() : request.getRespondedAt());
+        if (STATUS_ACCEPTED.equalsIgnoreCase(responseStatus)) {
+            assignment.getJockey().setStatus(JOCKEY_STATUS_UNAVAILABLE);
+        }
 
         return jockeyAssignmentMapper.toResponse(jockeyHorseAssignmentsRepository.save(assignment));
     }
@@ -166,6 +176,19 @@ public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
         if (request.getJockeyId() != null) {
             validateJockeyExists(request.getJockeyId());
         }
+    }
+
+    private void attachCreateReferences(JockeyHorseAssignments assignment, JockeyInvitationCreateRequest request) {
+        RaceRegistrations registration = raceRegistrationsRepository.findById(request.getRegistrationId())
+                .orElseThrow(() -> new ResourceNotFoundException("Race registration not found"));
+        Races race = racesRepository.findById(request.getRaceId())
+                .orElseThrow(() -> new ResourceNotFoundException("Race not found"));
+        JockeyProfiles jockey = jockeyProfilesRepository.findById(request.getJockeyId())
+                .orElseThrow(() -> new ResourceNotFoundException("Jockey profile not found"));
+
+        assignment.setReg(registration);
+        assignment.setRaces(race);
+        assignment.setJockey(jockey);
     }
 
     private void validateRegistrationExists(Integer id) {

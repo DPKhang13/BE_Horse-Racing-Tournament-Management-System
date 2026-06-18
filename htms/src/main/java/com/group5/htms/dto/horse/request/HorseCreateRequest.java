@@ -9,7 +9,6 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.math.BigDecimal;
-import java.time.Instant;
 
 @Getter
 @Setter
@@ -32,16 +31,5 @@ public class HorseCreateRequest {
 
     private String rankGroup;
 
-    @Min(value = 0, message = "Ranking points must be greater than or equal to 0")
-    private Integer rankingPoints;
-
     private String avatarUrl;
-
-    @Min(value = 0, message = "Total wins must be greater than or equal to 0")
-    private Integer totalWins;
-
-    @Size(max = 20, message = "Status must not exceed 20 characters")
-    private String status;
-
-    private Instant registeredAt;
 }

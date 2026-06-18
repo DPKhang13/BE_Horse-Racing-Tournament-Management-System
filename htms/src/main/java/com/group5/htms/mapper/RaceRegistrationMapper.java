@@ -24,12 +24,9 @@ public class RaceRegistrationMapper {
                 .horses(toHorse(request.getHorseId()))
                 .owner(toOwner(request.getOwnerId()))
                 .jockey(toNullableJockey(request.getJockeyId()))
-                .status(defaultText(request.getStatus(), "pending"))
-                .ownerConfirmationStatus(defaultText(request.getOwnerConfirmationStatus(), "pending"))
-                .ownerConfirmedAt(request.getOwnerConfirmedAt())
-                .registeredAt(defaultInstant(request.getRegisteredAt()))
-                .approvedAt(request.getApprovedAt())
-                .approvedBy(toNullableUser(request.getApprovedById()))
+                .status("pending")
+                .ownerConfirmationStatus("pending")
+                .registeredAt(Instant.now())
                 .build();
     }
 

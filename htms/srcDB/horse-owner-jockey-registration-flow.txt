@@ -1,0 +1,48 @@
+LUONG: Chu ngua dang ky giai va moi jockey
+
+Muc dich luong:
+Chu ngua dang nhap, chon race trong tournament, dang ky ngua tham gia race,
+gui loi moi cho jockey, sau do jockey dang nhap va chap nhan loi moi.
+
+Thu tu API:
+
+1. POST /api/auth/login
+   Muc dich: Chu ngua dang nhap de lay access token.
+
+2. GET /api/tournaments/{tournamentId}/get-race-list
+   Muc dich: Chu ngua xem danh sach race thuoc tournament de chon race dang ky.
+
+3. GET /api/jockeys/get-all
+   Muc dich: Chu ngua xem danh sach jockey kha dung de chon jockey moi tham gia.
+
+4. POST /api/race-registrations/create
+   Muc dich: Chu ngua dang ky ngua cua minh vao race.
+   Ket qua can luu: registrationId/regId.
+
+5. PUT /api/race-registrations/update/{registrationId}
+   Muc dich: Chu ngua confirm phieu dang ky tham gia race.
+   Trang thai confirm: ownerConfirmationStatus = confirmed.
+
+6. PUT /api/race-registrations/approve/{registrationId}
+   Muc dich: Admin hoac race referee duyet phieu dang ky race.
+   Trang thai duyet: status = approved.
+
+7. POST /api/jockey-assignments/create-invitation
+   Muc dich: Chu ngua gui loi moi jockey cho registration vua tao.
+   Ket qua can luu: assignmentId.
+
+8. GET /api/jockey-assignments/get-sent-invitations
+   Muc dich: Chu ngua kiem tra danh sach loi moi da gui.
+
+9. POST /api/auth/login
+   Muc dich: Jockey dang nhap de lay access token.
+
+10. GET /api/jockey-assignments/get-my-invitations
+   Muc dich: Jockey xem danh sach loi moi cua minh.
+
+11. PUT /api/jockey-assignments/respond/{assignmentId}
+   Muc dich: Jockey chap nhan hoac tu choi loi moi.
+   Trang thai chap nhan: accepted.
+
+12. GET /api/jockey-assignments/get-by-id/{assignmentId}
+    Muc dich: Kiem tra lai loi moi sau khi jockey phan hoi.

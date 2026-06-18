@@ -21,10 +21,9 @@ public class BetMapper {
                 .betType(request.getBetType() == null || request.getBetType())
                 .betPoints(request.getBetPoints())
                 .betRate(request.getBetRate())
-                .rewardPoints(defaultBigDecimal(request.getRewardPoints()))
-                .status(defaultText(request.getStatus(), "pending"))
-                .placedAt(defaultInstant(request.getPlacedAt()))
-                .settledAt(request.getSettledAt())
+                .rewardPoints(BigDecimal.ZERO)
+                .status("pending")
+                .placedAt(Instant.now())
                 .build();
     }
 
@@ -127,10 +126,6 @@ public class BetMapper {
         BetOptions option = new BetOptions();
         option.setId(id);
         return option;
-    }
-
-    private BigDecimal defaultBigDecimal(BigDecimal value) {
-        return value == null ? BigDecimal.ZERO : value;
     }
 
     private String defaultText(String value, String defaultValue) {
