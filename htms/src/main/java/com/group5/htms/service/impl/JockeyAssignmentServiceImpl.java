@@ -83,6 +83,8 @@ public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
         validateCreateReferences(request);
         validateRegistrationBelongsToCurrentOwner(request.getRegistrationId());
         validateRaceMatchesRegistration(request.getRaceId(), request.getRegistrationId());
+        validateRaceJockeyAvailable(request.getRaceId(), request.getJockeyId());
+        validateRaceGateAvailable(request.getRaceId(), request.getGateNumber());
         JockeyHorseAssignments assignment = jockeyAssignmentMapper.toEntity(request);
         attachCreateReferences(assignment, request);
 
@@ -103,7 +105,15 @@ public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
         Integer raceId = request.getRaceId() == null
                 ? assignment.getRaces().getId()
                 : request.getRaceId();
+        Integer jockeyId = request.getJockeyId() == null
+                ? assignment.getJockey().getId()
+                : request.getJockeyId();
+        Integer gateNumber = request.getGateNumber() == null
+                ? assignment.getGateNumber()
+                : request.getGateNumber();
         validateRaceMatchesRegistration(raceId, registrationId);
+        validateRaceJockeyAvailableForUpdate(raceId, jockeyId, id);
+        validateRaceGateAvailableForUpdate(raceId, gateNumber, id);
         jockeyAssignmentMapper.updateAssignment(assignment, request);
 
         return jockeyAssignmentMapper.toResponse(jockeyHorseAssignmentsRepository.save(assignment));
@@ -228,6 +238,48 @@ public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
     private void validateJockeyExists(Integer id) {
         if (!jockeyProfilesRepository.existsById(id)) {
             throw new ResourceNotFoundException("Jockey profile not found");
+        }
+    }
+
+    private void validateRaceJockeyAvailable(Integer raceId, Integer jockeyId) {
+        if (jockeyHorseAssignmentsRepository.existsByRaces_IdAndJockey_Id(raceId, jockeyId)) {
+            throw new BadRequestException("Jockey is already assigned to this race");
+        }
+    }
+
+    private void validateRaceGateAvailable(Integer raceId, Integer gateNumber) {
+        if (gateNumber != null
+                && jockeyHorseAssignmentsRepository.existsByRaces_IdAndGateNumber(raceId, gateNumber)) {
+            throw new BadRequestException("Gate number is already used in this race");
+        }
+    }
+
+    private void validateRaceJockeyAvailableForUpdate(
+            Integer raceId,
+            Integer jockeyId,
+            Integer assignmentId
+    ) {
+        if (jockeyHorseAssignmentsRepository.existsByRaces_IdAndJockey_IdAndIdNot(
+                raceId,
+                jockeyId,
+                assignmentId
+        )) {
+            throw new BadRequestException("Jockey is already assigned to this race");
+        }
+    }
+
+    private void validateRaceGateAvailableForUpdate(
+            Integer raceId,
+            Integer gateNumber,
+            Integer assignmentId
+    ) {
+        if (gateNumber != null
+                && jockeyHorseAssignmentsRepository.existsByRaces_IdAndGateNumberAndIdNot(
+                raceId,
+                gateNumber,
+                assignmentId
+        )) {
+            throw new BadRequestException("Gate number is already used in this race");
         }
     }
 

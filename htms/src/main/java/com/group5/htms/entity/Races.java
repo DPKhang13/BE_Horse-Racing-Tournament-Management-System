@@ -36,7 +36,7 @@ public class Races {
     @Column(name = "race_number", nullable = false)
     private Integer raceNumber;
 
-    @Column(name = "rank_group", length = Integer.MAX_VALUE)
+    @Column(name = "rank_group", length = 1)
     private String rankGroup;
 
     @NotNull

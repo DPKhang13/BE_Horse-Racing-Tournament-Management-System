@@ -19,7 +19,9 @@ public class BetOptionResponse {
     private Integer horseId;
     private String horseName;
     private String horseAvatarUrl;
+    private Integer gateNumber;
     private Integer jockeyId;
+    private String jockeyName;
     private String jockeyFullName;
     private String jockeyAvatarUrl;
     private BigDecimal currentRate;

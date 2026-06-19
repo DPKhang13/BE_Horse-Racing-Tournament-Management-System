@@ -9,6 +9,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
@@ -28,7 +29,19 @@ import java.time.Instant;
 @Setter
 @ToString
 @Entity
-@Table(name = "\"jockey_horse_assignments\"")
+@Table(
+        name = "\"jockey_horse_assignments\"",
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uq_assignment_race_jockey",
+                        columnNames = {"race_id", "jockey_id"}
+                ),
+                @UniqueConstraint(
+                        name = "uq_assignment_race_gate",
+                        columnNames = {"race_id", "gate_number"}
+                )
+        }
+)
 public class JockeyHorseAssignments {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

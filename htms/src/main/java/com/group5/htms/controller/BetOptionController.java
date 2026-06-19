@@ -31,6 +31,14 @@ public class BetOptionController {
         return ResponseEntity.ok(betOptionService.getAllBetOptions());
     }
 
+    @Operation(summary = "Get bet options by race", description = "Lấy danh sách bet option theo id.")
+    @GetMapping("/get-by-race/{raceId}")
+    public ResponseEntity<List<BetOptionResponse>> getBetOptionsByRace(
+            @PathVariable Integer raceId
+    ) {
+        return ResponseEntity.ok(betOptionService.getBetOptionsByRace(raceId));
+    }
+
     @Operation(summary = "Get bet option by id", description = "Lấy chi tiết bet option theo option id.")
     @GetMapping("/get-by-id/{id}")
     public ResponseEntity<BetOptionResponse> getBetOptionById(@PathVariable Integer id) {

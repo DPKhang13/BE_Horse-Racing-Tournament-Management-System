@@ -14,7 +14,13 @@ import java.math.BigDecimal;
 @Setter
 @ToString
 @Entity
-@Table(name = "\"prize_distributions\"")
+@Table(
+        name = "\"prize_distributions\"",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uq_prize_tournament_position",
+                columnNames = {"tournament_id", "finish_position"}
+        )
+)
 public class PrizeDistributions {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -39,7 +45,7 @@ public class PrizeDistributions {
     private BigDecimal amount;
 
     @Size(max = 255)
-    @Column(name = "note")
+    @Column(name = "note", length = 255)
     private String note;
 
 }

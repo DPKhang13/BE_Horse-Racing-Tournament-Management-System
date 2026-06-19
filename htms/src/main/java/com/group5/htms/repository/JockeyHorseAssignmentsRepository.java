@@ -1,6 +1,7 @@
 package com.group5.htms.repository;
 
 import com.group5.htms.entity.JockeyHorseAssignments;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -20,7 +21,32 @@ public interface JockeyHorseAssignmentsRepository extends JpaRepository<JockeyHo
 
     List<JockeyHorseAssignments> findByReg_Owner_IdAndStatusIgnoreCaseOrderByInvitedAtDesc(Integer ownerId, String status);
 
+    @EntityGraph(attributePaths = {
+            "races",
+            "reg",
+            "reg.horses",
+            "jockey",
+            "jockey.users"
+    })
+    List<JockeyHorseAssignments> findByRaces_IdAndStatusIgnoreCase(Integer raceId, String status);
+
     long countByRaces_IdAndStatusIgnoreCase(Integer raceId, String status);
 
     long countByJockey_Id(Integer jockeyId);
+
+    boolean existsByRaces_IdAndJockey_Id(Integer raceId, Integer jockeyId);
+
+    boolean existsByRaces_IdAndGateNumber(Integer raceId, Integer gateNumber);
+
+    boolean existsByRaces_IdAndJockey_IdAndIdNot(
+            Integer raceId,
+            Integer jockeyId,
+            Integer assignmentId
+    );
+
+    boolean existsByRaces_IdAndGateNumberAndIdNot(
+            Integer raceId,
+            Integer gateNumber,
+            Integer assignmentId
+    );
 }
