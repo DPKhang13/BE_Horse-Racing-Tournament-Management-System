@@ -56,10 +56,10 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
     }
 
     @Override
-    public List<RaceRegistrationListResponse> getMyRegistrations(String status) {
+    public List<RaceRegistrationListResponse> getMyRegistrations() {
         Integer ownerId = authService.getCurrentUserId();
 
-        return findRegistrationsByOwner(ownerId, status)
+        return raceRegistrationsRepository.findByOwner_IdOrderByRegisteredAtDesc(ownerId)
                 .stream()
                 .filter(registration -> !isDeleted(registration.getStatus()))
                 .map(raceRegistrationMapper::toListResponse)
@@ -281,15 +281,6 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
 
     private boolean isDeleted(String status) {
         return STATUS_DELETED.equalsIgnoreCase(status);
-    }
-
-    private List<RaceRegistrations> findRegistrationsByOwner(Integer ownerId, String status) {
-        if (status != null && !status.isBlank()) {
-            return raceRegistrationsRepository
-                    .findByOwner_IdAndStatusIgnoreCaseOrderByRegisteredAtDesc(ownerId, status.trim());
-        }
-
-        return raceRegistrationsRepository.findByOwner_IdOrderByRegisteredAtDesc(ownerId);
     }
 
 }
