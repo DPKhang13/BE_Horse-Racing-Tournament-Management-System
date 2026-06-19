@@ -2,6 +2,7 @@ package com.group5.htms.service.impl;
 
 import com.group5.htms.dto.tournament.request.TournamentCreateRequest;
 import com.group5.htms.dto.tournament.request.TournamentUpdateRequest;
+import com.group5.htms.dto.tournament.response.GlobalTournamentCountResponse;
 import com.group5.htms.dto.tournament.response.TournamentDetailResponse;
 import com.group5.htms.dto.tournament.response.TournamentResponse;
 import com.group5.htms.dto.tournament.response.TournamentSummaryResponse;
@@ -33,6 +34,14 @@ public class TournamentServiceImpl implements TournamentService {
     private final TournamentSchedulesRepository tournamentSchedulesRepository;
     private final PrizeRepository prizeRepository;
     private final TournamentMapper tournamentMapper;
+
+    @Override
+    @Transactional(readOnly = true)
+    public GlobalTournamentCountResponse getGlobalTournamentCount() {
+        return GlobalTournamentCountResponse.builder()
+                .globalTournamentCount(tournamentsRepository.count())
+                .build();
+    }
 
     @Override
     @Transactional

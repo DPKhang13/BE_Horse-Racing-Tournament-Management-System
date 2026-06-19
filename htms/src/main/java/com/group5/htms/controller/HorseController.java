@@ -2,6 +2,7 @@ package com.group5.htms.controller;
 
 import com.group5.htms.dto.horse.request.HorseCreateRequest;
 import com.group5.htms.dto.horse.request.HorseUpdateRequest;
+import com.group5.htms.dto.horse.response.HorseCountResponse;
 import com.group5.htms.dto.horse.response.HorseListResponse;
 import com.group5.htms.dto.horse.response.HorseRankingResponse;
 import com.group5.htms.dto.horse.response.HorseResponse;
@@ -29,6 +30,15 @@ import java.util.List;
 @RequiredArgsConstructor
 public class HorseController {
     private final HorseService horseService;
+
+    @Operation(
+            summary = "Get horse count",
+            description = "Lấy tổng số ngựa."
+    )
+    @GetMapping("/get-horse-count")
+    public ResponseEntity<HorseCountResponse> getHorseCount() {
+        return ResponseEntity.ok(horseService.getHorseCount());
+    }
 
     @Operation(
             summary = "Get all horses",

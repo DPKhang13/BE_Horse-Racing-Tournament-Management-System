@@ -3,6 +3,7 @@ package com.group5.htms.service.impl;
 import com.group5.htms.exception.ResourceNotFoundException;
 import com.group5.htms.dto.horse.request.HorseCreateRequest;
 import com.group5.htms.dto.horse.request.HorseUpdateRequest;
+import com.group5.htms.dto.horse.response.HorseCountResponse;
 import com.group5.htms.dto.horse.response.HorseListResponse;
 import com.group5.htms.dto.horse.response.HorseRankingResponse;
 import com.group5.htms.dto.horse.response.HorseResponse;
@@ -33,6 +34,15 @@ public class HorseServiceImpl implements HorseService {
     private final HorseMapper horseMapper;
 
     @Override
+    @Transactional(readOnly = true)
+    public HorseCountResponse getHorseCount() {
+        return HorseCountResponse.builder()
+                .horseCount(horsesRepository.countByStatusNotIgnoreCase(STATUS_DELETED))
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<HorseListResponse> getAllHorses() {
         return horsesRepository.findAll()
                 .stream()
@@ -42,6 +52,7 @@ public class HorseServiceImpl implements HorseService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<HorseRankingResponse> getHorseRanking() {
         List<Horses> horses = horsesRepository
                 .findByStatusIgnoreCaseOrderByRankingPointsDescTotalWinsDescNameAsc(STATUS_ACTIVE);
@@ -52,6 +63,7 @@ public class HorseServiceImpl implements HorseService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public HorseResponse getHorseById(Integer id) {
         return horseMapper.toResponse(findHorse(id));
     }

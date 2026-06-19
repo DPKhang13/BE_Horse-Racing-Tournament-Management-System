@@ -1,6 +1,7 @@
 package com.group5.htms.controller;
 
 import com.group5.htms.dto.race.response.RaceListResponse;
+import com.group5.htms.dto.race.response.ScheduledRaceCountResponse;
 import com.group5.htms.service.RaceService;
 import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
@@ -15,16 +16,25 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/tournaments")
+@RequestMapping("/api")
 @RequiredArgsConstructor
 public class RaceController {
     private final RaceService raceService;
 
     @Operation(
+            summary = "Get scheduled race count",
+            description = "Lấy tổng số races."
+    )
+    @GetMapping("/races/get-scheduled-race-count")
+    public ResponseEntity<ScheduledRaceCountResponse> getScheduledRaceCount() {
+        return ResponseEntity.ok(raceService.getScheduledRaceCount());
+    }
+
+    @Operation(
             summary = "Get races by tournament",
             description = "Lấy danh sách race thuộc một tournament để chủ ngựa chọn khi đăng ký giải đấu."
     )
-    @GetMapping("/{tournamentId}/get-race-list")
+    @GetMapping("/tournaments/{tournamentId}/get-race-list")
     @PreAuthorize("hasRole('HORSE_OWNER')")
     public ResponseEntity<List<RaceListResponse>> getRacesByTournament(
             @PathVariable Integer tournamentId,

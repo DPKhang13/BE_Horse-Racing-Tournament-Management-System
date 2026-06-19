@@ -4,6 +4,7 @@ import com.group5.htms.dto.race.request.RaceCreateRequest;
 import com.group5.htms.dto.race.request.RaceUpdateRequest;
 import com.group5.htms.dto.race.response.RaceListResponse;
 import com.group5.htms.dto.race.response.RaceResponse;
+import com.group5.htms.dto.race.response.ScheduledRaceCountResponse;
 import com.group5.htms.dto.schedule.request.TournamentScheduleCreateRequest;
 import com.group5.htms.dto.schedule.request.TournamentScheduleUpdateRequest;
 import com.group5.htms.dto.schedule.response.TournamentScheduleResponse;
@@ -47,6 +48,14 @@ public class RaceServiceImpl implements RaceService {
     private final RaceRefereeAssignmentsRepository raceRefereeAssignmentsRepository;
     private final RaceMapper raceMapper;
     private final TournamentScheduleMapper tournamentScheduleMapper;
+
+    @Override
+    @Transactional(readOnly = true)
+    public ScheduledRaceCountResponse getScheduledRaceCount() {
+        return ScheduledRaceCountResponse.builder()
+                .scheduledRaceCount(racesRepository.countByStatusIgnoreCase(RACE_STATUS_SCHEDULED))
+                .build();
+    }
 
     @Override
     @Transactional

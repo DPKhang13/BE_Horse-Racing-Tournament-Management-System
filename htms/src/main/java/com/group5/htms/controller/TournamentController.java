@@ -2,6 +2,7 @@ package com.group5.htms.controller;
 
 import com.group5.htms.dto.tournament.request.TournamentCreateRequest;
 import com.group5.htms.dto.tournament.request.TournamentUpdateRequest;
+import com.group5.htms.dto.tournament.response.GlobalTournamentCountResponse;
 import com.group5.htms.dto.tournament.response.TournamentDetailResponse;
 import com.group5.htms.dto.tournament.response.TournamentResponse;
 import com.group5.htms.dto.tournament.response.TournamentSummaryResponse;
@@ -22,6 +23,13 @@ import java.util.Map;
 public class TournamentController {
 
     private final TournamentService tournamentService;
+
+    @GetMapping("/get-global-tournament-count")
+    public ResponseEntity<GlobalTournamentCountResponse> getGlobalTournamentCount() {
+        return ResponseEntity.ok(
+                tournamentService.getGlobalTournamentCount()
+        );
+    }
 
     @PostMapping("/create-tournament")
     @PreAuthorize("hasRole('ADMIN')")

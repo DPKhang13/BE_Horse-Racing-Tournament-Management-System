@@ -20,4 +20,6 @@ public interface HorsesRepository extends JpaRepository<Horses, Integer> {
 
     @EntityGraph(attributePaths = {"owner", "owner.users"})
     List<Horses> findByStatusIgnoreCaseOrderByRankingPointsDescTotalWinsDescNameAsc(String status);
+
+    long countByStatusNotIgnoreCase(String status);
 }
