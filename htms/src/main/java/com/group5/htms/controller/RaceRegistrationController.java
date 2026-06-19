@@ -19,7 +19,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -39,10 +38,8 @@ public class RaceRegistrationController {
     @Operation(summary = "Get my race registrations", description = "Lấy danh sách đăng ký tham gia giải/race của horse owner đang đăng nhập.")
     @GetMapping("/get-my-registrations")
     @PreAuthorize("hasRole('HORSE_OWNER')")
-    public ResponseEntity<List<RaceRegistrationListResponse>> getMyRegistrations(
-            @RequestParam(required = false) String status
-    ) {
-        return ResponseEntity.ok(raceRegistrationService.getMyRegistrations(status));
+    public ResponseEntity<List<RaceRegistrationListResponse>> getMyRegistrations() {
+        return ResponseEntity.ok(raceRegistrationService.getMyRegistrations());
     }
 
     @Operation(summary = "Get race registration by id", description = "Lấy thông tin đăng ký race theo registration id.")

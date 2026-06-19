@@ -18,5 +18,7 @@ public interface JockeyProfilesRepository extends JpaRepository<JockeyProfiles, 
 
     List<JockeyProfiles> findAllByOrderByRankingPointsDesc();
 
+    List<JockeyProfiles> findAllByOrderByRankingPointsDescTotalWinsDescExperienceYearsDesc();
+
     List<JockeyProfiles> findByStatusIgnoreCaseOrderByRankingPointsDescTotalWinsDescExperienceYearsDesc(String status);
 }

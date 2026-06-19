@@ -53,6 +53,9 @@ public class SecurityConfig {
                                 "/api/auth/refresh-token",
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",
+                                "/api/horses/get-all",
+                                "/api/horses/ranking",
+                                "/api/jockeys/ranking",
                                 "/api/payments/vnpay/handle-payment-return",
                                 "/api/payments/vnpay/handle-payment-ipn"
                         ).permitAll()

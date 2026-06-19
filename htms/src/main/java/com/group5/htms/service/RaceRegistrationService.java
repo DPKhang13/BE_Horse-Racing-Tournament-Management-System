@@ -11,7 +11,7 @@ import java.util.List;
 public interface RaceRegistrationService {
     List<RaceRegistrationListResponse> getAllRegistrations();
 
-    List<RaceRegistrationListResponse> getMyRegistrations(String status);
+    List<RaceRegistrationListResponse> getMyRegistrations();
 
     RaceRegistrationResponse getRegistrationById(Integer id);
 

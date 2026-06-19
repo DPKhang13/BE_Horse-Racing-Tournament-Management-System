@@ -16,8 +16,6 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class JockeyServiceImpl implements JockeyService {
-    private static final String STATUS_AVAILABLE = "available";
-
     private final JockeyProfilesRepository jockeyProfilesRepository;
     private final JockeyHorseAssignmentsRepository jockeyHorseAssignmentsRepository;
     private final RaceResultsRepository raceResultsRepository;
@@ -41,7 +39,7 @@ public class JockeyServiceImpl implements JockeyService {
     @Override
     public List<JockeyRankingResponse> getJockeyRanking() {
         var jockeys = jockeyProfilesRepository
-                .findByStatusIgnoreCaseOrderByRankingPointsDescTotalWinsDescExperienceYearsDesc(STATUS_AVAILABLE);
+                .findAllByOrderByRankingPointsDescTotalWinsDescExperienceYearsDesc();
 
         return java.util.stream.IntStream.range(0, jockeys.size())
                 .mapToObj(index -> toRankingResponse(jockeys.get(index), index + 1))
