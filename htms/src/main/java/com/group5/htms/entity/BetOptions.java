@@ -9,6 +9,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -28,7 +29,13 @@ import java.time.Instant;
 @Setter
 @ToString
 @Entity
-@Table(name = "\"bet_options\"")
+@Table(
+        name = "\"bet_options\"",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uq_option_race_horse",
+                columnNames = {"race_id", "horse_id"}
+        )
+)
 public class BetOptions {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

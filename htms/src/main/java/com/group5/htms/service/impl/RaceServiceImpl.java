@@ -4,6 +4,7 @@ import com.group5.htms.dto.race.request.RaceCreateRequest;
 import com.group5.htms.dto.race.request.RaceUpdateRequest;
 import com.group5.htms.dto.race.response.RaceListResponse;
 import com.group5.htms.dto.race.response.RaceResponse;
+import com.group5.htms.dto.race.response.ScheduledRaceCountResponse;
 import com.group5.htms.dto.schedule.request.TournamentScheduleCreateRequest;
 import com.group5.htms.dto.schedule.request.TournamentScheduleUpdateRequest;
 import com.group5.htms.dto.schedule.response.TournamentScheduleResponse;
@@ -21,6 +22,7 @@ import com.group5.htms.repository.RaceRegistrationsRepository;
 import com.group5.htms.repository.RacesRepository;
 import com.group5.htms.repository.TournamentSchedulesRepository;
 import com.group5.htms.repository.TournamentsRepository;
+import com.group5.htms.service.BetOptionService;
 import com.group5.htms.service.RaceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -36,6 +38,7 @@ public class RaceServiceImpl implements RaceService {
     private static final ZoneId VIETNAM_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
     private static final String RACE_STATUS_SCHEDULED = "scheduled";
     private static final String RACE_STATUS_UPCOMING = "upcoming";
+    private static final String RACE_STATUS_OPEN_FOR_BETTING = "open_for_betting";
     private static final String RACE_STATUS_CANCELLED = "cancelled";
     private static final String RACE_STATUS_COMPLETED = "completed";
 
@@ -47,6 +50,15 @@ public class RaceServiceImpl implements RaceService {
     private final RaceRefereeAssignmentsRepository raceRefereeAssignmentsRepository;
     private final RaceMapper raceMapper;
     private final TournamentScheduleMapper tournamentScheduleMapper;
+    private final BetOptionService betOptionService;
+
+    @Override
+    @Transactional(readOnly = true)
+    public ScheduledRaceCountResponse getScheduledRaceCount() {
+        return ScheduledRaceCountResponse.builder()
+                .scheduledRaceCount(racesRepository.countByStatusIgnoreCase(RACE_STATUS_SCHEDULED))
+                .build();
+    }
 
     @Override
     @Transactional
@@ -175,10 +187,17 @@ public class RaceServiceImpl implements RaceService {
         Races race = getRaceEntity(raceId);
         validateTournamentCanArrangeRace(race.getSchedule().getTournaments());
         validateRaceUpdateRequest(race, request);
+        String oldStatus = race.getStatus();
 
         raceMapper.updateEntity(race, request);
 
-        return toDetailResponse(racesRepository.save(race));
+        Races savedRace = racesRepository.save(race);
+
+        if (isOpeningForBetting(oldStatus, savedRace.getStatus())) {
+            betOptionService.generateBetOptionsForRace(savedRace.getId());
+        }
+
+        return toDetailResponse(savedRace);
     }
 
     @Override
@@ -405,7 +424,13 @@ public class RaceServiceImpl implements RaceService {
 
         return RACE_STATUS_SCHEDULED.equals(normalizedStatus)
                 || RACE_STATUS_UPCOMING.equals(normalizedStatus)
+                || RACE_STATUS_OPEN_FOR_BETTING.equals(normalizedStatus)
                 || RACE_STATUS_CANCELLED.equals(normalizedStatus)
                 || RACE_STATUS_COMPLETED.equals(normalizedStatus);
+    }
+
+    private boolean isOpeningForBetting(String oldStatus, String newStatus) {
+        return RACE_STATUS_OPEN_FOR_BETTING.equalsIgnoreCase(newStatus)
+                && !RACE_STATUS_OPEN_FOR_BETTING.equalsIgnoreCase(oldStatus);
     }
 }

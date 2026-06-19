@@ -79,6 +79,7 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
         validateCreateReferences(request);
         validateRaceBelongsToTournament(request.getRaceId(), request.getTournamentId());
         validateHorseBelongsToOwner(request.getHorseId(), ownerId);
+        validateDuplicateTournamentHorse(request.getTournamentId(), request.getHorseId());
         RaceRegistrations registration = raceRegistrationMapper.toEntity(request);
         attachCreateReferences(registration, request);
         RaceRegistrations savedRegistration = raceRegistrationsRepository.save(registration);
@@ -106,6 +107,10 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
         if (request.getHorseId() != null) {
             validateHorseBelongsToOwner(request.getHorseId(), ownerId);
         }
+        Integer horseId = request.getHorseId() == null
+                ? registration.getHorses().getId()
+                : request.getHorseId();
+        validateDuplicateTournamentHorseForUpdate(tournamentId, horseId, id);
         raceRegistrationMapper.updateRegistration(registration, request);
 
         return raceRegistrationMapper.toResponse(raceRegistrationsRepository.save(registration));
@@ -251,6 +256,26 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
     private void validateJockeyExists(Integer id) {
         if (!jockeyProfilesRepository.existsById(id)) {
             throw new ResourceNotFoundException("Jockey profile not found");
+        }
+    }
+
+    private void validateDuplicateTournamentHorse(Integer tournamentId, Integer horseId) {
+        if (raceRegistrationsRepository.existsByTournaments_IdAndHorses_Id(tournamentId, horseId)) {
+            throw new BadRequestException("Horse is already registered in this tournament");
+        }
+    }
+
+    private void validateDuplicateTournamentHorseForUpdate(
+            Integer tournamentId,
+            Integer horseId,
+            Integer registrationId
+    ) {
+        if (raceRegistrationsRepository.existsByTournaments_IdAndHorses_IdAndIdNot(
+                tournamentId,
+                horseId,
+                registrationId
+        )) {
+            throw new BadRequestException("Horse is already registered in this tournament");
         }
     }
 

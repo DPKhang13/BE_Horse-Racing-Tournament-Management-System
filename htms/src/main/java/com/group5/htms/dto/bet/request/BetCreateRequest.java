@@ -23,7 +23,7 @@ public class BetCreateRequest {
     @DecimalMin(value = "0.0", inclusive = false, message = "Bet points must be greater than 0")
     private BigDecimal betPoints;
 
-    @NotNull(message = "Bet rate is required")
+    @Schema(hidden = true)
     @DecimalMin(value = "0.0", inclusive = false, message = "Bet rate must be greater than 0")
     private BigDecimal betRate;
 }

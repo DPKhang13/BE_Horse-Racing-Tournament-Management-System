@@ -72,7 +72,7 @@ public class RefereeAssignmentServiceImpl implements RefereeAssignmentService {
         validateMaxReferees(race);
 
         String refereeRole = normalizeRefereeRole(request.getRefereeRole());
-        validateChiefReferee(raceId, refereeRole);
+        validateDuplicateRefereeRole(raceId, refereeRole);
 
         request.setRaceId(raceId);
 
@@ -184,23 +184,12 @@ public class RefereeAssignmentServiceImpl implements RefereeAssignmentService {
         return normalizedRole;
     }
 
-    private void validateChiefReferee(Integer raceId, String refereeRole) {
-        if (!isChiefRefereeRole(refereeRole)) {
-            return;
+    private void validateDuplicateRefereeRole(Integer raceId, String refereeRole) {
+        if (raceRefereeAssignmentsRepository.existsByRaces_IdAndRefereeRoleIgnoreCase(
+                raceId,
+                refereeRole
+        )) {
+            throw new BadRequestException("Referee role already exists for this race");
         }
-
-        boolean chiefExists = raceRefereeAssignmentsRepository
-                .existsByRaces_IdAndRefereeRoleIgnoreCase(raceId, ROLE_CHIEF_REFEREE)
-                || raceRefereeAssignmentsRepository
-                .existsByRaces_IdAndRefereeRoleIgnoreCase(raceId, ROLE_MAIN_REFEREE);
-
-        if (chiefExists) {
-            throw new BadRequestException("Chief referee already exists for this race");
-        }
-    }
-
-    private boolean isChiefRefereeRole(String refereeRole) {
-        return ROLE_CHIEF_REFEREE.equalsIgnoreCase(refereeRole)
-                || ROLE_MAIN_REFEREE.equalsIgnoreCase(refereeRole);
     }
 }

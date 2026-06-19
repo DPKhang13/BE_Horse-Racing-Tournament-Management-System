@@ -13,4 +13,12 @@ public interface RaceRegistrationsRepository extends JpaRepository<RaceRegistrat
     List<RaceRegistrations> findByOwner_IdOrderByRegisteredAtDesc(Integer ownerId);
 
     long countByRaces_Id(Integer raceId);
+
+    boolean existsByTournaments_IdAndHorses_Id(Integer tournamentId, Integer horseId);
+
+    boolean existsByTournaments_IdAndHorses_IdAndIdNot(
+            Integer tournamentId,
+            Integer horseId,
+            Integer registrationId
+    );
 }
