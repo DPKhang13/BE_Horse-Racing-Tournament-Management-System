@@ -6,6 +6,7 @@ import com.group5.htms.dto.bet.request.BetCreateRequest;
 import com.group5.htms.dto.bet.request.BetUpdateRequest;
 import com.group5.htms.dto.bet.response.BetListResponse;
 import com.group5.htms.dto.bet.response.BetResponse;
+import com.group5.htms.dto.betoption.response.BetOptionResponse;
 import com.group5.htms.entity.BetOptions;
 import com.group5.htms.entity.Bets;
 import com.group5.htms.entity.Users;
@@ -22,6 +23,7 @@ import com.group5.htms.repository.UsersRepository;
 import com.group5.htms.repository.WalletTransactionsRepository;
 import com.group5.htms.repository.WalletsRepository;
 import com.group5.htms.service.AuthService;
+import com.group5.htms.service.BetOptionService;
 import com.group5.htms.service.BetService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
@@ -47,6 +49,7 @@ public class BetServiceImpl implements BetService {
     private final WalletTransactionsRepository walletTransactionsRepository;
     private final UsersRepository usersRepository;
     private final AuthService authService;
+    private final BetOptionService betOptionService;
     private final BetMapper betMapper;
 
     @Override
@@ -100,6 +103,7 @@ public class BetServiceImpl implements BetService {
         betOptionsRepository.save(option);
         walletsRepository.save(wallet);
         createBetWalletTransaction(user, wallet, savedBet, betPoints, pointsBefore, pointsAfter);
+        refreshCurrentRateAfterMarketChange(option);
 
         return betMapper.toResponse(savedBet);
     }
@@ -240,6 +244,16 @@ public class BetServiceImpl implements BetService {
 
     private BigDecimal safeMoney(BigDecimal value) {
         return value == null ? BigDecimal.ZERO : value;
+    }
+
+    private void refreshCurrentRateAfterMarketChange(BetOptions option) {
+        List<BetOptionResponse> recalculatedOptions =
+                betOptionService.recalculateRatesForRace(option.getRaces().getId());
+
+        recalculatedOptions.stream()
+                .filter(response -> Objects.equals(response.getOptionId(), option.getId()))
+                .findFirst()
+                .ifPresent(response -> option.setCurrentRate(response.getCurrentRate()));
     }
 
     private boolean isDeleted(String status) {
