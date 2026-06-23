@@ -11,6 +11,8 @@ public interface TournamentSchedulesRepository extends JpaRepository<TournamentS
 
     List<TournamentSchedules> findByTournamentsIdOrderByRaceDateAscDayNumberAsc(Integer tournamentId);
 
+    long countByTournamentsId(Integer tournamentId);
+
     boolean existsByTournamentsIdAndDayNumber(Integer tournamentId, Integer dayNumber);
 
     boolean existsByTournamentsIdAndRaceDate(Integer tournamentId, java.time.LocalDate raceDate);

@@ -11,6 +11,7 @@ import com.group5.htms.dto.schedule.response.TournamentScheduleResponse;
 import com.group5.htms.entity.Races;
 import com.group5.htms.entity.TournamentSchedules;
 import com.group5.htms.entity.Tournaments;
+import com.group5.htms.enums.RaceStatus;
 import com.group5.htms.enums.TournamentStatus;
 import com.group5.htms.exception.BadRequestException;
 import com.group5.htms.exception.ResourceNotFoundException;
@@ -36,11 +37,6 @@ import java.util.List;
 @RequiredArgsConstructor
 public class RaceServiceImpl implements RaceService {
     private static final ZoneId VIETNAM_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
-    private static final String RACE_STATUS_SCHEDULED = "scheduled";
-    private static final String RACE_STATUS_UPCOMING = "upcoming";
-    private static final String RACE_STATUS_OPEN_FOR_BETTING = "open_for_betting";
-    private static final String RACE_STATUS_CANCELLED = "cancelled";
-    private static final String RACE_STATUS_COMPLETED = "completed";
 
     private final RacesRepository racesRepository;
     private final TournamentsRepository tournamentsRepository;
@@ -56,7 +52,7 @@ public class RaceServiceImpl implements RaceService {
     @Transactional(readOnly = true)
     public ScheduledRaceCountResponse getScheduledRaceCount() {
         return ScheduledRaceCountResponse.builder()
-                .scheduledRaceCount(racesRepository.countByStatusIgnoreCase(RACE_STATUS_SCHEDULED))
+                .scheduledRaceCount(racesRepository.countByStatusIgnoreCase(RaceStatus.SCHEDULED.getValue()))
                 .build();
     }
 
@@ -187,15 +183,10 @@ public class RaceServiceImpl implements RaceService {
         Races race = getRaceEntity(raceId);
         validateTournamentCanArrangeRace(race.getSchedule().getTournaments());
         validateRaceUpdateRequest(race, request);
-        String oldStatus = race.getStatus();
 
         raceMapper.updateEntity(race, request);
 
         Races savedRace = racesRepository.save(race);
-
-        if (isOpeningForBetting(oldStatus, savedRace.getStatus())) {
-            betOptionService.generateBetOptionsForRace(savedRace.getId());
-        }
 
         return toDetailResponse(savedRace);
     }
@@ -207,11 +198,11 @@ public class RaceServiceImpl implements RaceService {
 
         validateTournamentCanArrangeRace(race.getSchedule().getTournaments());
 
-        if (RACE_STATUS_COMPLETED.equalsIgnoreCase(race.getStatus())) {
+        if (!RaceStatus.canCancel(race.getStatus())) {
             throw new BadRequestException("Completed race cannot be cancelled");
         }
 
-        race.setStatus(RACE_STATUS_CANCELLED);
+        race.setStatus(RaceStatus.CANCELLED.getValue());
         racesRepository.save(race);
     }
 
@@ -223,6 +214,10 @@ public class RaceServiceImpl implements RaceService {
         }
 
         if (status != null && !status.isBlank()) {
+            if (!RaceStatus.isValid(status)) {
+                throw new BadRequestException("Invalid race status");
+            }
+
             return racesRepository
                     .findBySchedule_Tournaments_IdAndStatusIgnoreCaseOrderByScheduledAtAsc(tournamentId, status.trim())
                     .stream()
@@ -378,8 +373,7 @@ public class RaceServiceImpl implements RaceService {
 
         if (status != null
                 && !status.isBlank()
-                && !RACE_STATUS_SCHEDULED.equalsIgnoreCase(status.trim())
-                && !RACE_STATUS_UPCOMING.equalsIgnoreCase(status.trim())) {
+                && !RaceStatus.SCHEDULED.getValue().equalsIgnoreCase(status.trim())) {
             throw new BadRequestException("Invalid race status");
         }
     }
@@ -412,25 +406,8 @@ public class RaceServiceImpl implements RaceService {
             throw new BadRequestException("Prediction close time must be before scheduled time");
         }
 
-        if (request.getStatus() != null
-                && !request.getStatus().isBlank()
-                && !isValidRaceStatus(request.getStatus())) {
-            throw new BadRequestException("Invalid race status");
+        if (request.getStatus() != null && !request.getStatus().isBlank()) {
+            throw new BadRequestException("Use workflow transition APIs to update race status");
         }
-    }
-
-    private boolean isValidRaceStatus(String status) {
-        String normalizedStatus = status.trim().toLowerCase();
-
-        return RACE_STATUS_SCHEDULED.equals(normalizedStatus)
-                || RACE_STATUS_UPCOMING.equals(normalizedStatus)
-                || RACE_STATUS_OPEN_FOR_BETTING.equals(normalizedStatus)
-                || RACE_STATUS_CANCELLED.equals(normalizedStatus)
-                || RACE_STATUS_COMPLETED.equals(normalizedStatus);
-    }
-
-    private boolean isOpeningForBetting(String oldStatus, String newStatus) {
-        return RACE_STATUS_OPEN_FOR_BETTING.equalsIgnoreCase(newStatus)
-                && !RACE_STATUS_OPEN_FOR_BETTING.equalsIgnoreCase(oldStatus);
     }
 }

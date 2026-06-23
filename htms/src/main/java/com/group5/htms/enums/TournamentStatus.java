@@ -6,6 +6,7 @@ import lombok.Getter;
 public enum TournamentStatus {
 
     UPCOMING("upcoming"),
+    REGISTRATION_OPEN("registration_open"),
     ONGOING("ongoing"),
     COMPLETED("completed"),
     CANCELLED("cancelled");

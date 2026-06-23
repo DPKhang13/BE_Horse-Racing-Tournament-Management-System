@@ -1,8 +1,10 @@
 package com.group5.htms.service;
 
+import com.group5.htms.dto.tournament.request.OpenRegistrationRequest;
 import com.group5.htms.dto.tournament.request.TournamentCreateRequest;
 import com.group5.htms.dto.tournament.request.TournamentUpdateRequest;
 import com.group5.htms.dto.tournament.response.GlobalTournamentCountResponse;
+import com.group5.htms.dto.tournament.response.OpenRegistrationResponse;
 import com.group5.htms.dto.tournament.response.TournamentDetailResponse;
 import com.group5.htms.dto.tournament.response.TournamentResponse;
 import com.group5.htms.dto.tournament.response.TournamentSummaryResponse;
@@ -23,5 +25,7 @@ public interface TournamentService {
     //void deleteTournament(Integer tournamentId);
 
     TournamentResponse cancelTournament(Integer tournamentId);
+
+    OpenRegistrationResponse openRegistration(Integer tournamentId, OpenRegistrationRequest request);
 
 }

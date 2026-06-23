@@ -7,6 +7,7 @@ import com.group5.htms.dto.race.response.RaceResponse;
 import com.group5.htms.entity.Races;
 import com.group5.htms.entity.TournamentSchedules;
 import com.group5.htms.entity.Tournaments;
+import com.group5.htms.enums.RaceStatus;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -14,7 +15,6 @@ public class RaceMapper {
     private static final Integer DEFAULT_LAP_COUNT = 1;
     private static final Integer DEFAULT_MAX_HORSES = 8;
     private static final Integer DEFAULT_MAX_REFEREES = 3;
-    private static final String DEFAULT_STATUS = "scheduled";
 
     public Races toEntity(RaceCreateRequest request, TournamentSchedules schedule) {
         if (request == null) {
@@ -162,14 +162,11 @@ public class RaceMapper {
             race.setPointRuleNote(clean(request.getPointRuleNote()));
         }
 
-        if (request.getStatus() != null) {
-            race.setStatus(defaultStatus(request.getStatus()));
-        }
     }
 
     private String defaultStatus(String value) {
         if (value == null || value.isBlank()) {
-            return DEFAULT_STATUS;
+            return RaceStatus.SCHEDULED.getValue();
         }
 
         return value.trim().toLowerCase();

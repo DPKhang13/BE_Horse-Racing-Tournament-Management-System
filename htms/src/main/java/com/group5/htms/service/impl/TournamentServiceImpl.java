@@ -1,18 +1,24 @@
 package com.group5.htms.service.impl;
 
+import com.group5.htms.dto.tournament.request.OpenRegistrationRequest;
 import com.group5.htms.dto.tournament.request.TournamentCreateRequest;
 import com.group5.htms.dto.tournament.request.TournamentUpdateRequest;
 import com.group5.htms.dto.tournament.response.GlobalTournamentCountResponse;
+import com.group5.htms.dto.tournament.response.OpenRegistrationResponse;
 import com.group5.htms.dto.tournament.response.TournamentDetailResponse;
 import com.group5.htms.dto.tournament.response.TournamentResponse;
 import com.group5.htms.dto.tournament.response.TournamentSummaryResponse;
+import com.group5.htms.entity.PrizeDistributions;
+import com.group5.htms.entity.Races;
 import com.group5.htms.entity.Tournaments;
 import com.group5.htms.entity.Users;
+import com.group5.htms.enums.RaceStatus;
 import com.group5.htms.enums.TournamentStatus;
 import com.group5.htms.exception.BadRequestException;
 import com.group5.htms.exception.UnauthorizedException;
 import com.group5.htms.mapper.TournamentMapper;
 import com.group5.htms.repository.PrizeRepository;
+import com.group5.htms.repository.RacesRepository;
 import com.group5.htms.repository.TournamentSchedulesRepository;
 import com.group5.htms.repository.TournamentsRepository;
 import com.group5.htms.repository.UsersRepository;
@@ -22,8 +28,12 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -32,6 +42,7 @@ public class TournamentServiceImpl implements TournamentService {
     private final TournamentsRepository tournamentsRepository;
     private final UsersRepository usersRepository;
     private final TournamentSchedulesRepository tournamentSchedulesRepository;
+    private final RacesRepository racesRepository;
     private final PrizeRepository prizeRepository;
     private final TournamentMapper tournamentMapper;
 
@@ -140,6 +151,55 @@ public class TournamentServiceImpl implements TournamentService {
         return tournamentMapper.toResponse(savedTournament);
     }
 
+    @Override
+    @Transactional
+    public OpenRegistrationResponse openRegistration(Integer tournamentId, OpenRegistrationRequest request) {
+        if (tournamentId == null) {
+            throw new BadRequestException("Tournament id is required");
+        }
+
+        if (request == null) {
+            throw new BadRequestException("Open registration request is required");
+        }
+
+        if (request.getRegistrationCloseAt() == null) {
+            throw new BadRequestException("Registration close time is required");
+        }
+
+        Tournaments tournament = tournamentsRepository.findById(tournamentId)
+                .orElseThrow(() -> new BadRequestException("Tournament not found"));
+
+        validateTournamentCanOpenRegistration(tournament);
+
+        long totalSchedules = validateTournamentHasSchedules(tournamentId);
+        List<Races> races = validateTournamentHasRaces(tournamentId);
+
+        validatePrizeDistributionReadyForRegistration(tournament);
+        validateRegistrationCloseBeforeFirstRace(request.getRegistrationCloseAt(), races);
+
+        Instant registrationOpenAt = request.getRegistrationOpenAt() == null
+                ? Instant.now()
+                : request.getRegistrationOpenAt();
+
+        tournament.setStatus(TournamentStatus.REGISTRATION_OPEN.getValue());
+        tournament.setRegistrationOpenAt(registrationOpenAt);
+        tournament.setRegistrationCloseAt(request.getRegistrationCloseAt());
+        openScheduledRacesForRegistration(races);
+
+        Tournaments savedTournament = tournamentsRepository.save(tournament);
+        racesRepository.saveAll(races);
+
+        return OpenRegistrationResponse.builder()
+                .tournamentId(savedTournament.getId())
+                .tournamentName(savedTournament.getName())
+                .status(savedTournament.getStatus())
+                .registrationOpenAt(registrationOpenAt)
+                .registrationCloseAt(request.getRegistrationCloseAt())
+                .totalSchedules((int) totalSchedules)
+                .totalRaces(races.size())
+                .build();
+    }
+
     private Tournaments getTournamentEntity(Integer tournamentId) {
         if (tournamentId == null) {
             throw new BadRequestException("Tournament id is required");
@@ -147,6 +207,83 @@ public class TournamentServiceImpl implements TournamentService {
 
         return tournamentsRepository.findById(tournamentId)
                 .orElseThrow(() -> new BadRequestException("Tournament not found"));
+    }
+
+    private void validateTournamentCanOpenRegistration(Tournaments tournament) {
+        if (!TournamentStatus.UPCOMING.getValue().equalsIgnoreCase(tournament.getStatus())) {
+            throw new BadRequestException("Only upcoming tournaments can be opened for registration");
+        }
+    }
+
+    private long validateTournamentHasSchedules(Integer tournamentId) {
+        long totalSchedules = tournamentSchedulesRepository.countByTournamentsId(tournamentId);
+
+        if (totalSchedules <= 0) {
+            throw new BadRequestException("Tournament must have at least one schedule before opening registration");
+        }
+
+        return totalSchedules;
+    }
+
+    private List<Races> validateTournamentHasRaces(Integer tournamentId) {
+        List<Races> races = racesRepository.findBySchedule_Tournaments_IdOrderByScheduledAtAsc(tournamentId);
+
+        if (races.isEmpty()) {
+            throw new BadRequestException("Tournament must have at least one race before opening registration");
+        }
+
+        return races;
+    }
+
+    private void validatePrizeDistributionReadyForRegistration(Tournaments tournament) {
+        List<PrizeDistributions> prizes = prizeRepository
+                .findByTournamentsIdOrderByFinishPositionAsc(tournament.getId());
+
+        if (prizes.size() != 3) {
+            throw new BadRequestException("Tournament must have exactly 3 prize distributions for positions 1, 2 and 3");
+        }
+
+        Set<Integer> positions = new HashSet<>();
+        BigDecimal totalPrizeAmount = BigDecimal.ZERO;
+
+        for (PrizeDistributions prize : prizes) {
+            Integer finishPosition = prize.getFinishPosition();
+
+            if (finishPosition == null || finishPosition < 1 || finishPosition > 3) {
+                throw new BadRequestException("Only finish positions 1, 2 and 3 can receive prizes");
+            }
+
+            positions.add(finishPosition);
+            totalPrizeAmount = totalPrizeAmount.add(prize.getAmount() == null ? BigDecimal.ZERO : prize.getAmount());
+        }
+
+        if (!positions.equals(Set.of(1, 2, 3))) {
+            throw new BadRequestException("Tournament prize distributions must include finish positions 1, 2 and 3");
+        }
+
+        BigDecimal prizePool = tournament.getPrizePool() == null ? BigDecimal.ZERO : tournament.getPrizePool();
+
+        if (totalPrizeAmount.compareTo(prizePool) != 0) {
+            throw new BadRequestException("Total prize amount must be equal to tournament prize pool");
+        }
+    }
+
+    private void validateRegistrationCloseBeforeFirstRace(Instant registrationCloseAt, List<Races> races) {
+        Instant firstRaceStart = races.stream()
+                .map(Races::getScheduledAt)
+                .filter(java.util.Objects::nonNull)
+                .min(Instant::compareTo)
+                .orElseThrow(() -> new BadRequestException("Tournament must have at least one race before opening registration"));
+
+        if (!registrationCloseAt.isBefore(firstRaceStart)) {
+            throw new BadRequestException("Registration close time must be before the first race starts");
+        }
+    }
+
+    private void openScheduledRacesForRegistration(List<Races> races) {
+        races.stream()
+                .filter(race -> RaceStatus.canOpenRegistration(race.getStatus()))
+                .forEach(race -> race.setStatus(RaceStatus.REGISTRATION_OPEN.getValue()));
     }
 
     private Users getCurrentUser() {
