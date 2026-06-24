@@ -12,12 +12,16 @@ public class JockeyAssignmentResponse {
     private Integer assignmentId;
     private Integer regId;
     private Integer registrationId;
+    private String ownerConfirmationStatus;
     private Integer raceId;
     private Integer jockeyId;
     private Integer gateNumber;
     private String status;
     private Instant invitedAt;
+    private Instant responseDeadline;
     private Instant respondedAt;
+    private Instant cancelledAt;
+    private Instant expiredAt;
     private String raceName;
     private Integer raceNumber;
     private Instant scheduledAt;

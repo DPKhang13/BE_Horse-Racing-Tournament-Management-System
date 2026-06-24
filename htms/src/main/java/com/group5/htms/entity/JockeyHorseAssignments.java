@@ -9,7 +9,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
@@ -29,19 +28,7 @@ import java.time.Instant;
 @Setter
 @ToString
 @Entity
-@Table(
-        name = "\"jockey_horse_assignments\"",
-        uniqueConstraints = {
-                @UniqueConstraint(
-                        name = "uq_assignment_race_jockey",
-                        columnNames = {"race_id", "jockey_id"}
-                ),
-                @UniqueConstraint(
-                        name = "uq_assignment_race_gate",
-                        columnNames = {"race_id", "gate_number"}
-                )
-        }
-)
+@Table(name = "\"jockey_horse_assignments\"")
 public class JockeyHorseAssignments {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -76,6 +63,15 @@ public class JockeyHorseAssignments {
     @Column(name = "invited_at", nullable = false)
     private Instant invitedAt;
 
+    @Column(name = "response_deadline")
+    private Instant responseDeadline;
+
     @Column(name = "responded_at")
     private Instant respondedAt;
+
+    @Column(name = "cancelled_at")
+    private Instant cancelledAt;
+
+    @Column(name = "expired_at")
+    private Instant expiredAt;
 }

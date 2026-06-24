@@ -1,9 +1,11 @@
 package com.group5.htms.service;
 
 import com.group5.htms.dto.race.request.RaceCreateRequest;
+import com.group5.htms.dto.race.request.RaceStartRequest;
 import com.group5.htms.dto.race.request.RaceUpdateRequest;
 import com.group5.htms.dto.race.response.RaceListResponse;
 import com.group5.htms.dto.race.response.RaceResponse;
+import com.group5.htms.dto.race.response.RaceStartResponse;
 import com.group5.htms.dto.race.response.ScheduledRaceCountResponse;
 import com.group5.htms.dto.schedule.request.TournamentScheduleCreateRequest;
 import com.group5.htms.dto.schedule.request.TournamentScheduleUpdateRequest;
@@ -35,6 +37,8 @@ public interface RaceService {
     RaceResponse getRaceById(Integer raceId);
 
     RaceResponse updateRace(Integer raceId, RaceUpdateRequest request);
+
+    RaceStartResponse startRace(Integer raceId, RaceStartRequest request);
 
     void cancelRace(Integer raceId);
 

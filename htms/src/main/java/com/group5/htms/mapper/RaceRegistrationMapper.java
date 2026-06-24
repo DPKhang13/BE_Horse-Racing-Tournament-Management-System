@@ -23,7 +23,6 @@ public class RaceRegistrationMapper {
                 .races(toRace(request.getRaceId()))
                 .horses(toHorse(request.getHorseId()))
                 .owner(toOwner(request.getOwnerId()))
-                .jockey(toNullableJockey(request.getJockeyId()))
                 .status("pending")
                 .ownerConfirmationStatus("pending")
                 .registeredAt(Instant.now())

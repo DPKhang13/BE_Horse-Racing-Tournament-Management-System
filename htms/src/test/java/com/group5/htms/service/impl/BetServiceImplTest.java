@@ -97,6 +97,69 @@ class BetServiceImplTest {
 
         assertThatThrownBy(() -> service.createBet(request))
                 .isInstanceOf(BadRequestException.class)
-                .hasMessage("Race is not open for betting");
+                .hasMessage("Betting is not open for this race");
+    }
+
+    @Test
+    void createBetFailsIfRaceStatusIsInProgress() {
+        BetCreateRequest request = new BetCreateRequest();
+        request.setOptionId(99);
+        request.setBetPoints(new BigDecimal("10.00"));
+
+        Users user = new Users();
+        user.setId(1);
+
+        Races race = Races.builder()
+                .id(10)
+                .status(RaceStatus.IN_PROGRESS.getValue())
+                .build();
+        BetOptions option = BetOptions.builder()
+                .id(99)
+                .races(race)
+                .currentRate(new BigDecimal("2.00"))
+                .totalBetPoints(BigDecimal.ZERO)
+                .totalBetCount(0)
+                .updatedAt(Instant.now())
+                .build();
+
+        when(authService.getCurrentUserId()).thenReturn(1);
+        when(usersRepository.findById(1)).thenReturn(Optional.of(user));
+        when(betOptionsRepository.findFirstById(99)).thenReturn(Optional.of(option));
+
+        assertThatThrownBy(() -> service.createBet(request))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("Betting is not open for this race");
+    }
+
+    @Test
+    void createBetFailsIfPredictionTimeHasClosed() {
+        BetCreateRequest request = new BetCreateRequest();
+        request.setOptionId(99);
+        request.setBetPoints(new BigDecimal("10.00"));
+
+        Users user = new Users();
+        user.setId(1);
+
+        Races race = Races.builder()
+                .id(10)
+                .status(RaceStatus.OPEN_FOR_BETTING.getValue())
+                .predictionClosesAt(Instant.now().minusSeconds(60))
+                .build();
+        BetOptions option = BetOptions.builder()
+                .id(99)
+                .races(race)
+                .currentRate(new BigDecimal("2.00"))
+                .totalBetPoints(BigDecimal.ZERO)
+                .totalBetCount(0)
+                .updatedAt(Instant.now())
+                .build();
+
+        when(authService.getCurrentUserId()).thenReturn(1);
+        when(usersRepository.findById(1)).thenReturn(Optional.of(user));
+        when(betOptionsRepository.findFirstById(99)).thenReturn(Optional.of(option));
+
+        assertThatThrownBy(() -> service.createBet(request))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("Prediction time has closed");
     }
 }

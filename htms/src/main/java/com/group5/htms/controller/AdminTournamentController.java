@@ -1,6 +1,8 @@
 package com.group5.htms.controller;
 
+import com.group5.htms.dto.tournament.request.CloseRegistrationRequest;
 import com.group5.htms.dto.tournament.request.OpenRegistrationRequest;
+import com.group5.htms.dto.tournament.response.CloseRegistrationResponse;
 import com.group5.htms.dto.tournament.response.OpenRegistrationResponse;
 import com.group5.htms.service.TournamentService;
 import jakarta.validation.Valid;
@@ -26,5 +28,13 @@ public class AdminTournamentController {
             @Valid @RequestBody OpenRegistrationRequest request
     ) {
         return ResponseEntity.ok(tournamentService.openRegistration(tournamentId, request));
+    }
+
+    @PatchMapping("/{tournamentId}/close-registration")
+    public ResponseEntity<CloseRegistrationResponse> closeRegistration(
+            @PathVariable Integer tournamentId,
+            @Valid @RequestBody(required = false) CloseRegistrationRequest request
+    ) {
+        return ResponseEntity.ok(tournamentService.closeRegistration(tournamentId, request));
     }
 }

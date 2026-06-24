@@ -23,5 +23,9 @@ public interface JockeyAssignmentService {
 
     JockeyAssignmentResponse respondInvitation(Integer id, JockeyInvitationResponseRequest request);
 
+    JockeyAssignmentResponse cancelInvitation(Integer id);
+
+    JockeyAssignmentResponse confirmAssignment(Integer id);
+
     void deleteAssignment(Integer id);
 }

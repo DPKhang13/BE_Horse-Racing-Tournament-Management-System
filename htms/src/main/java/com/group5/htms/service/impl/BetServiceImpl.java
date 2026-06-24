@@ -188,7 +188,7 @@ public class BetServiceImpl implements BetService {
         String status = option.getRaces().getStatus();
 
         if (status == null || !RaceStatus.OPEN_FOR_BETTING.getValue().equalsIgnoreCase(status.trim())) {
-            throw new BadRequestException("Race is not open for betting");
+            throw new BadRequestException("Betting is not open for this race");
         }
     }
 
@@ -196,7 +196,7 @@ public class BetServiceImpl implements BetService {
         Instant predictionClosesAt = option.getRaces().getPredictionClosesAt();
 
         if (predictionClosesAt != null && !Instant.now().isBefore(predictionClosesAt)) {
-            throw new BadRequestException("Prediction is already closed for this race");
+            throw new BadRequestException("Prediction time has closed");
         }
     }
 

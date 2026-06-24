@@ -1,23 +1,31 @@
 package com.group5.htms.service.impl;
 
+import com.group5.htms.dto.tournament.request.CloseRegistrationRequest;
 import com.group5.htms.dto.tournament.request.OpenRegistrationRequest;
 import com.group5.htms.dto.tournament.request.TournamentCreateRequest;
 import com.group5.htms.dto.tournament.request.TournamentUpdateRequest;
+import com.group5.htms.dto.tournament.response.CloseRegistrationResponse;
 import com.group5.htms.dto.tournament.response.GlobalTournamentCountResponse;
 import com.group5.htms.dto.tournament.response.OpenRegistrationResponse;
 import com.group5.htms.dto.tournament.response.TournamentDetailResponse;
 import com.group5.htms.dto.tournament.response.TournamentResponse;
 import com.group5.htms.dto.tournament.response.TournamentSummaryResponse;
+import com.group5.htms.entity.JockeyHorseAssignments;
 import com.group5.htms.entity.PrizeDistributions;
+import com.group5.htms.entity.RaceRegistrations;
 import com.group5.htms.entity.Races;
 import com.group5.htms.entity.Tournaments;
 import com.group5.htms.entity.Users;
+import com.group5.htms.enums.JockeyAssignmentStatus;
+import com.group5.htms.enums.RaceRegistrationStatus;
 import com.group5.htms.enums.RaceStatus;
 import com.group5.htms.enums.TournamentStatus;
 import com.group5.htms.exception.BadRequestException;
 import com.group5.htms.exception.UnauthorizedException;
 import com.group5.htms.mapper.TournamentMapper;
+import com.group5.htms.repository.JockeyHorseAssignmentsRepository;
 import com.group5.htms.repository.PrizeRepository;
+import com.group5.htms.repository.RaceRegistrationsRepository;
 import com.group5.htms.repository.RacesRepository;
 import com.group5.htms.repository.TournamentSchedulesRepository;
 import com.group5.htms.repository.TournamentsRepository;
@@ -33,7 +41,9 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -44,6 +54,8 @@ public class TournamentServiceImpl implements TournamentService {
     private final TournamentSchedulesRepository tournamentSchedulesRepository;
     private final RacesRepository racesRepository;
     private final PrizeRepository prizeRepository;
+    private final RaceRegistrationsRepository raceRegistrationsRepository;
+    private final JockeyHorseAssignmentsRepository jockeyHorseAssignmentsRepository;
     private final TournamentMapper tournamentMapper;
 
     @Override
@@ -200,6 +212,121 @@ public class TournamentServiceImpl implements TournamentService {
                 .build();
     }
 
+    @Override
+    @Transactional
+    public CloseRegistrationResponse closeRegistration(Integer tournamentId, CloseRegistrationRequest request) {
+        if (tournamentId == null) {
+            throw new BadRequestException("Tournament id is required");
+        }
+
+        CloseRegistrationRequest closeRequest = request == null
+                ? new CloseRegistrationRequest()
+                : request;
+
+        Tournaments tournament = tournamentsRepository.findById(tournamentId)
+                .orElseThrow(() -> new BadRequestException("Tournament not found"));
+
+        if (!TournamentStatus.REGISTRATION_OPEN.equalsValue(tournament.getStatus())) {
+            throw new BadRequestException("Only registration open tournaments can be closed");
+        }
+
+        List<Races> registrationOpenRaces = racesRepository
+                .findBySchedule_Tournaments_IdAndStatusIgnoreCaseOrderByScheduledAtAsc(
+                        tournamentId,
+                        RaceStatus.REGISTRATION_OPEN.getValue()
+                );
+        List<RaceRegistrations> registrations = raceRegistrationsRepository.findByTournaments_Id(tournamentId)
+                .stream()
+                .filter(registration -> !RaceRegistrationStatus.DELETED.equalsValue(registration.getStatus()))
+                .toList();
+        List<JockeyHorseAssignments> assignments = jockeyHorseAssignmentsRepository.findByReg_IdIn(
+                registrations.stream().map(RaceRegistrations::getId).toList()
+        );
+        Set<Integer> confirmedRegistrationIds = assignments.stream()
+                .filter(assignment -> JockeyAssignmentStatus.CONFIRMED.equalsValue(assignment.getStatus()))
+                .map(assignment -> assignment.getReg().getId())
+                .collect(Collectors.toSet());
+
+        List<RaceRegistrations> pendingRegistrations = registrations.stream()
+                .filter(registration -> RaceRegistrationStatus.PENDING.equalsValue(registration.getStatus()))
+                .toList();
+        List<RaceRegistrations> approvedUnconfirmedRegistrations = registrations.stream()
+                .filter(registration -> RaceRegistrationStatus.APPROVED.equalsValue(registration.getStatus()))
+                .filter(registration -> !confirmedRegistrationIds.contains(registration.getId()))
+                .toList();
+
+        if (!pendingRegistrations.isEmpty() && !closeRequest.isAutoRejectPending()) {
+            throw new BadRequestException("There are still pending registrations");
+        }
+
+        if (!approvedUnconfirmedRegistrations.isEmpty() && !closeRequest.isAutoCancelUnconfirmed()) {
+            throw new BadRequestException("There are approved registrations without confirmed jockey assignments");
+        }
+
+        Instant now = Instant.now();
+        pendingRegistrations.forEach(registration ->
+                registration.setStatus(RaceRegistrationStatus.REJECTED.getValue())
+        );
+
+        if (closeRequest.isAutoCancelUnconfirmed()) {
+            approvedUnconfirmedRegistrations.forEach(registration ->
+                    registration.setStatus(RaceRegistrationStatus.CANCELLED.getValue())
+            );
+            assignments.stream()
+                    .filter(assignment -> approvedUnconfirmedRegistrations.stream()
+                            .anyMatch(registration -> registration.getId().equals(assignment.getReg().getId())))
+                    .filter(assignment -> JockeyAssignmentStatus.PENDING.equalsValue(assignment.getStatus())
+                            || JockeyAssignmentStatus.ACCEPTED.equalsValue(assignment.getStatus()))
+                    .forEach(assignment -> {
+                        assignment.setStatus(JockeyAssignmentStatus.CANCELLED.getValue());
+                        assignment.setCancelledAt(now);
+                    });
+        }
+
+        Map<Integer, Boolean> raceHasConfirmedAssignment = assignments.stream()
+                .filter(assignment -> JockeyAssignmentStatus.CONFIRMED.equalsValue(assignment.getStatus()))
+                .collect(Collectors.toMap(
+                        assignment -> assignment.getRaces().getId(),
+                        assignment -> true,
+                        (left, right) -> true
+                ));
+
+        int readyRaceCount = 0;
+        int closedRaceCount = 0;
+
+        for (Races race : registrationOpenRaces) {
+            if (Boolean.TRUE.equals(raceHasConfirmedAssignment.get(race.getId()))) {
+                race.setStatus(RaceStatus.READY.getValue());
+                readyRaceCount++;
+            } else {
+                race.setStatus(RaceStatus.REGISTRATION_CLOSED.getValue());
+                closedRaceCount++;
+            }
+        }
+
+        tournament.setStatus(TournamentStatus.REGISTRATION_CLOSED.getValue());
+
+        raceRegistrationsRepository.saveAll(registrations);
+        jockeyHorseAssignmentsRepository.saveAll(assignments);
+        racesRepository.saveAll(registrationOpenRaces);
+        Tournaments savedTournament = tournamentsRepository.save(tournament);
+
+        return CloseRegistrationResponse.builder()
+                .tournamentId(savedTournament.getId())
+                .tournamentName(savedTournament.getName())
+                .status(savedTournament.getStatus())
+                .rejectedPendingRegistrations(pendingRegistrations.size())
+                .cancelledUnconfirmedRegistrations(
+                        closeRequest.isAutoCancelUnconfirmed()
+                                ? approvedUnconfirmedRegistrations.size()
+                                : 0
+                )
+                .closedRaceCount(closedRaceCount)
+                .readyRaceCount(readyRaceCount)
+                .message("Registration closed successfully")
+                .build();
+    }
+
     private Tournaments getTournamentEntity(Integer tournamentId) {
         if (tournamentId == null) {
             throw new BadRequestException("Tournament id is required");
@@ -327,10 +454,8 @@ public class TournamentServiceImpl implements TournamentService {
 
         validateDateRange(startDate, endDate);
 
-        if (request.getStatus() != null
-                && !request.getStatus().isBlank()
-                && !TournamentStatus.isValid(request.getStatus())) {
-            throw new BadRequestException("Invalid tournament status");
+        if (request.getStatus() != null && !request.getStatus().isBlank()) {
+            throw new BadRequestException("Use workflow transition APIs to update status");
         }
     }
 

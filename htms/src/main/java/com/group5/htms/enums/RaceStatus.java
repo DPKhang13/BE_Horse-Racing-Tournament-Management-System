@@ -19,13 +19,17 @@ public enum RaceStatus {
         this.value = value;
     }
 
+    public boolean equalsValue(String value) {
+        return this.value.equalsIgnoreCase(clean(value));
+    }
+
     public static boolean isValid(String value) {
         if (value == null || value.isBlank()) {
             return false;
         }
 
         for (RaceStatus status : RaceStatus.values()) {
-            if (status.value.equalsIgnoreCase(value.trim())) {
+            if (status.equalsValue(value)) {
                 return true;
             }
         }
@@ -42,6 +46,17 @@ public enum RaceStatus {
     }
 
     public static boolean canStartRace(String status) {
+        return canStart(status);
+    }
+
+    public static boolean canStart(String status) {
+        String normalizedStatus = clean(status);
+
+        return READY.value.equals(normalizedStatus)
+                || OPEN_FOR_BETTING.value.equals(normalizedStatus);
+    }
+
+    public static boolean isBettingOpen(String status) {
         return OPEN_FOR_BETTING.value.equalsIgnoreCase(clean(status));
     }
 

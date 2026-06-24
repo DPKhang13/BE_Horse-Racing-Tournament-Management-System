@@ -1,9 +1,11 @@
 package com.group5.htms.service.impl;
 
 import com.group5.htms.dto.race.request.RaceCreateRequest;
+import com.group5.htms.dto.race.request.RaceStartRequest;
 import com.group5.htms.dto.race.request.RaceUpdateRequest;
 import com.group5.htms.dto.race.response.RaceListResponse;
 import com.group5.htms.dto.race.response.RaceResponse;
+import com.group5.htms.dto.race.response.RaceStartResponse;
 import com.group5.htms.dto.race.response.ScheduledRaceCountResponse;
 import com.group5.htms.dto.schedule.request.TournamentScheduleCreateRequest;
 import com.group5.htms.dto.schedule.request.TournamentScheduleUpdateRequest;
@@ -29,6 +31,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
@@ -37,6 +40,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class RaceServiceImpl implements RaceService {
     private static final ZoneId VIETNAM_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
+    private static final String ASSIGNMENT_STATUS_CONFIRMED = "confirmed";
 
     private final RacesRepository racesRepository;
     private final TournamentsRepository tournamentsRepository;
@@ -189,6 +193,30 @@ public class RaceServiceImpl implements RaceService {
         Races savedRace = racesRepository.save(race);
 
         return toDetailResponse(savedRace);
+    }
+
+    @Override
+    @Transactional
+    public RaceStartResponse startRace(Integer raceId, RaceStartRequest request) {
+        Races race = getRaceEntity(raceId);
+        String previousStatus = race.getStatus();
+
+        validateRaceCanStart(race, request);
+        validateRaceHasRequiredAssignments(race.getId());
+
+        race.setStatus(RaceStatus.IN_PROGRESS.getValue());
+        Races savedRace = racesRepository.save(race);
+
+        return RaceStartResponse.builder()
+                .raceId(savedRace.getId())
+                .raceName(savedRace.getName())
+                .previousStatus(previousStatus)
+                .status(savedRace.getStatus())
+                .scheduledAt(savedRace.getScheduledAt())
+                .predictionClosesAt(savedRace.getPredictionClosesAt())
+                .bettingClosed(true)
+                .message("Race started successfully")
+                .build();
     }
 
     @Override
@@ -407,7 +435,58 @@ public class RaceServiceImpl implements RaceService {
         }
 
         if (request.getStatus() != null && !request.getStatus().isBlank()) {
-            throw new BadRequestException("Use workflow transition APIs to update race status");
+            throw new BadRequestException("Use workflow transition APIs to update status");
+        }
+    }
+
+    private void validateRaceCanStart(Races race, RaceStartRequest request) {
+        String status = race.getStatus();
+
+        if (RaceStatus.CANCELLED.getValue().equalsIgnoreCase(status)) {
+            throw new BadRequestException("Cancelled race cannot be started");
+        }
+
+        if (RaceStatus.COMPLETED.getValue().equalsIgnoreCase(status)) {
+            throw new BadRequestException("Completed race cannot be started");
+        }
+
+        if (RaceStatus.IN_PROGRESS.getValue().equalsIgnoreCase(status)) {
+            throw new BadRequestException("Race is already in progress");
+        }
+
+        if (!RaceStatus.canStart(status)) {
+            throw new BadRequestException("Only ready or open for betting races can be started");
+        }
+
+        if (RaceStatus.isBettingOpen(status)) {
+            validateOpenBettingCanBeClosed(race, request);
+        }
+    }
+
+    private void validateOpenBettingCanBeClosed(Races race, RaceStartRequest request) {
+        Instant predictionClosesAt = race.getPredictionClosesAt();
+
+        if (predictionClosesAt == null) {
+            throw new BadRequestException("Prediction close time is required before starting race from betting status");
+        }
+
+        boolean forceCloseBetting = request != null && request.isForceCloseBetting();
+
+        if (Instant.now().isBefore(predictionClosesAt) && !forceCloseBetting) {
+            throw new BadRequestException("Prediction betting is still open. Use forceCloseBetting to start the race early");
+        }
+    }
+
+    private void validateRaceHasRequiredAssignments(Integer raceId) {
+        if (jockeyHorseAssignmentsRepository.countByRaces_IdAndStatusIgnoreCase(
+                raceId,
+                ASSIGNMENT_STATUS_CONFIRMED
+        ) < 1) {
+            throw new BadRequestException("Race must have at least one confirmed jockey assignment before starting");
+        }
+
+        if (raceRefereeAssignmentsRepository.countByRaces_Id(raceId) < 1) {
+            throw new BadRequestException("Race must have at least one assigned referee before starting");
         }
     }
 }

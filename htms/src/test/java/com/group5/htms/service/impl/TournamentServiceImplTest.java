@@ -10,6 +10,8 @@ import com.group5.htms.enums.TournamentStatus;
 import com.group5.htms.exception.BadRequestException;
 import com.group5.htms.mapper.TournamentMapper;
 import com.group5.htms.repository.PrizeRepository;
+import com.group5.htms.repository.JockeyHorseAssignmentsRepository;
+import com.group5.htms.repository.RaceRegistrationsRepository;
 import com.group5.htms.repository.RacesRepository;
 import com.group5.htms.repository.TournamentSchedulesRepository;
 import com.group5.htms.repository.TournamentsRepository;
@@ -54,6 +56,12 @@ class TournamentServiceImplTest {
     private PrizeRepository prizeRepository;
 
     @Mock
+    private RaceRegistrationsRepository raceRegistrationsRepository;
+
+    @Mock
+    private JockeyHorseAssignmentsRepository jockeyHorseAssignmentsRepository;
+
+    @Mock
     private TournamentMapper tournamentMapper;
 
     private TournamentServiceImpl service;
@@ -66,6 +74,8 @@ class TournamentServiceImplTest {
                 tournamentSchedulesRepository,
                 racesRepository,
                 prizeRepository,
+                raceRegistrationsRepository,
+                jockeyHorseAssignmentsRepository,
                 tournamentMapper
         );
     }
