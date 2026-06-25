@@ -3,18 +3,18 @@ package com.group5.htms.enums;
 import lombok.Getter;
 
 @Getter
-public enum TournamentStatus {
-
-    UPCOMING("upcoming"),
-    REGISTRATION_OPEN("registration_open"),
-    REGISTRATION_CLOSED("registration_closed"),
-    IN_PROGRESS("in_progress"),
-    COMPLETED("completed"),
-    CANCELLED("cancelled");
+public enum JockeyAssignmentStatus {
+    PENDING("pending"),
+    ACCEPTED("accepted"),
+    REJECTED("rejected"),
+    CANCELLED("cancelled"),
+    EXPIRED("expired"),
+    CONFIRMED("confirmed"),
+    DELETED("deleted");
 
     private final String value;
 
-    TournamentStatus(String value) {
+    JockeyAssignmentStatus(String value) {
         this.value = value;
     }
 
@@ -27,7 +27,7 @@ public enum TournamentStatus {
             return false;
         }
 
-        for (TournamentStatus status : TournamentStatus.values()) {
+        for (JockeyAssignmentStatus status : JockeyAssignmentStatus.values()) {
             if (status.equalsValue(value)) {
                 return true;
             }

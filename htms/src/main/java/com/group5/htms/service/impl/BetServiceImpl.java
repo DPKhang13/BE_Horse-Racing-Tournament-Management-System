@@ -12,6 +12,7 @@ import com.group5.htms.entity.Bets;
 import com.group5.htms.entity.Users;
 import com.group5.htms.entity.WalletTransactions;
 import com.group5.htms.entity.Wallets;
+import com.group5.htms.enums.RaceStatus;
 import com.group5.htms.enums.WalletStatus;
 import com.group5.htms.enums.WalletTransactionStatus;
 import com.group5.htms.enums.WalletTransactionType;
@@ -40,7 +41,6 @@ import java.util.Objects;
 public class BetServiceImpl implements BetService {
     private static final String STATUS_DELETED = "deleted";
     private static final String BET_STATUS_PENDING = "pending";
-    private static final String RACE_STATUS_OPEN_FOR_BETTING = "open_for_betting";
     private static final String REF_TYPE_BET = "bet";
 
     private final BetsRepository betsRepository;
@@ -187,8 +187,8 @@ public class BetServiceImpl implements BetService {
     private void validateRaceOpenForBetting(BetOptions option) {
         String status = option.getRaces().getStatus();
 
-        if (status == null || !RACE_STATUS_OPEN_FOR_BETTING.equalsIgnoreCase(status.trim())) {
-            throw new BadRequestException("Race is not open for betting");
+        if (status == null || !RaceStatus.OPEN_FOR_BETTING.getValue().equalsIgnoreCase(status.trim())) {
+            throw new BadRequestException("Betting is not open for this race");
         }
     }
 
@@ -196,7 +196,7 @@ public class BetServiceImpl implements BetService {
         Instant predictionClosesAt = option.getRaces().getPredictionClosesAt();
 
         if (predictionClosesAt != null && !Instant.now().isBefore(predictionClosesAt)) {
-            throw new BadRequestException("Prediction is already closed for this race");
+            throw new BadRequestException("Prediction time has closed");
         }
     }
 

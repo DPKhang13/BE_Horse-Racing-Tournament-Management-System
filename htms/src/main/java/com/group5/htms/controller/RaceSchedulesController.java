@@ -1,8 +1,10 @@
 package com.group5.htms.controller;
 
 import com.group5.htms.dto.race.request.RaceCreateRequest;
+import com.group5.htms.dto.race.request.RaceStartRequest;
 import com.group5.htms.dto.race.request.RaceUpdateRequest;
 import com.group5.htms.dto.race.response.RaceResponse;
+import com.group5.htms.dto.race.response.RaceStartResponse;
 import com.group5.htms.dto.schedule.request.TournamentScheduleCreateRequest;
 import com.group5.htms.dto.schedule.request.TournamentScheduleUpdateRequest;
 import com.group5.htms.dto.schedule.response.TournamentScheduleResponse;
@@ -117,6 +119,20 @@ public class RaceSchedulesController {
     ) {
         return ResponseEntity.ok(
                 raceService.updateRace(raceId, request)
+        );
+    }
+
+    @Operation(
+            summary = "Start race",
+            description = "Admin chuyển race sang trạng thái in_progress và đóng betting nếu cần."
+    )
+    @PatchMapping("/races/{raceId}/start")
+    public ResponseEntity<RaceStartResponse> startRace(
+            @PathVariable Integer raceId,
+            @Valid @RequestBody(required = false) RaceStartRequest request
+    ) {
+        return ResponseEntity.ok(
+                raceService.startRace(raceId, request)
         );
     }
 

@@ -9,6 +9,9 @@ import com.group5.htms.entity.JockeyHorseAssignments;
 import com.group5.htms.entity.JockeyProfiles;
 import com.group5.htms.entity.RaceRegistrations;
 import com.group5.htms.entity.Races;
+import com.group5.htms.enums.JockeyAssignmentStatus;
+import com.group5.htms.enums.RaceRegistrationStatus;
+import com.group5.htms.enums.RaceStatus;
 import com.group5.htms.exception.BadRequestException;
 import com.group5.htms.exception.ResourceNotFoundException;
 import com.group5.htms.mapper.JockeyAssignmentMapper;
@@ -23,16 +26,25 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
     private static final String STATUS_DELETED = "deleted";
-    private static final String STATUS_ACCEPTED = "accepted";
-    private static final String JOCKEY_STATUS_UNAVAILABLE = "unavailable";
+    private static final String STATUS_ACTIVE = "active";
+    private static final String STATUS_AVAILABLE = "available";
+    private static final Duration DEFAULT_RESPONSE_DURATION = Duration.ofHours(24);
+    private static final Duration REGISTRATION_CLOSE_BUFFER = Duration.ofHours(2);
+    private static final Set<String> ACTIVE_ASSIGNMENT_STATUSES = Set.of(
+            JockeyAssignmentStatus.PENDING.getValue(),
+            JockeyAssignmentStatus.ACCEPTED.getValue(),
+            JockeyAssignmentStatus.CONFIRMED.getValue()
+    );
 
     private final JockeyHorseAssignmentsRepository jockeyHorseAssignmentsRepository;
     private final RaceRegistrationsRepository raceRegistrationsRepository;
@@ -80,13 +92,25 @@ public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
     @Override
     @Transactional
     public JockeyAssignmentResponse createInvitation(JockeyInvitationCreateRequest request) {
-        validateCreateReferences(request);
-        validateRegistrationBelongsToCurrentOwner(request.getRegistrationId());
-        validateRaceMatchesRegistration(request.getRaceId(), request.getRegistrationId());
-        validateRaceJockeyAvailable(request.getRaceId(), request.getJockeyId());
-        validateRaceGateAvailable(request.getRaceId(), request.getGateNumber());
+        Instant now = Instant.now();
+        RaceRegistrations registration = findRegistrationEntity(request.getRegistrationId());
+        Races race = findRaceEntity(request.getRaceId());
+        JockeyProfiles jockey = findJockeyEntity(request.getJockeyId());
+
+        validateRegistrationBelongsToCurrentOwner(registration);
+        validateRegistrationCanInviteJockey(registration);
+        validateRaceMatchesRegistration(race, registration);
+        validateRegistrationStillOpen(registration, race);
+        validateJockeyCanBeInvited(jockey);
+        validateRegistrationHasNoActiveAssignment(registration.getId(), now);
+        validateRaceJockeyAvailable(request.getRaceId(), request.getJockeyId(), now);
+        validateRaceGateAvailable(request.getRaceId(), request.getGateNumber(), now);
+
         JockeyHorseAssignments assignment = jockeyAssignmentMapper.toEntity(request);
-        attachCreateReferences(assignment, request);
+        attachCreateReferences(assignment, registration, race, jockey);
+        assignment.setStatus(JockeyAssignmentStatus.PENDING.getValue());
+        assignment.setInvitedAt(now);
+        assignment.setResponseDeadline(calculateResponseDeadline(registration, now));
 
         return jockeyAssignmentMapper.toResponse(jockeyHorseAssignmentsRepository.save(assignment));
     }
@@ -95,6 +119,7 @@ public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
     @Transactional
     public JockeyAssignmentResponse updateInvitation(Integer id, JockeyInvitationUpdateRequest request) {
         JockeyHorseAssignments assignment = findAssignmentForCurrentOwner(id);
+        validateNoDirectStatusUpdate(request);
         validateUpdateReferences(request);
         if (request.getRegistrationId() != null) {
             validateRegistrationBelongsToCurrentOwner(request.getRegistrationId());
@@ -123,13 +148,73 @@ public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
     @Transactional
     public JockeyAssignmentResponse respondInvitation(Integer id, JockeyInvitationResponseRequest request) {
         JockeyHorseAssignments assignment = findAssignmentForCurrentJockey(id);
+        Instant now = Instant.now();
 
         String responseStatus = request.getStatus().trim();
-        assignment.setStatus(responseStatus);
-        assignment.setRespondedAt(request.getRespondedAt() == null ? Instant.now() : request.getRespondedAt());
-        if (STATUS_ACCEPTED.equalsIgnoreCase(responseStatus)) {
-            assignment.getJockey().setStatus(JOCKEY_STATUS_UNAVAILABLE);
+        validateResponseStatus(responseStatus);
+
+        if (!JockeyAssignmentStatus.PENDING.equalsValue(assignment.getStatus())) {
+            throw new BadRequestException("Only pending invitations can be responded to");
         }
+
+        if (isPendingExpired(assignment, now)) {
+            assignment.setStatus(JockeyAssignmentStatus.EXPIRED.getValue());
+            assignment.setExpiredAt(now);
+            jockeyHorseAssignmentsRepository.save(assignment);
+            throw new BadRequestException("Jockey invitation has expired");
+        }
+
+        validateRegistrationStillOpen(assignment.getReg(), assignment.getRaces());
+
+        assignment.setStatus(responseStatus);
+        assignment.setRespondedAt(request.getRespondedAt() == null ? now : request.getRespondedAt());
+
+        if (JockeyAssignmentStatus.ACCEPTED.equalsValue(responseStatus)) {
+            assignment.getReg().setJockey(assignment.getJockey());
+        }
+
+        return jockeyAssignmentMapper.toResponse(jockeyHorseAssignmentsRepository.save(assignment));
+    }
+
+    @Override
+    @Transactional
+    public JockeyAssignmentResponse cancelInvitation(Integer id) {
+        JockeyHorseAssignments assignment = findAssignmentForCurrentOwner(id);
+
+        if (!JockeyAssignmentStatus.PENDING.equalsValue(assignment.getStatus())) {
+            throw new BadRequestException("Only pending jockey invitations can be cancelled");
+        }
+
+        validateRegistrationStillOpen(assignment.getReg(), assignment.getRaces());
+
+        assignment.setStatus(JockeyAssignmentStatus.CANCELLED.getValue());
+        assignment.setCancelledAt(Instant.now());
+
+        return jockeyAssignmentMapper.toResponse(jockeyHorseAssignmentsRepository.save(assignment));
+    }
+
+    @Override
+    @Transactional
+    public JockeyAssignmentResponse confirmAssignment(Integer id) {
+        JockeyHorseAssignments assignment = findAssignmentForCurrentOwner(id);
+        RaceRegistrations registration = assignment.getReg();
+
+        if (!JockeyAssignmentStatus.ACCEPTED.equalsValue(assignment.getStatus())) {
+            throw new BadRequestException("Only accepted assignments can be confirmed");
+        }
+
+        if (!RaceRegistrationStatus.APPROVED.equalsValue(registration.getStatus())) {
+            throw new BadRequestException("Only approved registrations can be confirmed");
+        }
+
+        validateRegistrationStillOpen(registration, assignment.getRaces());
+
+        Instant now = Instant.now();
+        assignment.setStatus(JockeyAssignmentStatus.CONFIRMED.getValue());
+        registration.setOwnerConfirmationStatus(JockeyAssignmentStatus.CONFIRMED.getValue());
+        registration.setOwnerConfirmedAt(now);
+        registration.setJockey(assignment.getJockey());
+        raceRegistrationsRepository.save(registration);
 
         return jockeyAssignmentMapper.toResponse(jockeyHorseAssignmentsRepository.save(assignment));
     }
@@ -170,12 +255,6 @@ public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
         return assignment;
     }
 
-    private void validateCreateReferences(JockeyInvitationCreateRequest request) {
-        validateRegistrationExists(request.getRegistrationId());
-        validateRaceExists(request.getRaceId());
-        validateJockeyExists(request.getJockeyId());
-    }
-
     private void validateUpdateReferences(JockeyInvitationUpdateRequest request) {
         if (request.getRegistrationId() != null) {
             validateRegistrationExists(request.getRegistrationId());
@@ -188,14 +267,25 @@ public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
         }
     }
 
-    private void attachCreateReferences(JockeyHorseAssignments assignment, JockeyInvitationCreateRequest request) {
-        RaceRegistrations registration = raceRegistrationsRepository.findById(request.getRegistrationId())
-                .orElseThrow(() -> new ResourceNotFoundException("Race registration not found"));
-        Races race = racesRepository.findById(request.getRaceId())
-                .orElseThrow(() -> new ResourceNotFoundException("Race not found"));
-        JockeyProfiles jockey = jockeyProfilesRepository.findById(request.getJockeyId())
-                .orElseThrow(() -> new ResourceNotFoundException("Jockey profile not found"));
+    private void validateNoDirectStatusUpdate(JockeyInvitationUpdateRequest request) {
+        if (request.getStatus() != null && !request.getStatus().isBlank()) {
+            throw new BadRequestException("Use workflow transition APIs to update status");
+        }
+    }
 
+    private void validateResponseStatus(String status) {
+        if (!JockeyAssignmentStatus.ACCEPTED.equalsValue(status)
+                && !JockeyAssignmentStatus.REJECTED.equalsValue(status)) {
+            throw new BadRequestException("Invalid response status");
+        }
+    }
+
+    private void attachCreateReferences(
+            JockeyHorseAssignments assignment,
+            RaceRegistrations registration,
+            Races race,
+            JockeyProfiles jockey
+    ) {
         assignment.setReg(registration);
         assignment.setRaces(race);
         assignment.setJockey(jockey);
@@ -219,6 +309,15 @@ public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
         }
     }
 
+    private void validateRegistrationBelongsToCurrentOwner(RaceRegistrations registration) {
+        Integer ownerId = authService.getCurrentUserId();
+
+        if (registration.getOwner() == null
+                || !Objects.equals(registration.getOwner().getId(), ownerId)) {
+            throw new AccessDeniedException("You do not own this race registration");
+        }
+    }
+
     private void validateRaceExists(Integer id) {
         if (!racesRepository.existsById(id)) {
             throw new ResourceNotFoundException("Race not found");
@@ -235,6 +334,12 @@ public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
         }
     }
 
+    private void validateRaceMatchesRegistration(Races race, RaceRegistrations registration) {
+        if (!Objects.equals(registration.getRaces().getId(), race.getId())) {
+            throw new BadRequestException("Race does not match this registration");
+        }
+    }
+
     private void validateJockeyExists(Integer id) {
         if (!jockeyProfilesRepository.existsById(id)) {
             throw new ResourceNotFoundException("Jockey profile not found");
@@ -247,9 +352,43 @@ public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
         }
     }
 
+    private void validateRaceJockeyAvailable(Integer raceId, Integer jockeyId, Instant now) {
+        List<JockeyHorseAssignments> assignments =
+                jockeyHorseAssignmentsRepository.findByRaces_IdAndJockey_IdAndStatusIn(
+                        raceId,
+                        jockeyId,
+                        ACTIVE_ASSIGNMENT_STATUSES
+                );
+
+        expirePendingAssignmentsIfNeeded(assignments, now);
+
+        if (assignments.stream().anyMatch(assignment -> isStillActive(assignment, now))) {
+            throw new BadRequestException("Jockey is already assigned to this race");
+        }
+    }
+
     private void validateRaceGateAvailable(Integer raceId, Integer gateNumber) {
         if (gateNumber != null
                 && jockeyHorseAssignmentsRepository.existsByRaces_IdAndGateNumber(raceId, gateNumber)) {
+            throw new BadRequestException("Gate number is already used in this race");
+        }
+    }
+
+    private void validateRaceGateAvailable(Integer raceId, Integer gateNumber, Instant now) {
+        if (gateNumber == null) {
+            return;
+        }
+
+        List<JockeyHorseAssignments> assignments =
+                jockeyHorseAssignmentsRepository.findByRaces_IdAndGateNumberAndStatusIn(
+                        raceId,
+                        gateNumber,
+                        ACTIVE_ASSIGNMENT_STATUSES
+                );
+
+        expirePendingAssignmentsIfNeeded(assignments, now);
+
+        if (assignments.stream().anyMatch(assignment -> isStillActive(assignment, now))) {
             throw new BadRequestException("Gate number is already used in this race");
         }
     }
@@ -285,6 +424,134 @@ public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
 
     private boolean isDeleted(String status) {
         return STATUS_DELETED.equalsIgnoreCase(status);
+    }
+
+    private RaceRegistrations findRegistrationEntity(Integer id) {
+        return raceRegistrationsRepository.findById(id)
+                .filter(registration -> !isDeleted(registration.getStatus()))
+                .orElseThrow(() -> new ResourceNotFoundException("Race registration not found"));
+    }
+
+    private Races findRaceEntity(Integer id) {
+        return racesRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Race not found"));
+    }
+
+    private JockeyProfiles findJockeyEntity(Integer id) {
+        return jockeyProfilesRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Jockey profile not found"));
+    }
+
+    private void validateRegistrationCanInviteJockey(RaceRegistrations registration) {
+        if (!RaceRegistrationStatus.APPROVED.equalsValue(registration.getStatus())) {
+            throw new BadRequestException("Only approved registrations can invite jockeys");
+        }
+    }
+
+    private void validateRegistrationStillOpen(RaceRegistrations registration, Races race) {
+        validateRegistrationStillOpen(registration.getTournaments(), race);
+    }
+
+    private void validateRegistrationStillOpen(RaceRegistrations registration) {
+        validateRegistrationStillOpen(registration, registration.getRaces());
+    }
+
+    private void validateRegistrationStillOpen(com.group5.htms.entity.Tournaments tournament, Races race) {
+        if (!com.group5.htms.enums.TournamentStatus.REGISTRATION_OPEN.equalsValue(tournament.getStatus())) {
+            throw new BadRequestException("Registration is not open for this tournament");
+        }
+
+        if (!RaceStatus.REGISTRATION_OPEN.equalsValue(race.getStatus())) {
+            throw new BadRequestException("Registration is not open for this race");
+        }
+    }
+
+    private void validateJockeyCanBeInvited(JockeyProfiles jockey) {
+        if (jockey.getUsers() == null
+                || jockey.getUsers().getRoleType() == null
+                || !com.group5.htms.enums.RoleType.JOCKEY.getValue()
+                .equalsIgnoreCase(jockey.getUsers().getRoleType().trim())) {
+            throw new BadRequestException("Jockey profile not found");
+        }
+
+        if (jockey.getUsers().getStatus() == null
+                || !STATUS_ACTIVE.equalsIgnoreCase(jockey.getUsers().getStatus().trim())) {
+            throw new BadRequestException("Jockey user account is not active");
+        }
+
+        if (jockey.getStatus() == null
+                || (!STATUS_ACTIVE.equalsIgnoreCase(jockey.getStatus().trim())
+                && !STATUS_AVAILABLE.equalsIgnoreCase(jockey.getStatus().trim()))) {
+            throw new BadRequestException("Jockey profile is not active");
+        }
+    }
+
+    private void validateRegistrationHasNoActiveAssignment(Integer registrationId, Instant now) {
+        List<JockeyHorseAssignments> assignments =
+                jockeyHorseAssignmentsRepository.findByReg_IdAndStatusIn(
+                        registrationId,
+                        ACTIVE_ASSIGNMENT_STATUSES
+                );
+
+        expirePendingAssignmentsIfNeeded(assignments, now);
+
+        boolean hasPending = assignments.stream()
+                .anyMatch(assignment -> JockeyAssignmentStatus.PENDING.equalsValue(assignment.getStatus()));
+
+        if (hasPending) {
+            throw new BadRequestException("This registration already has a pending jockey invitation");
+        }
+
+        boolean hasAcceptedOrConfirmed = assignments.stream()
+                .anyMatch(assignment -> JockeyAssignmentStatus.ACCEPTED.equalsValue(assignment.getStatus())
+                        || JockeyAssignmentStatus.CONFIRMED.equalsValue(assignment.getStatus()));
+
+        if (hasAcceptedOrConfirmed) {
+            throw new BadRequestException("This registration already has an active jockey assignment");
+        }
+    }
+
+    private void expirePendingAssignmentsIfNeeded(List<JockeyHorseAssignments> assignments, Instant now) {
+        assignments.stream()
+                .filter(assignment -> JockeyAssignmentStatus.PENDING.equalsValue(assignment.getStatus()))
+                .filter(assignment -> isPendingExpired(assignment, now))
+                .forEach(assignment -> {
+                    assignment.setStatus(JockeyAssignmentStatus.EXPIRED.getValue());
+                    assignment.setExpiredAt(now);
+                    jockeyHorseAssignmentsRepository.save(assignment);
+                });
+    }
+
+    private boolean isStillActive(JockeyHorseAssignments assignment, Instant now) {
+        if (JockeyAssignmentStatus.PENDING.equalsValue(assignment.getStatus())) {
+            return !isPendingExpired(assignment, now);
+        }
+
+        return JockeyAssignmentStatus.ACCEPTED.equalsValue(assignment.getStatus())
+                || JockeyAssignmentStatus.CONFIRMED.equalsValue(assignment.getStatus());
+    }
+
+    private boolean isPendingExpired(JockeyHorseAssignments assignment, Instant now) {
+        Instant responseDeadline = assignment.getResponseDeadline();
+
+        return responseDeadline != null && !now.isBefore(responseDeadline);
+    }
+
+    private Instant calculateResponseDeadline(RaceRegistrations registration, Instant now) {
+        Instant deadline = now.plus(DEFAULT_RESPONSE_DURATION);
+
+        if (registration.getTournaments() != null
+                && registration.getTournaments().getRegistrationCloseAt() != null) {
+            Instant closeBufferDeadline = registration.getTournaments()
+                    .getRegistrationCloseAt()
+                    .minus(REGISTRATION_CLOSE_BUFFER);
+
+            if (closeBufferDeadline.isBefore(deadline)) {
+                deadline = closeBufferDeadline;
+            }
+        }
+
+        return deadline;
     }
 
     private List<JockeyHorseAssignments> findAssignmentsByJockey(Integer jockeyId, String status) {

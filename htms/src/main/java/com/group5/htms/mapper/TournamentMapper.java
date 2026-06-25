@@ -79,6 +79,8 @@ public class TournamentMapper {
                 .endDate(tournament.getEndDate())
                 .prizePool(defaultPrizePool(tournament.getPrizePool()))
                 .status(tournament.getStatus())
+                .registrationOpenAt(tournament.getRegistrationOpenAt())
+                .registrationCloseAt(tournament.getRegistrationCloseAt())
                 .createdByUserId(
                         tournament.getCreatedBy() != null
                                 ? tournament.getCreatedBy().getId()
@@ -121,6 +123,8 @@ public class TournamentMapper {
                 .endDate(tournament.getEndDate())
                 .prizePool(defaultPrizePool(tournament.getPrizePool()))
                 .status(tournament.getStatus())
+                .registrationOpenAt(tournament.getRegistrationOpenAt())
+                .registrationCloseAt(tournament.getRegistrationCloseAt())
                 .createdByUserId(
                         tournament.getCreatedBy() != null
                                 ? tournament.getCreatedBy().getId()
@@ -161,6 +165,8 @@ public class TournamentMapper {
                 .endDate(tournament.getEndDate())
                 .prizePool(defaultPrizePool(tournament.getPrizePool()))
                 .status(tournament.getStatus())
+                .registrationOpenAt(tournament.getRegistrationOpenAt())
+                .registrationCloseAt(tournament.getRegistrationCloseAt())
                 .createdByFullName(
                         tournament.getCreatedBy() != null
                                 ? tournament.getCreatedBy().getFullName()

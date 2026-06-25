@@ -6,9 +6,12 @@ import com.group5.htms.entity.RaceRefereeAssignments;
 import com.group5.htms.entity.Races;
 import com.group5.htms.entity.RefereeProfiles;
 import com.group5.htms.entity.Users;
+import com.group5.htms.enums.JockeyAssignmentStatus;
+import com.group5.htms.enums.RaceStatus;
 import com.group5.htms.enums.RoleType;
 import com.group5.htms.exception.BadRequestException;
 import com.group5.htms.mapper.RefereeAssignmentMapper;
+import com.group5.htms.repository.JockeyHorseAssignmentsRepository;
 import com.group5.htms.repository.RaceRefereeAssignmentsRepository;
 import com.group5.htms.repository.RacesRepository;
 import com.group5.htms.repository.RefereeProfilesRepository;
@@ -27,8 +30,6 @@ public class RefereeAssignmentServiceImpl implements RefereeAssignmentService {
 
     private static final int DEFAULT_MAX_REFEREES = 3;
     private static final String STATUS_ACTIVE = "active";
-    private static final String STATUS_SCHEDULED = "scheduled";
-    private static final String STATUS_UPCOMING = "upcoming";
     private static final String ROLE_CHIEF_REFEREE = "chief_referee";
     private static final String ROLE_MAIN_REFEREE = "main_referee";
 
@@ -43,6 +44,7 @@ public class RefereeAssignmentServiceImpl implements RefereeAssignmentService {
     private final RacesRepository racesRepository;
     private final RefereeProfilesRepository refereeProfilesRepository;
     private final RaceRefereeAssignmentsRepository raceRefereeAssignmentsRepository;
+    private final JockeyHorseAssignmentsRepository jockeyHorseAssignmentsRepository;
     private final RefereeAssignmentMapper refereeAssignmentMapper;
 
     @Override
@@ -67,6 +69,7 @@ public class RefereeAssignmentServiceImpl implements RefereeAssignmentService {
                 .orElseThrow(() -> new BadRequestException("Referee not found"));
 
         validateRaceCanAssignReferee(race);
+        validateRaceHasConfirmedAssignment(race);
         validateReferee(referee);
         validateDuplicateReferee(raceId, referee.getId());
         validateMaxReferees(race);
@@ -110,14 +113,24 @@ public class RefereeAssignmentServiceImpl implements RefereeAssignmentService {
         String status = race.getStatus();
 
         if (status == null) {
-            throw new BadRequestException("Only scheduled or upcoming races can have referees assigned");
+            throw new BadRequestException("Referees can only be assigned after registration is closed or race is ready");
         }
 
-        String normalizedStatus = status.trim().toLowerCase();
+        if (!RaceStatus.REGISTRATION_CLOSED.equalsValue(status)
+                && !RaceStatus.READY.equalsValue(status)) {
+            throw new BadRequestException("Referees can only be assigned after registration is closed or race is ready");
+        }
+    }
 
-        if (!STATUS_SCHEDULED.equals(normalizedStatus)
-                && !STATUS_UPCOMING.equals(normalizedStatus)) {
-            throw new BadRequestException("Only scheduled or upcoming races can have referees assigned");
+    private void validateRaceHasConfirmedAssignment(Races race) {
+        long confirmedAssignmentCount =
+                jockeyHorseAssignmentsRepository.countByRaces_IdAndStatusIgnoreCase(
+                        race.getId(),
+                        JockeyAssignmentStatus.CONFIRMED.getValue()
+                );
+
+        if (confirmedAssignmentCount < 1) {
+            throw new BadRequestException("Race must have at least one confirmed jockey assignment before assigning referees");
         }
     }
 

@@ -19,6 +19,4 @@ public class RaceRegistrationCreateRequest {
 
     @Schema(hidden = true)
     private Integer ownerId;
-
-    private Integer jockeyId;
 }
