@@ -4,10 +4,14 @@ import com.group5.htms.dto.race.request.RaceCreateRequest;
 import com.group5.htms.dto.race.request.RaceUpdateRequest;
 import com.group5.htms.dto.race.response.RaceListResponse;
 import com.group5.htms.dto.race.response.RaceResponse;
+import com.group5.htms.dto.racepointrule.response.RacePointRuleResponse;
+import com.group5.htms.entity.RacePointRules;
 import com.group5.htms.entity.Races;
 import com.group5.htms.entity.TournamentSchedules;
 import com.group5.htms.entity.Tournaments;
 import org.springframework.stereotype.Component;
+
+import java.util.List;
 
 @Component
 public class RaceMapper {
@@ -33,20 +37,20 @@ public class RaceMapper {
                 .trackType(clean(request.getTrackType()))
                 .maxHorses(request.getMaxHorses() == null ? DEFAULT_MAX_HORSES : request.getMaxHorses())
                 .maxReferees(request.getMaxReferees() == null ? DEFAULT_MAX_REFEREES : request.getMaxReferees())
-                .pointRuleNote(clean(request.getPointRuleNote()))
                 .status(defaultStatus(request.getStatus()))
                 .build();
     }
 
     public RaceResponse toResponse(Races race) {
-        return toResponse(race, null, null, null);
+        return toResponse(race, null, null, null, null);
     }
 
     public RaceResponse toResponse(
             Races race,
             Long registeredHorseCount,
             Long acceptedJockeyCount,
-            Long assignedRefereeCount
+            Long assignedRefereeCount,
+            List<RacePointRules> pointRules
     ) {
         TournamentSchedules schedule = race.getSchedule();
         Tournaments tournament = schedule.getTournaments();
@@ -66,7 +70,6 @@ public class RaceMapper {
                 .trackType(race.getTrackType())
                 .maxHorses(race.getMaxHorses())
                 .maxReferees(race.getMaxReferees())
-                .pointRuleNote(race.getPointRuleNote())
                 .status(race.getStatus())
                 .tournamentName(tournament.getName())
                 .raceDate(schedule.getRaceDate())
@@ -77,6 +80,7 @@ public class RaceMapper {
                 .registeredHorseCount(registeredHorseCount)
                 .acceptedJockeyCount(acceptedJockeyCount)
                 .assignedRefereeCount(assignedRefereeCount)
+                .pointRules(pointRules == null ? null : pointRules.stream().map(this::toPointRuleResponse).toList())
                 .build();
     }
 
@@ -158,13 +162,23 @@ public class RaceMapper {
             race.setMaxReferees(request.getMaxReferees());
         }
 
-        if (request.getPointRuleNote() != null) {
-            race.setPointRuleNote(clean(request.getPointRuleNote()));
-        }
-
         if (request.getStatus() != null) {
             race.setStatus(defaultStatus(request.getStatus()));
         }
+    }
+
+    private RacePointRuleResponse toPointRuleResponse(RacePointRules rule) {
+        if (rule == null) {
+            return null;
+        }
+
+        return RacePointRuleResponse.builder()
+                .id(rule.getId())
+                .raceId(rule.getRace() == null ? null : rule.getRace().getId())
+                .finishPosition(rule.getFinishPosition())
+                .points(rule.getPoints())
+                .note(rule.getNote())
+                .build();
     }
 
     private String defaultStatus(String value) {

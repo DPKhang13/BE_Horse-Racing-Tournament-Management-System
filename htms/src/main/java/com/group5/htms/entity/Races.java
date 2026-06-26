@@ -69,9 +69,6 @@ public class Races {
     @Column(name = "max_referees", nullable = false)
     private Integer maxReferees;
 
-    @Column(name = "point_rule_note", length = Integer.MAX_VALUE)
-    private String pointRuleNote;
-
     @Size(max = 20)
     @NotNull
     @ColumnDefault("'scheduled'")
