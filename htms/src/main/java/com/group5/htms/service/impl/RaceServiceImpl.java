@@ -10,8 +10,6 @@ import com.group5.htms.dto.race.response.ScheduledRaceCountResponse;
 import com.group5.htms.dto.schedule.request.TournamentScheduleCreateRequest;
 import com.group5.htms.dto.schedule.request.TournamentScheduleUpdateRequest;
 import com.group5.htms.dto.schedule.response.TournamentScheduleResponse;
-import com.group5.htms.dto.racepointrule.request.RacePointRuleItemRequest;
-import com.group5.htms.entity.RacePointRules;
 import com.group5.htms.entity.Races;
 import com.group5.htms.entity.TournamentSchedules;
 import com.group5.htms.entity.Tournaments;
@@ -107,7 +105,6 @@ public class RaceServiceImpl implements RaceService {
 
         Races race = raceMapper.toEntity(request, schedule);
         Races savedRace = racesRepository.save(race);
-        savePointRules(savedRace, request.getPointRules());
 
         return raceMapper.toResponse(
                 savedRace,
@@ -185,10 +182,6 @@ public class RaceServiceImpl implements RaceService {
 
         raceMapper.updateEntity(race, request);
         Races savedRace = racesRepository.save(race);
-        if (request.getPointRules() != null) {
-            racePointRulesRepository.deleteByRace_Id(savedRace.getId());
-            savePointRules(savedRace, request.getPointRules());
-        }
 
         return toDetailResponse(savedRace);
     }
@@ -278,30 +271,6 @@ public class RaceServiceImpl implements RaceService {
                 raceRefereeAssignmentsRepository.countByRaces_Id(raceId),
                 racePointRulesRepository.findByRace_IdOrderByFinishPositionAsc(raceId)
         );
-    }
-
-    private void savePointRules(Races race, List<RacePointRuleItemRequest> pointRules) {
-        if (pointRules == null) {
-            return;
-        }
-
-        for (RacePointRuleItemRequest item : pointRules) {
-            if (item == null) {
-                continue;
-            }
-
-            if (racePointRulesRepository.existsByRace_IdAndFinishPosition(race.getId(), item.getFinishPosition())) {
-                throw new BadRequestException("Finish position already exists in race point rules");
-            }
-
-            RacePointRules rule = RacePointRules.builder()
-                    .race(race)
-                    .finishPosition(item.getFinishPosition())
-                    .points(item.getPoints())
-                    .note(item.getNote() == null ? null : item.getNote().trim())
-                    .build();
-            racePointRulesRepository.save(rule);
-        }
     }
 
     private TournamentSchedules getScheduleEntity(Integer scheduleId) {

@@ -9,9 +9,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
-import java.util.List;
-
-import com.group5.htms.dto.racepointrule.request.RacePointRuleItemRequest;
 
 @Data
 @Builder
@@ -46,8 +43,6 @@ public class RaceUpdateRequest {
 
     @Min(value = 1, message = "Max referees must be greater than or equal to 1")
     private Integer maxReferees;
-
-    private List<RacePointRuleItemRequest> pointRules;
 
     @Size(max = 20, message = "Status must not exceed 20 characters")
     private String status;
