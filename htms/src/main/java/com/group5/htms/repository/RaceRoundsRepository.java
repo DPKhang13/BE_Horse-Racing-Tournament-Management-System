@@ -10,6 +10,8 @@ import java.util.List;
 public interface RaceRoundsRepository extends JpaRepository<RaceRounds, Integer> {
     List<RaceRounds> findByRaces_IdOrderByRoundNumberAscPositionAsc(Integer raceId);
 
+    List<RaceRounds> findByRaces_IdOrderByAssignment_IdAscRoundNumberAsc(Integer raceId);
+
     List<RaceRounds> findByAssignment_IdOrderByRoundNumberAsc(Integer assignmentId);
 
     boolean existsByRaces_IdAndAssignment_IdAndRoundNumber(Integer raceId, Integer assignmentId, Integer roundNumber);

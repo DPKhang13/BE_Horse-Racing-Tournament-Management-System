@@ -18,4 +18,6 @@ public interface RaceResultService {
     RaceResultResponse updateResult(Integer id, RaceResultUpdateRequest request);
 
     RaceResultResponse publishResult(Integer id, RaceResultPublishRequest request);
+
+    List<RaceResultListResponse> calculateResultsFromRounds(Integer raceId);
 }
