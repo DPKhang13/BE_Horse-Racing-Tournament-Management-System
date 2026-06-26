@@ -27,7 +27,7 @@ public class RaceResultMapper {
                 .finalRound(request.getFinalRound())
                 .finishPosition(request.getFinishPosition())
                 .finishTimeSec(request.getFinishTimeSec())
-                .pointsAwarded(defaultZero(request.getPointsAwarded()))
+                .pointsAwarded(0)
                 .isDisqualified(request.getIsDisqualified() != null && request.getIsDisqualified())
                 .disqualifyReason(trim(request.getDisqualifyReason()))
                 .status(defaultText(request.getStatus(), RaceResultStatus.DRAFT.getValue()))
@@ -54,9 +54,6 @@ public class RaceResultMapper {
         }
         if (request.getFinishTimeSec() != null) {
             result.setFinishTimeSec(request.getFinishTimeSec());
-        }
-        if (request.getPointsAwarded() != null) {
-            result.setPointsAwarded(request.getPointsAwarded());
         }
         if (request.getIsDisqualified() != null) {
             result.setIsDisqualified(request.getIsDisqualified());
@@ -179,9 +176,6 @@ public class RaceResultMapper {
         return id == null ? null : toReport(id);
     }
 
-    private Integer defaultZero(Integer value) {
-        return value == null ? 0 : value;
-    }
 
     private String defaultText(String value, String defaultValue) {
         return value == null || value.isBlank() ? defaultValue : value.trim();

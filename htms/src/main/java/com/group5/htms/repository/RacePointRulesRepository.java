@@ -5,10 +5,13 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface RacePointRulesRepository extends JpaRepository<RacePointRules, Integer> {
     List<RacePointRules> findByRace_IdOrderByFinishPositionAsc(Integer raceId);
+
+    Optional<RacePointRules> findByRace_IdAndFinishPosition(Integer raceId, Integer finishPosition);
 
     boolean existsByRace_IdAndFinishPosition(Integer raceId, Integer finishPosition);
 

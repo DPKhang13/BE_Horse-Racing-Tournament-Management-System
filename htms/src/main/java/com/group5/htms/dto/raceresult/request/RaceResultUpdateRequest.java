@@ -22,8 +22,6 @@ public class RaceResultUpdateRequest {
     @DecimalMin(value = "0.0", inclusive = false, message = "Finish time must be greater than 0")
     private BigDecimal finishTimeSec;
 
-    @Min(value = 0, message = "Points awarded must be greater than or equal to 0")
-    private Integer pointsAwarded;
 
     private Boolean isDisqualified;
 
