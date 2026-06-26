@@ -21,6 +21,4 @@ public interface HorseService {
     HorseResponse createHorse(HorseCreateRequest request);
 
     HorseResponse updateHorse(Integer id, HorseUpdateRequest request);
-
-    void deleteHorse(Integer id);
 }

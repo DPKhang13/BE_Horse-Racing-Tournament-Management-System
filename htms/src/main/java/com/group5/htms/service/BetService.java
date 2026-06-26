@@ -18,6 +18,4 @@ public interface BetService {
     BetResponse updateBet(Integer id, BetUpdateRequest request);
 
     BetResponse checkBet(Integer id, BetCheckRequest request);
-
-    void deleteBet(Integer id);
 }

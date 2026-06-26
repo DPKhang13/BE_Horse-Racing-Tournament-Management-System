@@ -14,6 +14,4 @@ public interface RaceRoundService {
     RaceRoundResponse createRound(RaceRoundCreateRequest request);
 
     RaceRoundResponse updateRound(Integer id, RaceRoundUpdateRequest request);
-
-    void deleteRound(Integer id);
 }

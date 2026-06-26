@@ -19,7 +19,6 @@ public class RaceMapper {
     private static final Integer DEFAULT_LAP_COUNT = 1;
     private static final Integer DEFAULT_MAX_HORSES = 8;
     private static final Integer DEFAULT_MAX_REFEREES = 3;
-    private static final String DEFAULT_STATUS = "scheduled";
 
     public Races toEntity(RaceCreateRequest request, TournamentSchedules schedule) {
         if (request == null) {
@@ -38,7 +37,6 @@ public class RaceMapper {
                 .trackType(clean(request.getTrackType()))
                 .maxHorses(request.getMaxHorses() == null ? DEFAULT_MAX_HORSES : request.getMaxHorses())
                 .maxReferees(request.getMaxReferees() == null ? DEFAULT_MAX_REFEREES : request.getMaxReferees())
-                .pointRuleNote(clean(request.getPointRuleNote()))
                 .status(defaultStatus(request.getStatus()))
                 .build();
     }
@@ -72,7 +70,6 @@ public class RaceMapper {
                 .trackType(race.getTrackType())
                 .maxHorses(race.getMaxHorses())
                 .maxReferees(race.getMaxReferees())
-                .pointRuleNote(race.getPointRuleNote())
                 .status(race.getStatus())
                 .tournamentName(tournament.getName())
                 .raceDate(schedule.getRaceDate())
@@ -167,9 +164,6 @@ public class RaceMapper {
 
         if (request.getStatus() != null) {
             race.setStatus(defaultStatus(request.getStatus()));
-        }
-        if (request.getPointRuleNote() != null) {
-            race.setPointRuleNote(clean(request.getPointRuleNote()));
         }
 
     }

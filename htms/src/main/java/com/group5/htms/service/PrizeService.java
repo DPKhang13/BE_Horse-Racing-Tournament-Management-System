@@ -22,6 +22,4 @@ public interface PrizeService {
             Integer prizeId,
             PrizeUpdateRequest request
     );
-
-    void deletePrize(Integer tournamentId, Integer prizeId);
 }

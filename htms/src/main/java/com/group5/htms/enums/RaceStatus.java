@@ -30,8 +30,6 @@ public enum RaceStatus {
             return false;
         }
 
-        for (RaceStatus status : values()) {
-            if (status.value.equalsIgnoreCase(value.trim())) {
         for (RaceStatus status : RaceStatus.values()) {
             if (status.equalsValue(value)) {
                 return true;
@@ -42,11 +40,11 @@ public enum RaceStatus {
     }
 
     public static boolean canOpenRegistration(String status) {
-        return SCHEDULED.value.equalsIgnoreCase(clean(status));
+        return SCHEDULED.equalsValue(status) || UPCOMING.equalsValue(status);
     }
 
     public static boolean canOpenBetting(String status) {
-        return READY.value.equalsIgnoreCase(clean(status));
+        return READY.equalsValue(status);
     }
 
     public static boolean canStartRace(String status) {
@@ -54,26 +52,21 @@ public enum RaceStatus {
     }
 
     public static boolean canStart(String status) {
-        String normalizedStatus = clean(status);
-
-        return READY.value.equals(normalizedStatus)
-                || OPEN_FOR_BETTING.value.equals(normalizedStatus);
+        return READY.equalsValue(status) || OPEN_FOR_BETTING.equalsValue(status);
     }
 
     public static boolean isBettingOpen(String status) {
-        return OPEN_FOR_BETTING.value.equalsIgnoreCase(clean(status));
+        return OPEN_FOR_BETTING.equalsValue(status);
     }
 
     public static boolean canCompleteRace(String status) {
-        return IN_PROGRESS.value.equalsIgnoreCase(clean(status));
+        return IN_PROGRESS.equalsValue(status);
     }
 
     public static boolean canCancel(String status) {
-        String normalizedStatus = clean(status);
-
-        return normalizedStatus != null
-                && !COMPLETED.value.equals(normalizedStatus)
-                && !CANCELLED.value.equals(normalizedStatus);
+        return status != null
+                && !COMPLETED.equalsValue(status)
+                && !CANCELLED.equalsValue(status);
     }
 
     private static String clean(String status) {

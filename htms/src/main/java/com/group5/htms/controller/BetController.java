@@ -12,7 +12,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -66,13 +65,5 @@ public class BetController {
             @Valid @RequestBody BetCheckRequest request
     ) {
         return ResponseEntity.ok(betService.checkBet(id, request));
-    }
-
-    @Operation(summary = "Delete bet", description = "Xóa bet theo id.")
-    @DeleteMapping("/delete/{id}")
-    @PreAuthorize("hasRole('SPECTATOR')")
-    public ResponseEntity<Void> deleteBet(@PathVariable Integer id) {
-        betService.deleteBet(id);
-        return ResponseEntity.noContent().build();
     }
 }

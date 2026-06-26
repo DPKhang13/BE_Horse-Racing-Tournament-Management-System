@@ -33,9 +33,6 @@ public class HorseMapper {
     }
 
     public void updateHorse(Horses horse, HorseUpdateRequest request) {
-        if (request.getOwnerId() != null) {
-            horse.setOwner(toOwner(request.getOwnerId()));
-        }
         if (hasUpdateValue(request.getName())) {
             horse.setName(request.getName().trim());
         }
@@ -51,20 +48,8 @@ public class HorseMapper {
         if (hasUpdateValue(request.getRankGroup())) {
             horse.setRankGroup(trim(request.getRankGroup()));
         }
-        if (hasPositiveUpdateValue(request.getRankingPoints())) {
-            horse.setRankingPoints(request.getRankingPoints());
-        }
         if (hasUpdateValue(request.getAvatarUrl())) {
             horse.setAvatarUrl(trim(request.getAvatarUrl()));
-        }
-        if (hasPositiveUpdateValue(request.getTotalWins())) {
-            horse.setTotalWins(request.getTotalWins());
-        }
-        if (hasUpdateValue(request.getStatus())) {
-            horse.setStatus(request.getStatus().trim());
-        }
-        if (request.getRegisteredAt() != null) {
-            horse.setRegisteredAt(request.getRegisteredAt());
         }
     }
 

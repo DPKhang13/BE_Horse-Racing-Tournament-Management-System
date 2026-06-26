@@ -1,6 +1,7 @@
 package com.group5.htms.service.impl;
 
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationApprovalRequest;
+import com.group5.htms.dto.raceregistration.request.RaceRegistrationApproveRequest;
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationCreateRequest;
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationRejectRequest;
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationUpdateRequest;
@@ -8,35 +9,27 @@ import com.group5.htms.dto.raceregistration.response.RaceRegistrationListRespons
 import com.group5.htms.dto.raceregistration.response.RaceRegistrationResponse;
 import com.group5.htms.entity.HorseOwnerProfiles;
 import com.group5.htms.entity.Horses;
-import com.group5.htms.entity.JockeyProfiles;
 import com.group5.htms.entity.RaceRegistrations;
 import com.group5.htms.entity.Races;
 import com.group5.htms.entity.Tournaments;
 import com.group5.htms.entity.Users;
-import com.group5.htms.enums.RaceStatus;
-import com.group5.htms.enums.RaceRegistrationStatus;
-import com.group5.htms.enums.RoleType;
-import com.group5.htms.enums.TournamentStatus;
-import com.group5.htms.exception.BadRequestException;
 import com.group5.htms.enums.RaceRegistrationStatus;
 import com.group5.htms.exception.ResourceNotFoundException;
 import com.group5.htms.mapper.RaceRegistrationMapper;
 import com.group5.htms.repository.HorseOwnerProfilesRepository;
 import com.group5.htms.repository.HorsesRepository;
-import com.group5.htms.repository.JockeyProfilesRepository;
 import com.group5.htms.repository.RaceRegistrationsRepository;
 import com.group5.htms.repository.RacesRepository;
 import com.group5.htms.repository.TournamentsRepository;
 import com.group5.htms.service.AuthService;
 import com.group5.htms.service.RaceRegistrationService;
+import com.group5.htms.validation.RaceRegistrationValidator;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -47,31 +40,32 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
     private final RacesRepository racesRepository;
     private final HorsesRepository horsesRepository;
     private final HorseOwnerProfilesRepository horseOwnerProfilesRepository;
-    private final JockeyProfilesRepository jockeyProfilesRepository;
     private final AuthService authService;
     private final RaceRegistrationMapper raceRegistrationMapper;
+    private final RaceRegistrationValidator raceRegistrationValidator;
 
     @Override
+    @Transactional(readOnly = true)
     public List<RaceRegistrationListResponse> getAllRegistrations() {
         return raceRegistrationsRepository.findAll()
                 .stream()
-                .filter(registration -> !isDeleted(registration.getStatus()))
                 .map(raceRegistrationMapper::toListResponse)
                 .toList();
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<RaceRegistrationListResponse> getMyRegistrations() {
         Integer ownerId = authService.getCurrentUserId();
 
         return raceRegistrationsRepository.findByOwner_IdOrderByRegisteredAtDesc(ownerId)
                 .stream()
-                .filter(registration -> !isDeleted(registration.getStatus()))
                 .map(raceRegistrationMapper::toListResponse)
                 .toList();
     }
 
     @Override
+    @Transactional(readOnly = true)
     public RaceRegistrationResponse getRegistrationById(Integer id) {
         return raceRegistrationMapper.toResponse(findRegistration(id));
     }
@@ -81,14 +75,30 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
     public RaceRegistrationResponse createRegistration(RaceRegistrationCreateRequest request) {
         Integer ownerId = authService.getCurrentUserId();
         request.setOwnerId(ownerId);
-        validateCreateReferences(request);
-        validateRaceBelongsToTournament(request.getRaceId(), request.getTournamentId());
-        validateHorseBelongsToOwner(request.getHorseId(), ownerId);
-        RaceRegistrations registration = raceRegistrationMapper.toEntity(request);
-        attachCreateReferences(registration, request);
-        RaceRegistrations savedRegistration = raceRegistrationsRepository.save(registration);
 
-        return raceRegistrationMapper.toResponse(savedRegistration);
+        Tournaments tournament = findTournament(request.getTournamentId());
+        Races race = findRace(request.getRaceId());
+        Horses horse = findHorse(request.getHorseId());
+        HorseOwnerProfiles owner = findOwner(ownerId);
+
+        raceRegistrationValidator.ensureRaceBelongsToTournament(race, tournament.getId());
+        raceRegistrationValidator.ensureHorseBelongsToOwner(horse, ownerId);
+        raceRegistrationValidator.ensureRegistrationOpen(tournament, race);
+        raceRegistrationValidator.ensureHorseNotRegisteredInTournament(
+                raceRegistrationsRepository.existsByTournaments_IdAndHorses_Id(tournament.getId(), horse.getId())
+        );
+
+        RaceRegistrations registration = raceRegistrationMapper.toEntity(request);
+        registration.setTournaments(tournament);
+        registration.setRaces(race);
+        registration.setHorses(horse);
+        registration.setOwner(owner);
+        registration.setJockey(null);
+        registration.setStatus(RaceRegistrationStatus.PENDING.getValue());
+        registration.setOwnerConfirmationStatus(RaceRegistrationStatus.PENDING.getValue());
+        registration.setRegisteredAt(Instant.now());
+
+        return raceRegistrationMapper.toResponse(raceRegistrationsRepository.save(registration));
     }
 
     @Override
@@ -96,30 +106,32 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
     public RaceRegistrationResponse updateRegistration(Integer id, RaceRegistrationUpdateRequest request) {
         Integer ownerId = authService.getCurrentUserId();
         RaceRegistrations registration = findRegistrationForCurrentOwner(id, ownerId);
-        validateNoDirectStatusUpdate(request);
-        validateNoDirectJockeyUpdate(request);
-        request.setOwnerId(null);
-        request.setStatus(null);
-        request.setApprovedAt(null);
-        request.setApprovedById(null);
-        request.setJockeyId(null);
-        request.setOwnerConfirmedAt(null);
-        validateUpdateReferences(request);
-        Integer tournamentId = request.getTournamentId() == null
-                ? registration.getTournaments().getId()
-                : request.getTournamentId();
-        Integer raceId = request.getRaceId() == null
-                ? registration.getRaces().getId()
-                : request.getRaceId();
-        validateRaceBelongsToTournament(raceId, tournamentId);
-        if (request.getHorseId() != null) {
-            validateHorseBelongsToOwner(request.getHorseId(), ownerId);
-        }
-        Integer horseId = request.getHorseId() == null
-                ? registration.getHorses().getId()
-                : request.getHorseId();
-        validateDuplicateTournamentHorseForUpdate(tournamentId, horseId, id);
-        raceRegistrationMapper.updateRegistration(registration, request);
+
+        raceRegistrationValidator.ensureNoWorkflowFields(request);
+
+        Tournaments tournament = request.getTournamentId() == null
+                ? registration.getTournaments()
+                : findTournament(request.getTournamentId());
+        Races race = request.getRaceId() == null
+                ? registration.getRaces()
+                : findRace(request.getRaceId());
+        Horses horse = request.getHorseId() == null
+                ? registration.getHorses()
+                : findHorse(request.getHorseId());
+
+        raceRegistrationValidator.ensureRaceBelongsToTournament(race, tournament.getId());
+        raceRegistrationValidator.ensureHorseBelongsToOwner(horse, ownerId);
+        raceRegistrationValidator.ensureHorseNotRegisteredInTournamentForUpdate(
+                raceRegistrationsRepository.existsByTournaments_IdAndHorses_IdAndIdNot(
+                        tournament.getId(),
+                        horse.getId(),
+                        registration.getId()
+                )
+        );
+
+        registration.setTournaments(tournament);
+        registration.setRaces(race);
+        registration.setHorses(horse);
 
         return raceRegistrationMapper.toResponse(raceRegistrationsRepository.save(registration));
     }
@@ -127,11 +139,8 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
     @Override
     @Transactional
     public RaceRegistrationResponse approveRegistration(Integer id, RaceRegistrationApprovalRequest request) {
-        String status = request.getStatus() == null ? null : request.getStatus().trim();
-
-        if (!RaceRegistrationStatus.APPROVED.equalsValue(status)) {
-            throw new BadRequestException("Use workflow transition APIs to update status");
-        }
+        String status = request == null ? null : request.getStatus();
+        raceRegistrationValidator.ensureApproveStatusRequested(status);
 
         return approveRegistration(id, new RaceRegistrationApproveRequest());
     }
@@ -140,8 +149,7 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
     @Transactional
     public RaceRegistrationResponse approveRegistration(Integer id, RaceRegistrationApproveRequest request) {
         RaceRegistrations registration = findRegistration(id);
-
-        validateRegistrationCanBeApproved(registration);
+        raceRegistrationValidator.ensureCanApprove(registration);
 
         registration.setStatus(RaceRegistrationStatus.APPROVED.getValue());
         registration.setApprovedAt(Instant.now());
@@ -155,196 +163,51 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
     public RaceRegistrationResponse rejectRegistration(Integer id, RaceRegistrationRejectRequest request) {
         RaceRegistrations registration = findRegistration(id);
 
-        if (!RaceRegistrationStatus.PENDING.equalsValue(registration.getStatus())) {
-            throw new BadRequestException("Only pending registrations can be rejected");
-        }
+        raceRegistrationValidator.ensureCanReject(registration);
 
         registration.setStatus(RaceRegistrationStatus.REJECTED.getValue());
 
         return raceRegistrationMapper.toResponse(raceRegistrationsRepository.save(registration));
     }
 
-    @Override
-    @Transactional
-    public void deleteRegistration(Integer id) {
-        RaceRegistrations registration = findRegistrationForCurrentOwner(
-                id,
-                authService.getCurrentUserId()
-        );
-        registration.setStatus(RaceRegistrationStatus.DELETED.getValue());
-        raceRegistrationsRepository.save(registration);
-    }
 
     private RaceRegistrations findRegistration(Integer id) {
         return raceRegistrationsRepository.findById(id)
-                .filter(registration -> !isDeleted(registration.getStatus()))
                 .orElseThrow(() -> new ResourceNotFoundException("Race registration not found"));
     }
 
     private RaceRegistrations findRegistrationForCurrentOwner(Integer id, Integer ownerId) {
         RaceRegistrations registration = findRegistration(id);
 
-        if (!Objects.equals(registration.getOwner().getId(), ownerId)) {
-            throw new AccessDeniedException("You do not own this race registration");
-        }
+        raceRegistrationValidator.ensureOwnerCanManageRegistration(registration, ownerId);
 
         return registration;
     }
 
-    private void attachCreateReferences(
-            RaceRegistrations registration,
-            Tournaments tournament,
-            Races race,
-            Horses horse,
-            HorseOwnerProfiles owner
-    ) {
-        registration.setTournaments(tournament);
-        registration.setRaces(race);
-        registration.setHorses(horse);
-        registration.setOwner(owner);
-
-        if (request.getJockeyId() != null) {
-            JockeyProfiles jockey = jockeyProfilesRepository.findById(request.getJockeyId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Jockey profile not found"));
-            registration.setJockey(jockey);
-        }
+    private Tournaments findTournament(Integer id) {
+        return tournamentsRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Tournament not found"));
     }
 
-    private void validateUpdateReferences(RaceRegistrationUpdateRequest request) {
-        if (request.getTournamentId() != null) {
-            validateTournamentExists(request.getTournamentId());
-        }
-        if (request.getRaceId() != null) {
-            validateRaceExists(request.getRaceId());
-        }
-        if (request.getHorseId() != null) {
-            validateHorseExists(request.getHorseId());
-        }
-        if (request.getOwnerId() != null) {
-            validateOwnerExists(request.getOwnerId());
-        }
-        if (request.getJockeyId() != null) {
-            validateJockeyExists(request.getJockeyId());
-        }
+    private Races findRace(Integer id) {
+        return racesRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Race not found"));
     }
 
-    private void validateNoDirectStatusUpdate(RaceRegistrationUpdateRequest request) {
-        if (request.getStatus() != null && !request.getStatus().isBlank()) {
-            throw new BadRequestException("Use workflow transition APIs to update status");
-        }
-
-        if (request.getOwnerConfirmationStatus() != null
-                && !request.getOwnerConfirmationStatus().isBlank()) {
-            throw new BadRequestException("Use workflow transition APIs to update status");
-        }
-
-        if (request.getOwnerConfirmedAt() != null) {
-            throw new BadRequestException("Use workflow transition APIs to update status");
-        }
+    private Horses findHorse(Integer id) {
+        return horsesRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Horse not found"));
     }
 
-    private void validateNoDirectJockeyUpdate(RaceRegistrationUpdateRequest request) {
-        if (request.getJockeyId() != null) {
-            throw new BadRequestException("Use jockey assignment workflow to update jockey");
-        }
+    private HorseOwnerProfiles findOwner(Integer id) {
+        return horseOwnerProfilesRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Horse owner profile not found"));
     }
 
-    private void validateTournamentExists(Integer id) {
-        if (!tournamentsRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Tournament not found");
-        }
-    }
-
-    private void validateRaceExists(Integer id) {
-        if (!racesRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Race not found");
-        }
-    }
-
-    private void validateRaceBelongsToTournament(Integer raceId, Integer tournamentId) {
-        boolean belongsToTournament = racesRepository.findById(raceId)
-                .map(race -> race.getSchedule() != null
-                        && race.getSchedule().getTournaments() != null
-                        && Objects.equals(race.getSchedule().getTournaments().getId(), tournamentId))
-                .orElse(false);
-
-        if (!belongsToTournament) {
-            throw new BadRequestException("Race does not belong to this tournament");
-        }
-    }
-
-    private void validateRaceBelongsToTournament(Races race, Integer tournamentId) {
-        boolean belongsToTournament = race.getSchedule() != null
-                && race.getSchedule().getTournaments() != null
-                && Objects.equals(race.getSchedule().getTournaments().getId(), tournamentId);
-
-        if (!belongsToTournament) {
-            throw new BadRequestException("Race does not belong to this tournament");
-        }
-    }
-
-    private void validateHorseExists(Integer id) {
-        if (!horsesRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Horse not found");
-        }
-    }
-
-    private void validateHorseBelongsToOwner(Integer horseId, Integer ownerId) {
-        boolean belongsToOwner = horsesRepository.findById(horseId)
-                .map(horse -> Objects.equals(horse.getOwner().getId(), ownerId))
-                .orElse(false);
-
-        if (!belongsToOwner) {
-            throw new BadRequestException("Horse does not belong to current owner");
-        }
-    }
-
-    private void validateHorseBelongsToOwner(Horses horse, Integer ownerId) {
-        if (horse.getOwner() == null || !Objects.equals(horse.getOwner().getId(), ownerId)) {
-            throw new BadRequestException("Horse does not belong to current owner");
-        }
-    }
-
-    private void validateOwnerExists(Integer id) {
-        if (!horseOwnerProfilesRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Horse owner profile not found");
-        }
-    }
-
-    private void validateJockeyExists(Integer id) {
-        if (!jockeyProfilesRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Jockey profile not found");
-        }
-    }
-
-    private void validateDuplicateTournamentHorse(Integer tournamentId, Integer horseId) {
-        if (raceRegistrationsRepository.existsByTournaments_IdAndHorses_IdAndStatusNotIgnoreCase(
-                tournamentId,
-                horseId,
-                RaceRegistrationStatus.DELETED.getValue()
-        )) {
-            throw new BadRequestException("Horse can only register once in the same tournament");
-        }
-    }
-
-    private void validateDuplicateTournamentHorseForUpdate(
-            Integer tournamentId,
-            Integer horseId,
-            Integer registrationId
-    ) {
-        if (raceRegistrationsRepository.existsByTournaments_IdAndHorses_IdAndIdNot(
-                tournamentId,
-                horseId,
-                registrationId
-        )) {
-            throw new BadRequestException("Horse is already registered in this tournament");
-        }
-    }
-
-    private boolean isDeleted(String status) {
-        return RaceRegistrationStatus.DELETED.getValue().equalsIgnoreCase(status);
+    private Users currentUserReference() {
+        Users user = new Users();
+        user.setId(authService.getCurrentUserId());
+        return user;
     }
 
 }
-
-

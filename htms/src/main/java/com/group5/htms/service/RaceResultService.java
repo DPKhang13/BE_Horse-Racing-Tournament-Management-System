@@ -18,6 +18,4 @@ public interface RaceResultService {
     RaceResultResponse updateResult(Integer id, RaceResultUpdateRequest request);
 
     RaceResultResponse publishResult(Integer id, RaceResultPublishRequest request);
-
-    void deleteResult(Integer id);
 }

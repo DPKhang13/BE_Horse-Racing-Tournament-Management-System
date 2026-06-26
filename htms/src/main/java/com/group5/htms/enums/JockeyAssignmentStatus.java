@@ -9,8 +9,7 @@ public enum JockeyAssignmentStatus {
     REJECTED("rejected"),
     CANCELLED("cancelled"),
     EXPIRED("expired"),
-    CONFIRMED("confirmed"),
-    DELETED("deleted");
+    CONFIRMED("confirmed");
 
     private final String value;
 

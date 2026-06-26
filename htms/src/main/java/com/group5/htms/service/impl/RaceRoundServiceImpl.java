@@ -5,12 +5,12 @@ import com.group5.htms.dto.raceround.request.RaceRoundUpdateRequest;
 import com.group5.htms.dto.raceround.response.RaceRoundResponse;
 import com.group5.htms.entity.JockeyHorseAssignments;
 import com.group5.htms.entity.RaceRounds;
-import com.group5.htms.exception.BadRequestException;
 import com.group5.htms.exception.ResourceNotFoundException;
 import com.group5.htms.mapper.RaceRoundMapper;
 import com.group5.htms.repository.JockeyHorseAssignmentsRepository;
 import com.group5.htms.repository.RaceRoundsRepository;
 import com.group5.htms.service.RaceRoundService;
+import com.group5.htms.validation.RaceRoundValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +23,7 @@ public class RaceRoundServiceImpl implements RaceRoundService {
     private final RaceRoundsRepository raceRoundsRepository;
     private final JockeyHorseAssignmentsRepository jockeyHorseAssignmentsRepository;
     private final RaceRoundMapper raceRoundMapper;
+    private final RaceRoundValidator raceRoundValidator;
 
     @Override
     @Transactional(readOnly = true)
@@ -55,8 +56,8 @@ public class RaceRoundServiceImpl implements RaceRoundService {
     @Transactional
     public RaceRoundResponse createRound(RaceRoundCreateRequest request) {
         JockeyHorseAssignments assignment = getAssignment(request.getAssignmentId());
-        validateRoundNumber(request.getRoundNumber(), assignment);
-        validateUniqueRound(null, assignment.getRaces().getId(), assignment.getId(), request.getRoundNumber(), request.getPosition());
+        raceRoundValidator.ensureRoundNumberWithinLapCount(request.getRoundNumber(), assignment);
+        checkRoundUniqueness(null, assignment.getRaces().getId(), assignment.getId(), request.getRoundNumber(), request.getPosition());
 
         RaceRounds round = raceRoundMapper.toEntity(request, assignment);
         return raceRoundMapper.toResponse(raceRoundsRepository.save(round));
@@ -72,19 +73,13 @@ public class RaceRoundServiceImpl implements RaceRoundService {
 
         Integer roundNumber = request.getRoundNumber() == null ? round.getRoundNumber() : request.getRoundNumber();
         Integer position = request.getPosition() == null ? round.getPosition() : request.getPosition();
-        validateRoundNumber(roundNumber, assignment);
-        validateUniqueRound(id, assignment.getRaces().getId(), assignment.getId(), roundNumber, position);
+        raceRoundValidator.ensureRoundNumberWithinLapCount(roundNumber, assignment);
+        checkRoundUniqueness(id, assignment.getRaces().getId(), assignment.getId(), roundNumber, position);
 
         raceRoundMapper.updateRound(round, request, assignment);
         return raceRoundMapper.toResponse(raceRoundsRepository.save(round));
     }
 
-    @Override
-    @Transactional
-    public void deleteRound(Integer id) {
-        RaceRounds round = findRound(id);
-        raceRoundsRepository.delete(round);
-    }
 
     private RaceRounds findRound(Integer id) {
         return raceRoundsRepository.findById(id)
@@ -96,26 +91,15 @@ public class RaceRoundServiceImpl implements RaceRoundService {
                 .orElseThrow(() -> new ResourceNotFoundException("Jockey assignment not found"));
     }
 
-    private void validateRoundNumber(Integer roundNumber, JockeyHorseAssignments assignment) {
-        Integer lapCount = assignment.getRaces().getLapCount();
-        if (lapCount != null && roundNumber > lapCount) {
-            throw new BadRequestException("Round number must not be greater than race lap count");
-        }
-    }
-
-    private void validateUniqueRound(Integer id, Integer raceId, Integer assignmentId, Integer roundNumber, Integer position) {
+    private void checkRoundUniqueness(Integer id, Integer raceId, Integer assignmentId, Integer roundNumber, Integer position) {
         boolean duplicateAssignmentRound = id == null
                 ? raceRoundsRepository.existsByRaces_IdAndAssignment_IdAndRoundNumber(raceId, assignmentId, roundNumber)
                 : raceRoundsRepository.existsByRaces_IdAndAssignment_IdAndRoundNumberAndIdNot(raceId, assignmentId, roundNumber, id);
-        if (duplicateAssignmentRound) {
-            throw new BadRequestException("This assignment already has a result for this round");
-        }
+        raceRoundValidator.ensureUniqueAssignmentRound(duplicateAssignmentRound);
 
         boolean duplicatePosition = id == null
                 ? raceRoundsRepository.existsByRaces_IdAndRoundNumberAndPosition(raceId, roundNumber, position)
                 : raceRoundsRepository.existsByRaces_IdAndRoundNumberAndPositionAndIdNot(raceId, roundNumber, position, id);
-        if (duplicatePosition) {
-            throw new BadRequestException("This position is already used in this race round");
-        }
+        raceRoundValidator.ensureUniqueRoundPosition(duplicatePosition);
     }
 }

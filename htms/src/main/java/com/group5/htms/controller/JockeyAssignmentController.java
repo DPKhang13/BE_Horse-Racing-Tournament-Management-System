@@ -12,7 +12,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -88,22 +87,5 @@ public class JockeyAssignmentController {
             @Valid @RequestBody JockeyInvitationResponseRequest request
     ) {
         return ResponseEntity.ok(jockeyAssignmentService.respondInvitation(id, request));
-    }
-
-    @Operation(summary = "Delete jockey assignment", description = "Xóa assignment jockey theo id.")
-    @PatchMapping("/{assignmentId}/respond")
-    @PreAuthorize("hasRole('JOCKEY')")
-    public ResponseEntity<JockeyAssignmentResponse> respondInvitationWorkflow(
-            @PathVariable Integer assignmentId,
-            @Valid @RequestBody JockeyInvitationResponseRequest request
-    ) {
-        return ResponseEntity.ok(jockeyAssignmentService.respondInvitation(assignmentId, request));
-    }
-
-    @DeleteMapping("/delete/{id}")
-    @PreAuthorize("hasRole('HORSE_OWNER')")
-    public ResponseEntity<Void> deleteAssignment(@PathVariable Integer id) {
-        jockeyAssignmentService.deleteAssignment(id);
-        return ResponseEntity.noContent().build();
     }
 }

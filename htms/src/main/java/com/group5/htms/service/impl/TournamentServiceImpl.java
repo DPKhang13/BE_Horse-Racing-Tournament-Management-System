@@ -135,13 +135,6 @@ public class TournamentServiceImpl implements TournamentService {
                 .toList();
     }
 
-//    @Override
-//    @Transactional
-//    public void deleteTournament(Integer tournamentId) {
-//        Tournaments tournament = getTournamentEntity(tournamentId);
-//
-//        tournamentsRepository.delete(tournament);
-//    }
 
     @Override
     @Transactional
@@ -237,7 +230,6 @@ public class TournamentServiceImpl implements TournamentService {
                 );
         List<RaceRegistrations> registrations = raceRegistrationsRepository.findByTournaments_Id(tournamentId)
                 .stream()
-                .filter(registration -> !RaceRegistrationStatus.DELETED.equalsValue(registration.getStatus()))
                 .toList();
         List<JockeyHorseAssignments> assignments = jockeyHorseAssignmentsRepository.findByReg_IdIn(
                 registrations.stream().map(RaceRegistrations::getId).toList()

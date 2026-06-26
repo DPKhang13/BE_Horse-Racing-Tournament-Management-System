@@ -70,17 +70,6 @@ public class TournamentController {
         );
     }
 
-//    @DeleteMapping("/{tournamentId}")
-//    @PreAuthorize("hasRole('ADMIN')")
-//    public ResponseEntity<Map<String, String>> deleteTournament(
-//            @PathVariable Integer tournamentId
-//    ) {
-//        tournamentService.deleteTournament(tournamentId);
-//
-//        return ResponseEntity.ok(
-//                Map.of("message", "Tournament deleted successfully")
-//        );
-//    }
 
     @PatchMapping("/cancel-tournament/{tournamentId}")
     @PreAuthorize("hasRole('ADMIN')")

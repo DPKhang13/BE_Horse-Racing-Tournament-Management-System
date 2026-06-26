@@ -68,12 +68,6 @@ public class NotificationServiceImpl implements NotificationService {
         return notificationMapper.toResponse(notificationsRepository.save(notification));
     }
 
-    @Override
-    @Transactional
-    public void deleteNotification(Integer id) {
-        Notifications notification = findNotificationForCurrentUser(id);
-        notificationsRepository.delete(notification);
-    }
 
     private Notifications findNotification(Integer id) {
         return notificationsRepository.findById(id)

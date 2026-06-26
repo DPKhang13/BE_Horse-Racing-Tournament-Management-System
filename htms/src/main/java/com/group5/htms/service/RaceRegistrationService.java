@@ -26,6 +26,4 @@ public interface RaceRegistrationService {
     RaceRegistrationResponse approveRegistration(Integer id, RaceRegistrationApproveRequest request);
 
     RaceRegistrationResponse rejectRegistration(Integer id, RaceRegistrationRejectRequest request);
-
-    void deleteRegistration(Integer id);
 }

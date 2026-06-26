@@ -129,15 +129,6 @@ public class PrizeServiceImpl implements PrizeService {
         return prizeMapper.toResponse(prizeRepository.save(prize));
     }
 
-    @Override
-    @Transactional
-    public void deletePrize(Integer tournamentId, Integer prizeId) {
-        PrizeDistributions prize = getPrizeEntity(tournamentId, prizeId);
-
-        validateTournamentCanManagePrize(prize.getTournaments());
-
-        prizeRepository.delete(prize);
-    }
 
     private Tournaments getTournamentEntity(Integer tournamentId) {
         if (tournamentId == null) {

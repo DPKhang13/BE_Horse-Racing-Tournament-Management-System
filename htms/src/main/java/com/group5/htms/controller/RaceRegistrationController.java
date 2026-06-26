@@ -12,7 +12,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -75,13 +74,5 @@ public class RaceRegistrationController {
             @Valid @RequestBody RaceRegistrationApprovalRequest request
     ) {
         return ResponseEntity.ok(raceRegistrationService.approveRegistration(id, request));
-    }
-
-    @Operation(summary = "Delete race registration", description = "Xóa đăng ký race theo registration id.")
-    @DeleteMapping("/delete/{id}")
-    @PreAuthorize("hasRole('HORSE_OWNER')")
-    public ResponseEntity<Void> deleteRegistration(@PathVariable Integer id) {
-        raceRegistrationService.deleteRegistration(id);
-        return ResponseEntity.noContent().build();
     }
 }

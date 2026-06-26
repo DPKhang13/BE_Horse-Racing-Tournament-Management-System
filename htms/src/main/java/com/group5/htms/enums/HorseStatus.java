@@ -6,8 +6,7 @@ import lombok.Getter;
 public enum HorseStatus {
     ACTIVE("active"),
     INACTIVE("inactive"),
-    RETIRED("retired"),
-    DELETED("deleted");
+    RETIRED("retired");
 
     private final String value;
 

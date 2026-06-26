@@ -1,6 +1,7 @@
 package com.group5.htms.service.impl;
 
 import com.group5.htms.dto.race.request.RaceCreateRequest;
+import com.group5.htms.dto.race.request.RaceStartRequest;
 import com.group5.htms.dto.race.request.RaceUpdateRequest;
 import com.group5.htms.dto.race.response.RaceListResponse;
 import com.group5.htms.dto.race.response.RaceResponse;
@@ -14,8 +15,6 @@ import com.group5.htms.entity.RacePointRules;
 import com.group5.htms.entity.Races;
 import com.group5.htms.entity.TournamentSchedules;
 import com.group5.htms.entity.Tournaments;
-import com.group5.htms.enums.RaceStatus;
-import com.group5.htms.enums.TournamentStatus;
 import com.group5.htms.enums.RaceStatus;
 import com.group5.htms.enums.JockeyAssignmentStatus;
 import com.group5.htms.exception.BadRequestException;
@@ -31,19 +30,16 @@ import com.group5.htms.repository.TournamentSchedulesRepository;
 import com.group5.htms.repository.TournamentsRepository;
 import com.group5.htms.service.BetOptionService;
 import com.group5.htms.service.RaceService;
+import com.group5.htms.validation.RaceValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class RaceServiceImpl implements RaceService {
-    private static final ZoneId VIETNAM_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
 
     private final RacesRepository racesRepository;
     private final TournamentsRepository tournamentsRepository;
@@ -55,6 +51,7 @@ public class RaceServiceImpl implements RaceService {
     private final RaceMapper raceMapper;
     private final TournamentScheduleMapper tournamentScheduleMapper;
     private final BetOptionService betOptionService;
+    private final RaceValidator raceValidator;
 
     @Override
     @Transactional(readOnly = true)
@@ -81,8 +78,8 @@ public class RaceServiceImpl implements RaceService {
         Tournaments tournament = tournamentsRepository.findById(tournamentId)
                 .orElseThrow(() -> new BadRequestException("Tournament not found"));
 
-        validateTournamentCanArrangeRace(tournament);
-        validateScheduleDate(tournament, request.getRaceDate());
+        raceValidator.ensureTournamentCanArrangeRace(tournament);
+        raceValidator.ensureScheduleDateWithinTournament(tournament, request.getRaceDate());
         validateDuplicateSchedule(tournamentId, request);
 
         TournamentSchedules schedule = tournamentScheduleMapper.toEntity(request, tournament);
@@ -105,7 +102,7 @@ public class RaceServiceImpl implements RaceService {
         TournamentSchedules schedule = tournamentSchedulesRepository.findById(scheduleId)
                 .orElseThrow(() -> new BadRequestException("Schedule not found"));
 
-        validateTournamentCanArrangeRace(schedule.getTournaments());
+        raceValidator.ensureTournamentCanArrangeRace(schedule.getTournaments());
         validateRaceRequest(schedule, request);
 
         Races race = raceMapper.toEntity(request, schedule);
@@ -158,7 +155,7 @@ public class RaceServiceImpl implements RaceService {
         TournamentSchedules schedule = getScheduleEntity(scheduleId);
         Tournaments tournament = schedule.getTournaments();
 
-        validateTournamentCanArrangeRace(tournament);
+        raceValidator.ensureTournamentCanArrangeRace(tournament);
         validateScheduleUpdate(schedule, request);
 
         tournamentScheduleMapper.updateEntity(schedule, request);
@@ -168,19 +165,6 @@ public class RaceServiceImpl implements RaceService {
         );
     }
 
-    @Override
-    @Transactional
-    public void deleteSchedule(Integer scheduleId) {
-        TournamentSchedules schedule = getScheduleEntity(scheduleId);
-
-        validateTournamentCanArrangeRace(schedule.getTournaments());
-
-        if (racesRepository.countByScheduleId(schedule.getId()) > 0) {
-            throw new BadRequestException("Cannot delete schedule that already has races");
-        }
-
-        tournamentSchedulesRepository.delete(schedule);
-    }
 
     @Override
     @Transactional(readOnly = true)
@@ -196,7 +180,7 @@ public class RaceServiceImpl implements RaceService {
         }
 
         Races race = getRaceEntity(raceId);
-        validateTournamentCanArrangeRace(race.getSchedule().getTournaments());
+        raceValidator.ensureTournamentCanArrangeRace(race.getSchedule().getTournaments());
         validateRaceUpdateRequest(race, request);
 
         raceMapper.updateEntity(race, request);
@@ -207,9 +191,6 @@ public class RaceServiceImpl implements RaceService {
         }
 
         return toDetailResponse(savedRace);
-        Races savedRace = racesRepository.save(race);
-
-        return toDetailResponse(savedRace);
     }
 
     @Override
@@ -218,7 +199,7 @@ public class RaceServiceImpl implements RaceService {
         Races race = getRaceEntity(raceId);
         String previousStatus = race.getStatus();
 
-        validateRaceCanStart(race, request);
+        raceValidator.ensureRaceCanStart(race, request);
         validateRaceHasRequiredAssignments(race.getId());
 
         race.setStatus(RaceStatus.IN_PROGRESS.getValue());
@@ -241,7 +222,7 @@ public class RaceServiceImpl implements RaceService {
     public void cancelRace(Integer raceId) {
         Races race = getRaceEntity(raceId);
 
-        validateTournamentCanArrangeRace(race.getSchedule().getTournaments());
+        raceValidator.ensureTournamentCanArrangeRace(race.getSchedule().getTournaments());
 
         if (RaceStatus.COMPLETED.getValue().equalsIgnoreCase(race.getStatus())) {
             throw new BadRequestException("Completed race cannot be cancelled");
@@ -341,30 +322,6 @@ public class RaceServiceImpl implements RaceService {
                 .orElseThrow(() -> new BadRequestException("Race not found"));
     }
 
-    private void validateTournamentCanArrangeRace(Tournaments tournament) {
-        if (tournament == null) {
-            throw new BadRequestException("Tournament not found");
-        }
-
-        String status = tournament.getStatus();
-
-        if (TournamentStatus.COMPLETED.getValue().equalsIgnoreCase(status)
-                || TournamentStatus.CANCELLED.getValue().equalsIgnoreCase(status)) {
-            throw new BadRequestException("Cannot arrange races for completed or cancelled tournament");
-        }
-    }
-
-    private void validateScheduleDate(Tournaments tournament, LocalDate raceDate) {
-        if (raceDate == null) {
-            throw new BadRequestException("Race date is required");
-        }
-
-        if (raceDate.isBefore(tournament.getStartDate())
-                || raceDate.isAfter(tournament.getEndDate())) {
-            throw new BadRequestException("Race date must be within tournament date range");
-        }
-    }
-
     private void validateDuplicateSchedule(
             Integer tournamentId,
             TournamentScheduleCreateRequest request
@@ -392,7 +349,7 @@ public class RaceServiceImpl implements RaceService {
         Integer tournamentId = tournament.getId();
 
         if (request.getRaceDate() != null) {
-            validateScheduleDate(tournament, request.getRaceDate());
+            raceValidator.ensureScheduleDateWithinTournament(tournament, request.getRaceDate());
 
             if (!request.getRaceDate().equals(schedule.getRaceDate())
                     && racesRepository.countByScheduleId(schedule.getId()) > 0) {
@@ -426,18 +383,9 @@ public class RaceServiceImpl implements RaceService {
             throw new BadRequestException("Race number already exists in this schedule");
         }
 
-        LocalDate scheduledDate = request.getScheduledAt()
-                .atZone(VIETNAM_ZONE)
-                .toLocalDate();
+        raceValidator.ensureScheduledAtMatchesSchedule(schedule, request.getScheduledAt());
 
-        if (!scheduledDate.equals(schedule.getRaceDate())) {
-            throw new BadRequestException("Scheduled time must be on the schedule race date");
-        }
-
-        if (request.getPredictionClosesAt() != null
-                && !request.getPredictionClosesAt().isBefore(request.getScheduledAt())) {
-            throw new BadRequestException("Prediction close time must be before scheduled time");
-        }
+        raceValidator.ensurePredictionClosesBeforeRace(request.getPredictionClosesAt(), request.getScheduledAt());
 
         String status = request.getStatus();
 
@@ -459,72 +407,27 @@ public class RaceServiceImpl implements RaceService {
             throw new BadRequestException("Race number already exists in this schedule");
         }
 
-        java.time.Instant scheduledAt = request.getScheduledAt() == null
+        var scheduledAt = request.getScheduledAt() == null
                 ? race.getScheduledAt()
                 : request.getScheduledAt();
 
-        java.time.Instant predictionClosesAt = request.getPredictionClosesAt() == null
+        var predictionClosesAt = request.getPredictionClosesAt() == null
                 ? race.getPredictionClosesAt()
                 : request.getPredictionClosesAt();
 
-        LocalDate scheduledDate = scheduledAt.atZone(VIETNAM_ZONE).toLocalDate();
+        raceValidator.ensureScheduledAtMatchesSchedule(race.getSchedule(), scheduledAt);
 
-        if (!scheduledDate.equals(race.getSchedule().getRaceDate())) {
-            throw new BadRequestException("Scheduled time must be on the schedule race date");
-        }
-
-        if (predictionClosesAt != null && !predictionClosesAt.isBefore(scheduledAt)) {
-            throw new BadRequestException("Prediction close time must be before scheduled time");
-        }
+        raceValidator.ensurePredictionClosesBeforeRace(predictionClosesAt, scheduledAt);
 
         if (request.getStatus() != null && !request.getStatus().isBlank()) {
             throw new BadRequestException("Use workflow transition APIs to update status");
         }
     }
 
-    private void validateRaceCanStart(Races race, RaceStartRequest request) {
-        String status = race.getStatus();
-
-        if (RaceStatus.CANCELLED.getValue().equalsIgnoreCase(status)) {
-            throw new BadRequestException("Cancelled race cannot be started");
-        }
-
-        if (RaceStatus.COMPLETED.getValue().equalsIgnoreCase(status)) {
-            throw new BadRequestException("Completed race cannot be started");
-        }
-
-        if (RaceStatus.IN_PROGRESS.getValue().equalsIgnoreCase(status)) {
-            throw new BadRequestException("Race is already in progress");
-        }
-
-        return RaceStatus.isValid(normalizedStatus);
-        if (!RaceStatus.canStart(status)) {
-            throw new BadRequestException("Only ready or open for betting races can be started");
-        }
-
-        if (RaceStatus.isBettingOpen(status)) {
-            validateOpenBettingCanBeClosed(race, request);
-        }
-    }
-
-    private void validateOpenBettingCanBeClosed(Races race, RaceStartRequest request) {
-        Instant predictionClosesAt = race.getPredictionClosesAt();
-
-        if (predictionClosesAt == null) {
-            throw new BadRequestException("Prediction close time is required before starting race from betting status");
-        }
-
-        boolean forceCloseBetting = request != null && request.isForceCloseBetting();
-
-        if (Instant.now().isBefore(predictionClosesAt) && !forceCloseBetting) {
-            throw new BadRequestException("Prediction betting is still open. Use forceCloseBetting to start the race early");
-        }
-    }
-
     private void validateRaceHasRequiredAssignments(Integer raceId) {
         if (jockeyHorseAssignmentsRepository.countByRaces_IdAndStatusIgnoreCase(
                 raceId,
-                ASSIGNMENT_STATUS_CONFIRMED
+                JockeyAssignmentStatus.CONFIRMED.getValue()
         ) < 1) {
             throw new BadRequestException("Race must have at least one confirmed jockey assignment before starting");
         }
@@ -534,5 +437,6 @@ public class RaceServiceImpl implements RaceService {
         }
     }
 }
+
 
 

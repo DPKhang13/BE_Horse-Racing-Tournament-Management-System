@@ -6,6 +6,7 @@ import com.group5.htms.entity.BetOptions;
 import com.group5.htms.entity.Horses;
 import com.group5.htms.entity.JockeyHorseAssignments;
 import com.group5.htms.entity.Races;
+import com.group5.htms.enums.JockeyAssignmentStatus;
 import com.group5.htms.exception.BadRequestException;
 import com.group5.htms.exception.ResourceNotFoundException;
 import com.group5.htms.mapper.BetOptionMapper;
@@ -28,8 +29,6 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class BetOptionServiceImpl implements BetOptionService {
-    private static final String ASSIGNMENT_STATUS_ACCEPTED = "accepted";
-    private static final String ASSIGNMENT_STATUS_CONFIRMED = "confirmed";
     private static final BigDecimal DEFAULT_CURRENT_RATE = new BigDecimal("2.00");
     private static final BigDecimal MIN_RATE = new BigDecimal("1.10");
     private static final BigDecimal MAX_RATE = new BigDecimal("10.00");
@@ -48,9 +47,9 @@ public class BetOptionServiceImpl implements BetOptionService {
 
         List<JockeyHorseAssignments> assignments = new ArrayList<>();
         assignments.addAll(jockeyHorseAssignmentsRepository
-                .findByRaces_IdAndStatusIgnoreCase(raceId, ASSIGNMENT_STATUS_ACCEPTED));
+                .findByRaces_IdAndStatusIgnoreCase(raceId, JockeyAssignmentStatus.ACCEPTED.getValue()));
         assignments.addAll(jockeyHorseAssignmentsRepository
-                .findByRaces_IdAndStatusIgnoreCase(raceId, ASSIGNMENT_STATUS_CONFIRMED));
+                .findByRaces_IdAndStatusIgnoreCase(raceId, JockeyAssignmentStatus.CONFIRMED.getValue()));
 
         if (assignments.isEmpty()) {
             throw new BadRequestException("No accepted or confirmed assignments found for this race");

@@ -27,5 +27,4 @@ public interface JockeyAssignmentService {
 
     JockeyAssignmentResponse confirmAssignment(Integer id);
 
-    void deleteAssignment(Integer id);
 }

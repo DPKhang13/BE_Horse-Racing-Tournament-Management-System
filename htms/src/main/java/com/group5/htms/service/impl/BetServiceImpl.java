@@ -1,13 +1,21 @@
 package com.group5.htms.service.impl;
 
+import com.group5.htms.exception.BadRequestException;
 import com.group5.htms.exception.ResourceNotFoundException;
 import com.group5.htms.dto.bet.request.BetCheckRequest;
 import com.group5.htms.dto.bet.request.BetCreateRequest;
 import com.group5.htms.dto.bet.request.BetUpdateRequest;
 import com.group5.htms.dto.bet.response.BetListResponse;
 import com.group5.htms.dto.bet.response.BetResponse;
+import com.group5.htms.dto.betoption.response.BetOptionResponse;
+import com.group5.htms.entity.BetOptions;
+import com.group5.htms.entity.Users;
+import com.group5.htms.entity.WalletTransactions;
+import com.group5.htms.entity.Wallets;
 import com.group5.htms.entity.Bets;
 import com.group5.htms.enums.BetStatus;
+import com.group5.htms.enums.WalletTransactionStatus;
+import com.group5.htms.enums.WalletTransactionType;
 import com.group5.htms.mapper.BetMapper;
 import com.group5.htms.repository.BetOptionsRepository;
 import com.group5.htms.repository.BetsRepository;
@@ -17,6 +25,7 @@ import com.group5.htms.repository.WalletsRepository;
 import com.group5.htms.service.AuthService;
 import com.group5.htms.service.BetOptionService;
 import com.group5.htms.service.BetService;
+import com.group5.htms.validation.BetValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -30,6 +39,7 @@ import java.util.Objects;
 @Service
 @RequiredArgsConstructor
 public class BetServiceImpl implements BetService {
+    private static final String REF_TYPE_BET = "bet";
 
     private final BetsRepository betsRepository;
     private final BetOptionsRepository betOptionsRepository;
@@ -39,12 +49,12 @@ public class BetServiceImpl implements BetService {
     private final AuthService authService;
     private final BetOptionService betOptionService;
     private final BetMapper betMapper;
+    private final BetValidator betValidator;
 
     @Override
     public List<BetListResponse> getAllBets() {
         return betsRepository.findAll()
                 .stream()
-                .filter(bet -> !isDeleted(bet.getStatus()))
                 .map(betMapper::toListResponse)
                 .toList();
     }
@@ -61,16 +71,14 @@ public class BetServiceImpl implements BetService {
         Users user = usersRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         BetOptions option = findBetOptionForBetting(request.getOptionId());
-        validateRaceOpenForBetting(option);
-        validatePredictionStillOpen(option);
+        betValidator.ensureRaceOpenForBetting(option);
+        betValidator.ensurePredictionStillOpen(option);
 
         Wallets wallet = getLockedWallet(userId);
         BigDecimal betPoints = request.getBetPoints();
         BigDecimal pointsBefore = safeMoney(wallet.getPointBalance());
 
-        if (pointsBefore.compareTo(betPoints) < 0) {
-            throw new BadRequestException("Wallet balance is not enough to place this bet");
-        }
+        betValidator.ensureEnoughPoints(pointsBefore, betPoints);
 
         BigDecimal pointsAfter = pointsBefore.subtract(betPoints);
         wallet.setPointBalance(pointsAfter);
@@ -81,7 +89,7 @@ public class BetServiceImpl implements BetService {
         Bets bet = betMapper.toEntity(request);
         bet.setUsers(user);
         bet.setOption(option);
-        bet.setStatus(BET_STATUS_PENDING);
+        bet.setStatus(BetStatus.PENDING.getValue());
 
         option.setTotalBetPoints(safeMoney(option.getTotalBetPoints()).add(betPoints));
         option.setTotalBetCount((option.getTotalBetCount() == null ? 0 : option.getTotalBetCount()) + 1);
@@ -100,10 +108,7 @@ public class BetServiceImpl implements BetService {
     @Transactional
     public BetResponse updateBet(Integer id, BetUpdateRequest request) {
         Bets bet = findBetForCurrentSpectator(id);
-        request.setUserId(null);
-        request.setRewardPoints(null);
-        request.setStatus(null);
-        request.setSettledAt(null);
+        betValidator.ensureNoBackendManagedUpdateFields(request);
         validateUpdateReferences(request);
         betMapper.updateBet(bet, request);
 
@@ -115,24 +120,16 @@ public class BetServiceImpl implements BetService {
     public BetResponse checkBet(Integer id, BetCheckRequest request) {
         Bets bet = findBet(id);
 
-        bet.setStatus(request.getStatus().trim());
+        bet.setStatus(betValidator.normalizeSettlementStatus(request.getStatus()));
         bet.setRewardPoints(request.getRewardPoints() == null ? BigDecimal.ZERO : request.getRewardPoints());
         bet.setSettledAt(request.getSettledAt() == null ? Instant.now() : request.getSettledAt());
 
         return betMapper.toResponse(betsRepository.save(bet));
     }
 
-    @Override
-    @Transactional
-    public void deleteBet(Integer id) {
-        Bets bet = findBetForCurrentSpectator(id);
-        bet.setStatus(BetStatus.DELETED.getValue());
-        betsRepository.save(bet);
-    }
 
     private Bets findBet(Integer id) {
         return betsRepository.findById(id)
-                .filter(bet -> !isDeleted(bet.getStatus()))
                 .orElseThrow(() -> new ResourceNotFoundException("Bet not found"));
     }
 
@@ -145,10 +142,6 @@ public class BetServiceImpl implements BetService {
         }
 
         return bet;
-    }
-
-    private void validateCreateReferences(BetCreateRequest request) {
-        validateOptionExists(request.getOptionId());
     }
 
     private void validateUpdateReferences(BetUpdateRequest request) {
@@ -172,22 +165,6 @@ public class BetServiceImpl implements BetService {
                 .orElseThrow(() -> new ResourceNotFoundException("Bet option not found"));
     }
 
-    private void validateRaceOpenForBetting(BetOptions option) {
-        String status = option.getRaces().getStatus();
-
-        if (status == null || !RaceStatus.OPEN_FOR_BETTING.getValue().equalsIgnoreCase(status.trim())) {
-            throw new BadRequestException("Betting is not open for this race");
-        }
-    }
-
-    private void validatePredictionStillOpen(BetOptions option) {
-        Instant predictionClosesAt = option.getRaces().getPredictionClosesAt();
-
-        if (predictionClosesAt != null && !Instant.now().isBefore(predictionClosesAt)) {
-            throw new BadRequestException("Prediction time has closed");
-        }
-    }
-
     private Wallets getLockedWallet(Integer userId) {
         Wallets wallet = walletsRepository.findByUsersId(userId)
                 .orElseThrow(() -> new BadRequestException("Wallet not found"));
@@ -195,9 +172,7 @@ public class BetServiceImpl implements BetService {
         Wallets lockedWallet = walletsRepository.findFirstById(wallet.getId())
                 .orElseThrow(() -> new BadRequestException("Wallet not found"));
 
-        if (!WalletStatus.ACTIVE.getValue().equalsIgnoreCase(lockedWallet.getStatus())) {
-            throw new BadRequestException("Wallet is not active");
-        }
+        betValidator.ensureWalletActive(lockedWallet);
 
         return lockedWallet;
     }
@@ -244,8 +219,6 @@ public class BetServiceImpl implements BetService {
                 .ifPresent(response -> option.setCurrentRate(response.getCurrentRate()));
     }
 
-    private boolean isDeleted(String status) {
-        return BetStatus.DELETED.getValue().equalsIgnoreCase(status);
-    }
 }
+
 

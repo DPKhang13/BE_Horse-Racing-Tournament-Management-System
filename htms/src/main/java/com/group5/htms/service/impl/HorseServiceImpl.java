@@ -15,13 +15,12 @@ import com.group5.htms.repository.HorseOwnerProfilesRepository;
 import com.group5.htms.repository.HorsesRepository;
 import com.group5.htms.service.AuthService;
 import com.group5.htms.service.HorseService;
+import com.group5.htms.validation.HorseValidator;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -31,12 +30,13 @@ public class HorseServiceImpl implements HorseService {
     private final HorseOwnerProfilesRepository horseOwnerProfilesRepository;
     private final AuthService authService;
     private final HorseMapper horseMapper;
+    private final HorseValidator horseValidator;
 
     @Override
     @Transactional(readOnly = true)
     public HorseCountResponse getHorseCount() {
         return HorseCountResponse.builder()
-                .horseCount(horsesRepository.countByStatusNotIgnoreCase(STATUS_DELETED))
+                .horseCount(horsesRepository.count())
                 .build();
     }
 
@@ -45,7 +45,6 @@ public class HorseServiceImpl implements HorseService {
     public List<HorseListResponse> getAllHorses() {
         return horsesRepository.findAll()
                 .stream()
-                .filter(horse -> !isDeleted(horse.getStatus()))
                 .map(horseMapper::toListResponse)
                 .toList();
     }
@@ -83,23 +82,15 @@ public class HorseServiceImpl implements HorseService {
     @Transactional
     public HorseResponse updateHorse(Integer id, HorseUpdateRequest request) {
         Horses horse = findHorseForCurrentOwner(id);
-        request.setOwnerId(null);
+        horseValidator.ensureNoBackendManagedFields(request);
         horseMapper.updateHorse(horse, request);
 
         return horseMapper.toResponse(horsesRepository.save(horse));
     }
 
-    @Override
-    @Transactional
-    public void deleteHorse(Integer id) {
-        Horses horse = findHorseForCurrentOwner(id);
-        horse.setStatus(HorseStatus.DELETED.getValue());
-        horsesRepository.save(horse);
-    }
 
     private Horses findHorse(Integer id) {
         return horsesRepository.findById(id)
-                .filter(horse -> !isDeleted(horse.getStatus()))
                 .orElseThrow(() -> new ResourceNotFoundException("Horse not found"));
     }
 
@@ -107,9 +98,7 @@ public class HorseServiceImpl implements HorseService {
         Horses horse = findHorse(id);
         Integer ownerId = authService.getCurrentUserId();
 
-        if (!Objects.equals(horse.getOwner().getId(), ownerId)) {
-            throw new AccessDeniedException("You do not own this horse");
-        }
+        horseValidator.ensureOwnerCanManageHorse(horse, ownerId);
 
         return horse;
     }
@@ -119,9 +108,6 @@ public class HorseServiceImpl implements HorseService {
                 .orElseThrow(() -> new ResourceNotFoundException("Horse owner profile not found"));
     }
 
-    private boolean isDeleted(String status) {
-        return HorseStatus.DELETED.getValue().equalsIgnoreCase(status);
-    }
 
 }
 

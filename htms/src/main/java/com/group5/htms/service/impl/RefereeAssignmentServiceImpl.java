@@ -8,6 +8,7 @@ import com.group5.htms.entity.RefereeProfiles;
 import com.group5.htms.entity.Users;
 import com.group5.htms.enums.JockeyAssignmentStatus;
 import com.group5.htms.enums.RaceStatus;
+import com.group5.htms.enums.RoleStatus;
 import com.group5.htms.enums.RoleType;
 import com.group5.htms.exception.BadRequestException;
 import com.group5.htms.mapper.RefereeAssignmentMapper;
@@ -29,7 +30,6 @@ import java.util.Set;
 public class RefereeAssignmentServiceImpl implements RefereeAssignmentService {
 
     private static final int DEFAULT_MAX_REFEREES = 3;
-    private static final String STATUS_ACTIVE = "active";
     private static final String ROLE_CHIEF_REFEREE = "chief_referee";
     private static final String ROLE_MAIN_REFEREE = "main_referee";
 
@@ -136,7 +136,7 @@ public class RefereeAssignmentServiceImpl implements RefereeAssignmentService {
 
     private void validateReferee(RefereeProfiles referee) {
         if (referee.getStatus() == null
-                || !STATUS_ACTIVE.equalsIgnoreCase(referee.getStatus().trim())) {
+                || !RoleStatus.ACTIVE.getValue().equalsIgnoreCase(referee.getStatus().trim())) {
             throw new BadRequestException("Referee profile is not active");
         }
 
@@ -147,7 +147,7 @@ public class RefereeAssignmentServiceImpl implements RefereeAssignmentService {
         }
 
         if (user.getStatus() == null
-                || !STATUS_ACTIVE.equalsIgnoreCase(user.getStatus().trim())) {
+                || !RoleStatus.ACTIVE.getValue().equalsIgnoreCase(user.getStatus().trim())) {
             throw new BadRequestException("Referee user account is not active");
         }
 

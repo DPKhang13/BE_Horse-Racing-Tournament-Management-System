@@ -32,8 +32,6 @@ public interface RaceService {
             TournamentScheduleUpdateRequest request
     );
 
-    void deleteSchedule(Integer scheduleId);
-
     RaceResponse getRaceById(Integer raceId);
 
     RaceResponse updateRace(Integer raceId, RaceUpdateRequest request);

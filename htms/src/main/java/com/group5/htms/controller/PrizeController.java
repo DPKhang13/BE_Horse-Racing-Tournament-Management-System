@@ -12,7 +12,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
@@ -59,18 +58,6 @@ public class PrizeController {
     ) {
         return ResponseEntity.ok(
                 prizeService.updatePrize(tournamentId, prizeId, request)
-        );
-    }
-
-    @DeleteMapping("/{tournamentId}/delete-prize/{prizeId}")
-    public ResponseEntity<Map<String, String>> deletePrize(
-            @PathVariable Integer tournamentId,
-            @PathVariable Integer prizeId
-    ) {
-        prizeService.deletePrize(tournamentId, prizeId);
-
-        return ResponseEntity.ok(
-                Map.of("message", "Prize deleted successfully")
         );
     }
 }

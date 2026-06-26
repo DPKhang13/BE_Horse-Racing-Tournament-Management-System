@@ -5,8 +5,7 @@ import lombok.Getter;
 @Getter
 public enum RaceResultStatus {
     DRAFT("draft"),
-    PUBLISHED("published"),
-    DELETED("deleted");
+    PUBLISHED("published");
 
     private final String value;
 

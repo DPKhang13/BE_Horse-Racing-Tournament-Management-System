@@ -10,7 +10,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -58,13 +57,5 @@ public class RaceRoundController {
             @Valid @RequestBody RaceRoundUpdateRequest request
     ) {
         return ResponseEntity.ok(raceRoundService.updateRound(id, request));
-    }
-
-    @Operation(summary = "Delete race round", description = "Xóa kết quả từng vòng theo round id.")
-    @DeleteMapping("/delete/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'RACE_REFEREE')")
-    public ResponseEntity<Void> deleteRound(@PathVariable Integer id) {
-        raceRoundService.deleteRound(id);
-        return ResponseEntity.noContent().build();
     }
 }

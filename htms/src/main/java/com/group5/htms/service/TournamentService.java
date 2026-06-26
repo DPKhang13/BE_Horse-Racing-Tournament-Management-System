@@ -24,8 +24,6 @@ public interface TournamentService {
 
     List<TournamentSummaryResponse> getAllTournaments(String status);
 
-    //void deleteTournament(Integer tournamentId);
-
     TournamentResponse cancelTournament(Integer tournamentId);
 
     OpenRegistrationResponse openRegistration(Integer tournamentId, OpenRegistrationRequest request);

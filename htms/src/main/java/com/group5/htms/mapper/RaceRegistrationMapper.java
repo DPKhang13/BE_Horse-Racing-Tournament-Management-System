@@ -24,7 +24,6 @@ public class RaceRegistrationMapper {
                 .races(toRace(request.getRaceId()))
                 .horses(toHorse(request.getHorseId()))
                 .owner(toOwner(request.getOwnerId()))
-                .jockey(toNullableJockey(request.getJockeyId()))
                 .status(RaceRegistrationStatus.PENDING.getValue())
                 .ownerConfirmationStatus(RaceRegistrationStatus.PENDING.getValue())
                 .registeredAt(Instant.now())
@@ -41,30 +40,7 @@ public class RaceRegistrationMapper {
         if (request.getHorseId() != null) {
             registration.setHorses(toHorse(request.getHorseId()));
         }
-        if (request.getOwnerId() != null) {
-            registration.setOwner(toOwner(request.getOwnerId()));
-        }
-        if (request.getJockeyId() != null) {
-            registration.setJockey(toJockey(request.getJockeyId()));
-        }
-        if (request.getStatus() != null && !request.getStatus().isBlank()) {
-            registration.setStatus(request.getStatus().trim());
-        }
-        if (request.getOwnerConfirmationStatus() != null && !request.getOwnerConfirmationStatus().isBlank()) {
-            registration.setOwnerConfirmationStatus(request.getOwnerConfirmationStatus().trim());
-        }
-        if (request.getOwnerConfirmedAt() != null) {
-            registration.setOwnerConfirmedAt(request.getOwnerConfirmedAt());
-        }
-        if (request.getRegisteredAt() != null) {
-            registration.setRegisteredAt(request.getRegisteredAt());
-        }
-        if (request.getApprovedAt() != null) {
-            registration.setApprovedAt(request.getApprovedAt());
-        }
-        if (request.getApprovedById() != null) {
-            registration.setApprovedBy(toUser(request.getApprovedById()));
-        }
+
     }
 
     public RaceRegistrationResponse toResponse(RaceRegistrations registration) {
@@ -148,32 +124,6 @@ public class RaceRegistrationMapper {
         return owner;
     }
 
-    private JockeyProfiles toJockey(Integer id) {
-        JockeyProfiles jockey = new JockeyProfiles();
-        jockey.setId(id);
-        return jockey;
-    }
 
-    private JockeyProfiles toNullableJockey(Integer id) {
-        return id == null ? null : toJockey(id);
-    }
-
-    private Users toUser(Integer id) {
-        Users user = new Users();
-        user.setId(id);
-        return user;
-    }
-
-    private Users toNullableUser(Integer id) {
-        return id == null ? null : toUser(id);
-    }
-
-    private String defaultText(String value, String defaultValue) {
-        return value == null || value.isBlank() ? defaultValue : value.trim();
-    }
-
-    private Instant defaultInstant(Instant value) {
-        return value == null ? Instant.now() : value;
-    }
 }
 

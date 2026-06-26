@@ -1,7 +1,6 @@
 package com.group5.htms.service.impl;
 
 import com.group5.htms.exception.ResourceNotFoundException;
-import com.group5.htms.enums.RaceResultStatus;
 import com.group5.htms.dto.raceresult.request.RaceResultCreateRequest;
 import com.group5.htms.dto.raceresult.request.RaceResultPublishRequest;
 import com.group5.htms.dto.raceresult.request.RaceResultUpdateRequest;
@@ -34,7 +33,6 @@ public class RaceResultServiceImpl implements RaceResultService {
     public List<RaceResultListResponse> getAllResults() {
         return raceResultsRepository.findAll()
                 .stream()
-                .filter(result -> !isDeleted(result.getStatus()))
                 .map(raceResultMapper::toListResponse)
                 .toList();
     }
@@ -74,17 +72,9 @@ public class RaceResultServiceImpl implements RaceResultService {
         return raceResultMapper.toResponse(raceResultsRepository.save(result));
     }
 
-    @Override
-    @Transactional
-    public void deleteResult(Integer id) {
-        RaceResults result = findResult(id);
-        result.setStatus(RaceResultStatus.DELETED.getValue());
-        raceResultsRepository.save(result);
-    }
 
     private RaceResults findResult(Integer id) {
         return raceResultsRepository.findById(id)
-                .filter(result -> !isDeleted(result.getStatus()))
                 .orElseThrow(() -> new ResourceNotFoundException("Race result not found"));
     }
 
@@ -108,7 +98,6 @@ public class RaceResultServiceImpl implements RaceResultService {
 
     private JockeyHorseAssignments getAssignment(Integer id) {
         return jockeyHorseAssignmentsRepository.findById(id)
-                .filter(assignment -> !isDeleted(assignment.getStatus()))
                 .orElseThrow(() -> new ResourceNotFoundException("Jockey assignment not found"));
     }
 
@@ -118,9 +107,6 @@ public class RaceResultServiceImpl implements RaceResultService {
         }
     }
 
-    private boolean isDeleted(String status) {
-        return RaceResultStatus.DELETED.getValue().equalsIgnoreCase(status);
-    }
 }
 
 
