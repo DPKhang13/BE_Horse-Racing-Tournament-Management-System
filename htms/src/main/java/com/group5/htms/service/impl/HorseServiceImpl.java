@@ -9,6 +9,9 @@ import com.group5.htms.dto.horse.response.HorseRankingResponse;
 import com.group5.htms.dto.horse.response.HorseResponse;
 import com.group5.htms.entity.HorseOwnerProfiles;
 import com.group5.htms.entity.Horses;
+import com.group5.htms.entity.Users;
+import com.group5.htms.enums.RoleType;
+import com.group5.htms.exception.BadRequestException;
 import com.group5.htms.mapper.HorseMapper;
 import com.group5.htms.repository.HorseOwnerProfilesRepository;
 import com.group5.htms.repository.HorsesRepository;
@@ -19,6 +22,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 
@@ -71,8 +75,9 @@ public class HorseServiceImpl implements HorseService {
     @Override
     @Transactional
     public HorseResponse createHorse(HorseCreateRequest request) {
-        Integer ownerId = authService.getCurrentUserId();
-        HorseOwnerProfiles owner = findOwnerProfile(ownerId);
+        Users currentUser = authService.getCurrentUser();
+        HorseOwnerProfiles owner = findOrCreateOwnerProfile(currentUser);
+        Integer ownerId = currentUser.getId();
         request.setOwnerId(ownerId);
         Horses horse = horseMapper.toEntity(request);
         horse.setOwner(owner);
@@ -118,6 +123,28 @@ public class HorseServiceImpl implements HorseService {
     private HorseOwnerProfiles findOwnerProfile(Integer ownerId) {
         return horseOwnerProfilesRepository.findById(ownerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Horse owner profile not found"));
+    }
+
+    private HorseOwnerProfiles findOrCreateOwnerProfile(Users user) {
+        validateCurrentUserIsHorseOwner(user);
+
+        return horseOwnerProfilesRepository.findById(user.getId())
+                .orElseGet(() -> horseOwnerProfilesRepository.save(
+                        HorseOwnerProfiles.builder()
+                                .users(user)
+                                .status(STATUS_ACTIVE)
+                                .createdAt(Instant.now())
+                                .build()
+                ));
+    }
+
+    private void validateCurrentUserIsHorseOwner(Users user) {
+        if (user == null
+                || user.getId() == null
+                || user.getRoleType() == null
+                || !RoleType.HORSE_OWNER.getValue().equalsIgnoreCase(user.getRoleType().trim())) {
+            throw new BadRequestException("Current user must be horse owner");
+        }
     }
 
     private boolean isDeleted(String status) {

@@ -85,12 +85,13 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
         request.setOwnerId(ownerId);
         validateCurrentUserIsHorseOwner();
 
-        Tournaments tournament = findTournament(request.getTournamentId());
         Races race = findRace(request.getRaceId());
+        validateRaceBelongsToTournament(race, request.getTournamentId());
+
+        Tournaments tournament = findTournament(request.getTournamentId());
         Horses horse = findHorse(request.getHorseId());
         HorseOwnerProfiles owner = findOwnerProfile(ownerId);
 
-        validateRaceBelongsToTournament(race, tournament.getId());
         validateRegistrationOpen(tournament, race);
         validateHorseBelongsToOwner(horse, ownerId);
         validateHorseActive(horse);

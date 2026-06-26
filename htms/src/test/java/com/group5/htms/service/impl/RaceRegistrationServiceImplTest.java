@@ -149,13 +149,10 @@ class RaceRegistrationServiceImplTest {
     void createRegistrationFailsIfRaceDoesNotBelongToTournament() {
         RaceRegistrationCreateRequest request = request();
         mockValidCurrentOwner();
-        Tournaments tournament = tournament(TournamentStatus.REGISTRATION_OPEN.getValue());
         Races race = race(TournamentStatus.REGISTRATION_OPEN.getValue(), RaceStatus.REGISTRATION_OPEN.getValue());
-        race.getSchedule().getTournaments().setId(999);
-        when(tournamentsRepository.findById(1)).thenReturn(Optional.of(tournament));
         when(racesRepository.findById(2)).thenReturn(Optional.of(race));
-        when(horsesRepository.findById(5)).thenReturn(Optional.of(horse("A")));
-        when(horseOwnerProfilesRepository.findById(1)).thenReturn(Optional.of(owner()));
+
+        request.setTournamentId(999);
 
         assertThatThrownBy(() -> service.createRegistration(request))
                 .isInstanceOf(BadRequestException.class)
