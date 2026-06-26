@@ -10,6 +10,8 @@ import com.group5.htms.entity.JockeyProfiles;
 import com.group5.htms.entity.RaceRegistrations;
 import com.group5.htms.entity.Races;
 import com.group5.htms.exception.BadRequestException;
+import com.group5.htms.enums.JockeyStatus;
+import com.group5.htms.enums.JockeyAssignmentStatus;
 import com.group5.htms.exception.ResourceNotFoundException;
 import com.group5.htms.mapper.JockeyAssignmentMapper;
 import com.group5.htms.repository.JockeyProfilesRepository;
@@ -30,9 +32,6 @@ import java.util.Objects;
 @Service
 @RequiredArgsConstructor
 public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
-    private static final String STATUS_DELETED = "deleted";
-    private static final String STATUS_ACCEPTED = "accepted";
-    private static final String JOCKEY_STATUS_UNAVAILABLE = "unavailable";
 
     private final JockeyHorseAssignmentsRepository jockeyHorseAssignmentsRepository;
     private final RaceRegistrationsRepository raceRegistrationsRepository;
@@ -117,8 +116,8 @@ public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
         String responseStatus = request.getStatus().trim();
         assignment.setStatus(responseStatus);
         assignment.setRespondedAt(request.getRespondedAt() == null ? Instant.now() : request.getRespondedAt());
-        if (STATUS_ACCEPTED.equalsIgnoreCase(responseStatus)) {
-            assignment.getJockey().setStatus(JOCKEY_STATUS_UNAVAILABLE);
+        if (JockeyAssignmentStatus.ACCEPTED.getValue().equalsIgnoreCase(responseStatus)) {
+            assignment.getJockey().setStatus(JockeyStatus.UNAVAILABLE.getValue());
         }
 
         return jockeyAssignmentMapper.toResponse(jockeyHorseAssignmentsRepository.save(assignment));
@@ -128,7 +127,7 @@ public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
     @Transactional
     public void deleteAssignment(Integer id) {
         JockeyHorseAssignments assignment = findAssignmentForCurrentOwner(id);
-        assignment.setStatus(STATUS_DELETED);
+        assignment.setStatus(JockeyAssignmentStatus.DELETED.getValue());
         jockeyHorseAssignmentsRepository.save(assignment);
     }
 
@@ -232,7 +231,7 @@ public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
     }
 
     private boolean isDeleted(String status) {
-        return STATUS_DELETED.equalsIgnoreCase(status);
+        return JockeyAssignmentStatus.DELETED.getValue().equalsIgnoreCase(status);
     }
 
     private List<JockeyHorseAssignments> findAssignmentsByJockey(Integer jockeyId, String status) {
@@ -253,3 +252,5 @@ public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
         return jockeyHorseAssignmentsRepository.findByReg_Owner_IdOrderByInvitedAtDesc(ownerId);
     }
 }
+
+

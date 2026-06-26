@@ -1,6 +1,7 @@
 package com.group5.htms.service.impl;
 
 import com.group5.htms.exception.ResourceNotFoundException;
+import com.group5.htms.enums.RaceResultStatus;
 import com.group5.htms.dto.raceresult.request.RaceResultCreateRequest;
 import com.group5.htms.dto.raceresult.request.RaceResultPublishRequest;
 import com.group5.htms.dto.raceresult.request.RaceResultUpdateRequest;
@@ -23,7 +24,6 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class RaceResultServiceImpl implements RaceResultService {
-    private static final String STATUS_DELETED = "deleted";
 
     private final RaceResultsRepository raceResultsRepository;
     private final JockeyHorseAssignmentsRepository jockeyHorseAssignmentsRepository;
@@ -78,7 +78,7 @@ public class RaceResultServiceImpl implements RaceResultService {
     @Transactional
     public void deleteResult(Integer id) {
         RaceResults result = findResult(id);
-        result.setStatus(STATUS_DELETED);
+        result.setStatus(RaceResultStatus.DELETED.getValue());
         raceResultsRepository.save(result);
     }
 
@@ -119,6 +119,8 @@ public class RaceResultServiceImpl implements RaceResultService {
     }
 
     private boolean isDeleted(String status) {
-        return STATUS_DELETED.equalsIgnoreCase(status);
+        return RaceResultStatus.DELETED.getValue().equalsIgnoreCase(status);
     }
 }
+
+

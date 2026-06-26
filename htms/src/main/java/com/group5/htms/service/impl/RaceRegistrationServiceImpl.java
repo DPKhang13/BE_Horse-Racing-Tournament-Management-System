@@ -13,6 +13,7 @@ import com.group5.htms.entity.Races;
 import com.group5.htms.entity.Tournaments;
 import com.group5.htms.entity.Users;
 import com.group5.htms.exception.BadRequestException;
+import com.group5.htms.enums.RaceRegistrationStatus;
 import com.group5.htms.exception.ResourceNotFoundException;
 import com.group5.htms.mapper.RaceRegistrationMapper;
 import com.group5.htms.repository.HorseOwnerProfilesRepository;
@@ -35,7 +36,6 @@ import java.util.Objects;
 @Service
 @RequiredArgsConstructor
 public class RaceRegistrationServiceImpl implements RaceRegistrationService {
-    private static final String STATUS_DELETED = "deleted";
 
     private final RaceRegistrationsRepository raceRegistrationsRepository;
     private final TournamentsRepository tournamentsRepository;
@@ -132,7 +132,7 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
                 id,
                 authService.getCurrentUserId()
         );
-        registration.setStatus(STATUS_DELETED);
+        registration.setStatus(RaceRegistrationStatus.DELETED.getValue());
         raceRegistrationsRepository.save(registration);
     }
 
@@ -255,7 +255,9 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
     }
 
     private boolean isDeleted(String status) {
-        return STATUS_DELETED.equalsIgnoreCase(status);
+        return RaceRegistrationStatus.DELETED.getValue().equalsIgnoreCase(status);
     }
 
 }
+
+

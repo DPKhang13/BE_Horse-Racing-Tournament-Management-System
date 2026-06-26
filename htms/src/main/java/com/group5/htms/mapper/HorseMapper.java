@@ -8,6 +8,7 @@ import com.group5.htms.dto.horse.response.HorseResponse;
 import com.group5.htms.entity.HorseOwnerProfiles;
 import com.group5.htms.entity.Horses;
 import com.group5.htms.entity.Users;
+import com.group5.htms.enums.HorseStatus;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -26,7 +27,7 @@ public class HorseMapper {
                 .rankingPoints(0)
                 .avatarUrl(trim(request.getAvatarUrl()))
                 .totalWins(0)
-                .status("active")
+                .status(HorseStatus.ACTIVE.getValue())
                 .registeredAt(Instant.now())
                 .build();
     }
@@ -147,7 +148,7 @@ public class HorseMapper {
     }
 
     private String defaultStatus(String value) {
-        return value == null || value.isBlank() ? "active" : value.trim();
+        return value == null || value.isBlank() ? HorseStatus.ACTIVE.getValue() : value.trim();
     }
 
     private Instant defaultRegisteredAt(Instant value) {
@@ -174,3 +175,4 @@ public class HorseMapper {
         return owner == null ? null : owner.getUsers();
     }
 }
+

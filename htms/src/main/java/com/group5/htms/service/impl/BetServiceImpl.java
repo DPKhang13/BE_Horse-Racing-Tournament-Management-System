@@ -7,6 +7,7 @@ import com.group5.htms.dto.bet.request.BetUpdateRequest;
 import com.group5.htms.dto.bet.response.BetListResponse;
 import com.group5.htms.dto.bet.response.BetResponse;
 import com.group5.htms.entity.Bets;
+import com.group5.htms.enums.BetStatus;
 import com.group5.htms.mapper.BetMapper;
 import com.group5.htms.repository.BetOptionsRepository;
 import com.group5.htms.repository.BetsRepository;
@@ -25,7 +26,6 @@ import java.util.Objects;
 @Service
 @RequiredArgsConstructor
 public class BetServiceImpl implements BetService {
-    private static final String STATUS_DELETED = "deleted";
 
     private final BetsRepository betsRepository;
     private final BetOptionsRepository betOptionsRepository;
@@ -86,7 +86,7 @@ public class BetServiceImpl implements BetService {
     @Transactional
     public void deleteBet(Integer id) {
         Bets bet = findBetForCurrentSpectator(id);
-        bet.setStatus(STATUS_DELETED);
+        bet.setStatus(BetStatus.DELETED.getValue());
         betsRepository.save(bet);
     }
 
@@ -124,6 +124,7 @@ public class BetServiceImpl implements BetService {
     }
 
     private boolean isDeleted(String status) {
-        return STATUS_DELETED.equalsIgnoreCase(status);
+        return BetStatus.DELETED.getValue().equalsIgnoreCase(status);
     }
 }
+

@@ -13,6 +13,8 @@ import com.group5.htms.entity.Races;
 import com.group5.htms.entity.TournamentSchedules;
 import com.group5.htms.entity.Tournaments;
 import com.group5.htms.enums.TournamentStatus;
+import com.group5.htms.enums.RaceStatus;
+import com.group5.htms.enums.JockeyAssignmentStatus;
 import com.group5.htms.exception.BadRequestException;
 import com.group5.htms.exception.ResourceNotFoundException;
 import com.group5.htms.mapper.RaceMapper;
@@ -37,10 +39,6 @@ import java.util.List;
 @RequiredArgsConstructor
 public class RaceServiceImpl implements RaceService {
     private static final ZoneId VIETNAM_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
-    private static final String RACE_STATUS_SCHEDULED = "scheduled";
-    private static final String RACE_STATUS_UPCOMING = "upcoming";
-    private static final String RACE_STATUS_CANCELLED = "cancelled";
-    private static final String RACE_STATUS_COMPLETED = "completed";
 
     private final RacesRepository racesRepository;
     private final TournamentsRepository tournamentsRepository;
@@ -204,11 +202,11 @@ public class RaceServiceImpl implements RaceService {
 
         validateTournamentCanArrangeRace(race.getSchedule().getTournaments());
 
-        if (RACE_STATUS_COMPLETED.equalsIgnoreCase(race.getStatus())) {
+        if (RaceStatus.COMPLETED.getValue().equalsIgnoreCase(race.getStatus())) {
             throw new BadRequestException("Completed race cannot be cancelled");
         }
 
-        race.setStatus(RACE_STATUS_CANCELLED);
+        race.setStatus(RaceStatus.CANCELLED.getValue());
         racesRepository.save(race);
     }
 
@@ -239,7 +237,7 @@ public class RaceServiceImpl implements RaceService {
         return raceMapper.toListResponse(
                 race,
                 raceRegistrationsRepository.countByRaces_Id(raceId),
-                jockeyHorseAssignmentsRepository.countByRaces_IdAndStatusIgnoreCase(raceId, "accepted"),
+                jockeyHorseAssignmentsRepository.countByRaces_IdAndStatusIgnoreCase(raceId, JockeyAssignmentStatus.ACCEPTED.getValue()),
                 raceRefereeAssignmentsRepository.countByRaces_Id(raceId)
         );
     }
@@ -250,7 +248,7 @@ public class RaceServiceImpl implements RaceService {
         return raceMapper.toResponse(
                 race,
                 raceRegistrationsRepository.countByRaces_Id(raceId),
-                jockeyHorseAssignmentsRepository.countByRaces_IdAndStatusIgnoreCase(raceId, "accepted"),
+                jockeyHorseAssignmentsRepository.countByRaces_IdAndStatusIgnoreCase(raceId, JockeyAssignmentStatus.ACCEPTED.getValue()),
                 raceRefereeAssignmentsRepository.countByRaces_Id(raceId),
                 racePointRulesRepository.findByRace_IdOrderByFinishPositionAsc(raceId)
         );
@@ -400,8 +398,8 @@ public class RaceServiceImpl implements RaceService {
 
         if (status != null
                 && !status.isBlank()
-                && !RACE_STATUS_SCHEDULED.equalsIgnoreCase(status.trim())
-                && !RACE_STATUS_UPCOMING.equalsIgnoreCase(status.trim())) {
+                && !RaceStatus.SCHEDULED.getValue().equalsIgnoreCase(status.trim())
+                && !RaceStatus.UPCOMING.getValue().equalsIgnoreCase(status.trim())) {
             throw new BadRequestException("Invalid race status");
         }
     }
@@ -444,9 +442,8 @@ public class RaceServiceImpl implements RaceService {
     private boolean isValidRaceStatus(String status) {
         String normalizedStatus = status.trim().toLowerCase();
 
-        return RACE_STATUS_SCHEDULED.equals(normalizedStatus)
-                || RACE_STATUS_UPCOMING.equals(normalizedStatus)
-                || RACE_STATUS_CANCELLED.equals(normalizedStatus)
-                || RACE_STATUS_COMPLETED.equals(normalizedStatus);
+        return RaceStatus.isValid(normalizedStatus);
     }
 }
+
+

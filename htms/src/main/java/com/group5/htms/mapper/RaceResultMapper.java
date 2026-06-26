@@ -10,6 +10,7 @@ import com.group5.htms.entity.JockeyHorseAssignments;
 import com.group5.htms.entity.RaceResults;
 import com.group5.htms.entity.Races;
 import com.group5.htms.entity.RefereeReports;
+import com.group5.htms.enums.RaceResultStatus;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -29,7 +30,7 @@ public class RaceResultMapper {
                 .pointsAwarded(defaultZero(request.getPointsAwarded()))
                 .isDisqualified(request.getIsDisqualified() != null && request.getIsDisqualified())
                 .disqualifyReason(trim(request.getDisqualifyReason()))
-                .status(defaultText(request.getStatus(), "draft"))
+                .status(defaultText(request.getStatus(), RaceResultStatus.DRAFT.getValue()))
                 .recordedAt(defaultInstant(request.getRecordedAt()))
                 .publishedAt(request.getPublishedAt())
                 .build();
@@ -194,3 +195,4 @@ public class RaceResultMapper {
         return value == null ? Instant.now() : value;
     }
 }
+

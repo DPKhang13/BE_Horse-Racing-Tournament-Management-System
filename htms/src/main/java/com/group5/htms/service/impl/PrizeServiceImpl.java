@@ -1,6 +1,7 @@
 package com.group5.htms.service.impl;
 
 import com.group5.htms.dto.prize.request.PrizeCreateRequest;
+import com.group5.htms.enums.TournamentStatus;
 import com.group5.htms.dto.prize.request.PrizeItemRequest;
 import com.group5.htms.dto.prize.request.PrizeUpdateRequest;
 import com.group5.htms.dto.prize.response.PrizeResponse;
@@ -24,7 +25,6 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class PrizeServiceImpl implements PrizeService {
 
-    private static final String TOURNAMENT_STATUS_UPCOMING = "upcoming";
 
     private final PrizeRepository prizeRepository;
     private final TournamentsRepository tournamentsRepository;
@@ -166,7 +166,7 @@ public class PrizeServiceImpl implements PrizeService {
 
         String status = tournament.getStatus();
 
-        if (status == null || !TOURNAMENT_STATUS_UPCOMING.equalsIgnoreCase(status.trim())) {
+        if (status == null || !TournamentStatus.UPCOMING.getValue().equalsIgnoreCase(status.trim())) {
             throw new BadRequestException("Prize distributions can only be managed for upcoming tournaments");
         }
     }
@@ -331,3 +331,5 @@ public class PrizeServiceImpl implements PrizeService {
         }
     }
 }
+
+

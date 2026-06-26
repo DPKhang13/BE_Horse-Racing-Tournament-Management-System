@@ -20,6 +20,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 import org.hibernate.annotations.ColumnDefault;
+import com.group5.htms.enums.WalletTransactionStatus;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -121,7 +122,7 @@ public class WalletTransactions {
         }
 
         if (this.status == null || this.status.isBlank()) {
-            this.status = "pending";
+            this.status = WalletTransactionStatus.PENDING.getValue();
         }
 
         if (this.createdAt == null) {
@@ -134,3 +135,4 @@ public class WalletTransactions {
         this.updatedAt = Instant.now();
     }
 }
+

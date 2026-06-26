@@ -18,6 +18,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 import org.hibernate.annotations.ColumnDefault;
+import com.group5.htms.enums.JockeyStatus;
 
 @Builder
 @AllArgsConstructor
@@ -72,7 +73,8 @@ public class JockeyProfiles {
         }
 
         if (this.status == null || this.status.isBlank()) {
-            this.status = "available";
+            this.status = JockeyStatus.AVAILABLE.getValue();
         }
     }
 }
+

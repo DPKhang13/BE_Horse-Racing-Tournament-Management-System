@@ -1,6 +1,7 @@
 package com.group5.htms.service.impl;
 
 import com.group5.htms.exception.ResourceNotFoundException;
+import com.group5.htms.enums.HorseStatus;
 import com.group5.htms.dto.horse.request.HorseCreateRequest;
 import com.group5.htms.dto.horse.request.HorseUpdateRequest;
 import com.group5.htms.dto.horse.response.HorseListResponse;
@@ -24,8 +25,6 @@ import java.util.Objects;
 @Service
 @RequiredArgsConstructor
 public class HorseServiceImpl implements HorseService {
-    private static final String STATUS_DELETED = "deleted";
-    private static final String STATUS_ACTIVE = "active";
 
     private final HorsesRepository horsesRepository;
     private final HorseOwnerProfilesRepository horseOwnerProfilesRepository;
@@ -44,7 +43,7 @@ public class HorseServiceImpl implements HorseService {
     @Override
     public List<HorseRankingResponse> getHorseRanking() {
         List<Horses> horses = horsesRepository
-                .findByStatusIgnoreCaseOrderByRankingPointsDescTotalWinsDescNameAsc(STATUS_ACTIVE);
+                .findByStatusIgnoreCaseOrderByRankingPointsDescTotalWinsDescNameAsc(HorseStatus.ACTIVE.getValue());
 
         return java.util.stream.IntStream.range(0, horses.size())
                 .mapToObj(index -> horseMapper.toRankingResponse(horses.get(index), index + 1))
@@ -82,7 +81,7 @@ public class HorseServiceImpl implements HorseService {
     @Transactional
     public void deleteHorse(Integer id) {
         Horses horse = findHorseForCurrentOwner(id);
-        horse.setStatus(STATUS_DELETED);
+        horse.setStatus(HorseStatus.DELETED.getValue());
         horsesRepository.save(horse);
     }
 
@@ -109,7 +108,9 @@ public class HorseServiceImpl implements HorseService {
     }
 
     private boolean isDeleted(String status) {
-        return STATUS_DELETED.equalsIgnoreCase(status);
+        return HorseStatus.DELETED.getValue().equalsIgnoreCase(status);
     }
 
 }
+
+

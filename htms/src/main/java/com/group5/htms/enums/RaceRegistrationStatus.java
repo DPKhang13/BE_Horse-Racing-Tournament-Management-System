@@ -3,18 +3,17 @@ package com.group5.htms.enums;
 import lombok.Getter;
 
 @Getter
-public enum BetStatus {
-
+public enum RaceRegistrationStatus {
     PENDING("pending"),
-    WON("won"),
-    LOST("lost"),
+    APPROVED("approved"),
+    REJECTED("rejected"),
+    CONFIRMED("confirmed"),
     CANCELLED("cancelled"),
-    REFUNDED("refunded"),
     DELETED("deleted");
 
     private final String value;
 
-    BetStatus(String value) {
+    RaceRegistrationStatus(String value) {
         this.value = value;
     }
 }
