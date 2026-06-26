@@ -4,17 +4,22 @@ import com.group5.htms.dto.race.request.RaceCreateRequest;
 import com.group5.htms.dto.race.request.RaceUpdateRequest;
 import com.group5.htms.dto.race.response.RaceListResponse;
 import com.group5.htms.dto.race.response.RaceResponse;
+import com.group5.htms.dto.racepointrule.response.RacePointRuleResponse;
+import com.group5.htms.entity.RacePointRules;
 import com.group5.htms.entity.Races;
 import com.group5.htms.entity.TournamentSchedules;
 import com.group5.htms.entity.Tournaments;
 import com.group5.htms.enums.RaceStatus;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
+
 @Component
 public class RaceMapper {
     private static final Integer DEFAULT_LAP_COUNT = 1;
     private static final Integer DEFAULT_MAX_HORSES = 8;
     private static final Integer DEFAULT_MAX_REFEREES = 3;
+    private static final String DEFAULT_STATUS = "scheduled";
 
     public Races toEntity(RaceCreateRequest request, TournamentSchedules schedule) {
         if (request == null) {
@@ -39,14 +44,15 @@ public class RaceMapper {
     }
 
     public RaceResponse toResponse(Races race) {
-        return toResponse(race, null, null, null);
+        return toResponse(race, null, null, null, null);
     }
 
     public RaceResponse toResponse(
             Races race,
             Long registeredHorseCount,
             Long acceptedJockeyCount,
-            Long assignedRefereeCount
+            Long assignedRefereeCount,
+            List<RacePointRules> pointRules
     ) {
         TournamentSchedules schedule = race.getSchedule();
         Tournaments tournament = schedule.getTournaments();
@@ -77,6 +83,7 @@ public class RaceMapper {
                 .registeredHorseCount(registeredHorseCount)
                 .acceptedJockeyCount(acceptedJockeyCount)
                 .assignedRefereeCount(assignedRefereeCount)
+                .pointRules(pointRules == null ? null : pointRules.stream().map(this::toPointRuleResponse).toList())
                 .build();
     }
 
@@ -158,10 +165,27 @@ public class RaceMapper {
             race.setMaxReferees(request.getMaxReferees());
         }
 
+        if (request.getStatus() != null) {
+            race.setStatus(defaultStatus(request.getStatus()));
+        }
         if (request.getPointRuleNote() != null) {
             race.setPointRuleNote(clean(request.getPointRuleNote()));
         }
 
+    }
+
+    private RacePointRuleResponse toPointRuleResponse(RacePointRules rule) {
+        if (rule == null) {
+            return null;
+        }
+
+        return RacePointRuleResponse.builder()
+                .id(rule.getId())
+                .raceId(rule.getRace() == null ? null : rule.getRace().getId())
+                .finishPosition(rule.getFinishPosition())
+                .points(rule.getPoints())
+                .note(rule.getNote())
+                .build();
     }
 
     private String defaultStatus(String value) {
@@ -182,3 +206,4 @@ public class RaceMapper {
         return cleaned.isBlank() ? null : cleaned;
     }
 }
+

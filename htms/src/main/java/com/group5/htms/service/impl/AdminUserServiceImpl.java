@@ -8,6 +8,9 @@ import com.group5.htms.entity.RefereeProfiles;
 import com.group5.htms.entity.Users;
 import com.group5.htms.enums.RoleType;
 import com.group5.htms.enums.UserStatus;
+import com.group5.htms.enums.RoleStatus;
+import com.group5.htms.enums.JockeyStatus;
+import com.group5.htms.enums.HorseStatus;
 import com.group5.htms.exception.BadRequestException;
 import com.group5.htms.mapper.AuthMapper;
 import com.group5.htms.repository.HorseOwnerProfilesRepository;
@@ -80,7 +83,7 @@ public class AdminUserServiceImpl implements AdminUserService {
                 .stableName(clean(request.getStableName()))
                 .licenseNumber(clean(request.getLicenseNumber()))
                 .address(clean(request.getAddress()))
-                .status("active")
+                .status(RoleStatus.ACTIVE.getValue())
                 .createdAt(Instant.now())
                 .build();
 
@@ -100,7 +103,7 @@ public class AdminUserServiceImpl implements AdminUserService {
                 .rankingPoints(0)
                 .totalWins(0)
                 .experienceYears(request.getExperienceYears() == null ? 0 : Math.max(request.getExperienceYears(), 0))
-                .status("available")
+                .status(JockeyStatus.AVAILABLE.getValue())
                 .build();
 
         return jockeyProfilesRepository.save(profile);
@@ -111,7 +114,7 @@ public class AdminUserServiceImpl implements AdminUserService {
                 .users(user)
                 .licenseNumber(clean(request.getLicenseNumber()))
                 .address(clean(request.getAddress()))
-                .status("active")
+                .status(RoleStatus.ACTIVE.getValue())
                 .createdAt(Instant.now())
                 .build();
 
@@ -136,3 +139,4 @@ public class AdminUserServiceImpl implements AdminUserService {
         return cleaned.isBlank() ? null : cleaned;
     }
 }
+

@@ -2,6 +2,7 @@ package com.group5.htms.config;
 
 
 import com.group5.htms.entity.Users;
+import com.group5.htms.enums.UserStatus;
 import com.group5.htms.repository.UsersRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.DisabledException;
@@ -23,7 +24,7 @@ public class CustomUserDetailsConfig implements UserDetailsService {
         Users user = usersRepository.findByUsernameOrEmail(usernameOrEmail, usernameOrEmail)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
-        if (!"active".equalsIgnoreCase(user.getStatus())) {
+        if (!UserStatus.ACTIVE.getValue().equalsIgnoreCase(user.getStatus())) {
             throw new DisabledException("User account is not active");
         }
 
@@ -44,3 +45,4 @@ public class CustomUserDetailsConfig implements UserDetailsService {
                 .build();
     }
 }
+

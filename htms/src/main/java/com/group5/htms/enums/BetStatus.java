@@ -9,7 +9,8 @@ public enum BetStatus {
     WON("won"),
     LOST("lost"),
     CANCELLED("cancelled"),
-    REFUNDED("refunded");
+    REFUNDED("refunded"),
+    DELETED("deleted");
 
     private final String value;
 

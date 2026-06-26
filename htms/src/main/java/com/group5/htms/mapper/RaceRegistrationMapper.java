@@ -11,6 +11,7 @@ import com.group5.htms.entity.RaceRegistrations;
 import com.group5.htms.entity.Races;
 import com.group5.htms.entity.Tournaments;
 import com.group5.htms.entity.Users;
+import com.group5.htms.enums.RaceRegistrationStatus;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -23,8 +24,9 @@ public class RaceRegistrationMapper {
                 .races(toRace(request.getRaceId()))
                 .horses(toHorse(request.getHorseId()))
                 .owner(toOwner(request.getOwnerId()))
-                .status("pending")
-                .ownerConfirmationStatus("pending")
+                .jockey(toNullableJockey(request.getJockeyId()))
+                .status(RaceRegistrationStatus.PENDING.getValue())
+                .ownerConfirmationStatus(RaceRegistrationStatus.PENDING.getValue())
                 .registeredAt(Instant.now())
                 .build();
     }
@@ -174,3 +176,4 @@ public class RaceRegistrationMapper {
         return value == null ? Instant.now() : value;
     }
 }
+

@@ -8,6 +8,7 @@ import com.group5.htms.entity.JockeyHorseAssignments;
 import com.group5.htms.entity.JockeyProfiles;
 import com.group5.htms.entity.RaceRegistrations;
 import com.group5.htms.entity.Races;
+import com.group5.htms.enums.JockeyAssignmentStatus;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -20,7 +21,7 @@ public class JockeyAssignmentMapper {
                 .races(toRace(request.getRaceId()))
                 .jockey(toJockey(request.getJockeyId()))
                 .gateNumber(request.getGateNumber())
-                .status("pending")
+                .status(JockeyAssignmentStatus.PENDING.getValue())
                 .invitedAt(Instant.now())
                 .build();
     }
@@ -139,3 +140,4 @@ public class JockeyAssignmentMapper {
         return value == null ? Instant.now() : value;
     }
 }
+

@@ -1,7 +1,6 @@
 package com.group5.htms.service.impl;
 
 import com.group5.htms.dto.race.request.RaceCreateRequest;
-import com.group5.htms.dto.race.request.RaceStartRequest;
 import com.group5.htms.dto.race.request.RaceUpdateRequest;
 import com.group5.htms.dto.race.response.RaceListResponse;
 import com.group5.htms.dto.race.response.RaceResponse;
@@ -10,11 +9,15 @@ import com.group5.htms.dto.race.response.ScheduledRaceCountResponse;
 import com.group5.htms.dto.schedule.request.TournamentScheduleCreateRequest;
 import com.group5.htms.dto.schedule.request.TournamentScheduleUpdateRequest;
 import com.group5.htms.dto.schedule.response.TournamentScheduleResponse;
+import com.group5.htms.dto.racepointrule.request.RacePointRuleItemRequest;
+import com.group5.htms.entity.RacePointRules;
 import com.group5.htms.entity.Races;
 import com.group5.htms.entity.TournamentSchedules;
 import com.group5.htms.entity.Tournaments;
 import com.group5.htms.enums.RaceStatus;
 import com.group5.htms.enums.TournamentStatus;
+import com.group5.htms.enums.RaceStatus;
+import com.group5.htms.enums.JockeyAssignmentStatus;
 import com.group5.htms.exception.BadRequestException;
 import com.group5.htms.exception.ResourceNotFoundException;
 import com.group5.htms.mapper.RaceMapper;
@@ -22,6 +25,7 @@ import com.group5.htms.mapper.TournamentScheduleMapper;
 import com.group5.htms.repository.JockeyHorseAssignmentsRepository;
 import com.group5.htms.repository.RaceRefereeAssignmentsRepository;
 import com.group5.htms.repository.RaceRegistrationsRepository;
+import com.group5.htms.repository.RacePointRulesRepository;
 import com.group5.htms.repository.RacesRepository;
 import com.group5.htms.repository.TournamentSchedulesRepository;
 import com.group5.htms.repository.TournamentsRepository;
@@ -40,7 +44,6 @@ import java.util.List;
 @RequiredArgsConstructor
 public class RaceServiceImpl implements RaceService {
     private static final ZoneId VIETNAM_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
-    private static final String ASSIGNMENT_STATUS_CONFIRMED = "confirmed";
 
     private final RacesRepository racesRepository;
     private final TournamentsRepository tournamentsRepository;
@@ -48,6 +51,7 @@ public class RaceServiceImpl implements RaceService {
     private final RaceRegistrationsRepository raceRegistrationsRepository;
     private final JockeyHorseAssignmentsRepository jockeyHorseAssignmentsRepository;
     private final RaceRefereeAssignmentsRepository raceRefereeAssignmentsRepository;
+    private final RacePointRulesRepository racePointRulesRepository;
     private final RaceMapper raceMapper;
     private final TournamentScheduleMapper tournamentScheduleMapper;
     private final BetOptionService betOptionService;
@@ -106,8 +110,15 @@ public class RaceServiceImpl implements RaceService {
 
         Races race = raceMapper.toEntity(request, schedule);
         Races savedRace = racesRepository.save(race);
+        savePointRules(savedRace, request.getPointRules());
 
-        return raceMapper.toResponse(savedRace, 0L, 0L, 0L);
+        return raceMapper.toResponse(
+                savedRace,
+                0L,
+                0L,
+                0L,
+                racePointRulesRepository.findByRace_IdOrderByFinishPositionAsc(savedRace.getId())
+        );
     }
 
     @Override
@@ -189,7 +200,13 @@ public class RaceServiceImpl implements RaceService {
         validateRaceUpdateRequest(race, request);
 
         raceMapper.updateEntity(race, request);
+        Races savedRace = racesRepository.save(race);
+        if (request.getPointRules() != null) {
+            racePointRulesRepository.deleteByRace_Id(savedRace.getId());
+            savePointRules(savedRace, request.getPointRules());
+        }
 
+        return toDetailResponse(savedRace);
         Races savedRace = racesRepository.save(race);
 
         return toDetailResponse(savedRace);
@@ -226,7 +243,7 @@ public class RaceServiceImpl implements RaceService {
 
         validateTournamentCanArrangeRace(race.getSchedule().getTournaments());
 
-        if (!RaceStatus.canCancel(race.getStatus())) {
+        if (RaceStatus.COMPLETED.getValue().equalsIgnoreCase(race.getStatus())) {
             throw new BadRequestException("Completed race cannot be cancelled");
         }
 
@@ -265,7 +282,7 @@ public class RaceServiceImpl implements RaceService {
         return raceMapper.toListResponse(
                 race,
                 raceRegistrationsRepository.countByRaces_Id(raceId),
-                jockeyHorseAssignmentsRepository.countByRaces_IdAndStatusIgnoreCase(raceId, "accepted"),
+                jockeyHorseAssignmentsRepository.countByRaces_IdAndStatusIgnoreCase(raceId, JockeyAssignmentStatus.ACCEPTED.getValue()),
                 raceRefereeAssignmentsRepository.countByRaces_Id(raceId)
         );
     }
@@ -276,9 +293,34 @@ public class RaceServiceImpl implements RaceService {
         return raceMapper.toResponse(
                 race,
                 raceRegistrationsRepository.countByRaces_Id(raceId),
-                jockeyHorseAssignmentsRepository.countByRaces_IdAndStatusIgnoreCase(raceId, "accepted"),
-                raceRefereeAssignmentsRepository.countByRaces_Id(raceId)
+                jockeyHorseAssignmentsRepository.countByRaces_IdAndStatusIgnoreCase(raceId, JockeyAssignmentStatus.ACCEPTED.getValue()),
+                raceRefereeAssignmentsRepository.countByRaces_Id(raceId),
+                racePointRulesRepository.findByRace_IdOrderByFinishPositionAsc(raceId)
         );
+    }
+
+    private void savePointRules(Races race, List<RacePointRuleItemRequest> pointRules) {
+        if (pointRules == null) {
+            return;
+        }
+
+        for (RacePointRuleItemRequest item : pointRules) {
+            if (item == null) {
+                continue;
+            }
+
+            if (racePointRulesRepository.existsByRace_IdAndFinishPosition(race.getId(), item.getFinishPosition())) {
+                throw new BadRequestException("Finish position already exists in race point rules");
+            }
+
+            RacePointRules rule = RacePointRules.builder()
+                    .race(race)
+                    .finishPosition(item.getFinishPosition())
+                    .points(item.getPoints())
+                    .note(item.getNote() == null ? null : item.getNote().trim())
+                    .build();
+            racePointRulesRepository.save(rule);
+        }
     }
 
     private TournamentSchedules getScheduleEntity(Integer scheduleId) {
@@ -401,7 +443,8 @@ public class RaceServiceImpl implements RaceService {
 
         if (status != null
                 && !status.isBlank()
-                && !RaceStatus.SCHEDULED.getValue().equalsIgnoreCase(status.trim())) {
+                && !RaceStatus.SCHEDULED.getValue().equalsIgnoreCase(status.trim())
+                && !RaceStatus.UPCOMING.getValue().equalsIgnoreCase(status.trim())) {
             throw new BadRequestException("Invalid race status");
         }
     }
@@ -454,6 +497,7 @@ public class RaceServiceImpl implements RaceService {
             throw new BadRequestException("Race is already in progress");
         }
 
+        return RaceStatus.isValid(normalizedStatus);
         if (!RaceStatus.canStart(status)) {
             throw new BadRequestException("Only ready or open for betting races can be started");
         }
@@ -490,3 +534,5 @@ public class RaceServiceImpl implements RaceService {
         }
     }
 }
+
+

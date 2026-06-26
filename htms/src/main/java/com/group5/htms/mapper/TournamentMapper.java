@@ -8,6 +8,7 @@ import com.group5.htms.dto.tournament.response.TournamentSummaryResponse;
 import com.group5.htms.entity.PrizeDistributions;
 import com.group5.htms.entity.TournamentSchedules;
 import com.group5.htms.entity.Tournaments;
+import com.group5.htms.enums.TournamentStatus;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -17,7 +18,7 @@ import java.util.List;
 @Component
 public class TournamentMapper {
 
-    private static final String DEFAULT_STATUS = "upcoming";
+    private static final String DEFAULT_STATUS = TournamentStatus.UPCOMING.getValue();
 
     public Tournaments toEntity(TournamentCreateRequest request) {
         if (request == null) {
@@ -241,3 +242,5 @@ public class TournamentMapper {
                 : value.trim().toLowerCase();
     }
 }
+
+

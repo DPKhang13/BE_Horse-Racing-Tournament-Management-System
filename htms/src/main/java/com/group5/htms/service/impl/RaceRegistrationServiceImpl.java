@@ -1,7 +1,6 @@
 package com.group5.htms.service.impl;
 
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationApprovalRequest;
-import com.group5.htms.dto.raceregistration.request.RaceRegistrationApproveRequest;
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationCreateRequest;
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationRejectRequest;
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationUpdateRequest;
@@ -19,6 +18,7 @@ import com.group5.htms.enums.RaceRegistrationStatus;
 import com.group5.htms.enums.RoleType;
 import com.group5.htms.enums.TournamentStatus;
 import com.group5.htms.exception.BadRequestException;
+import com.group5.htms.enums.RaceRegistrationStatus;
 import com.group5.htms.exception.ResourceNotFoundException;
 import com.group5.htms.mapper.RaceRegistrationMapper;
 import com.group5.htms.repository.HorseOwnerProfilesRepository;
@@ -41,8 +41,6 @@ import java.util.Objects;
 @Service
 @RequiredArgsConstructor
 public class RaceRegistrationServiceImpl implements RaceRegistrationService {
-    private static final String STATUS_DELETED = "deleted";
-    private static final String STATUS_ACTIVE = "active";
 
     private final RaceRegistrationsRepository raceRegistrationsRepository;
     private final TournamentsRepository tournamentsRepository;
@@ -83,23 +81,11 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
     public RaceRegistrationResponse createRegistration(RaceRegistrationCreateRequest request) {
         Integer ownerId = authService.getCurrentUserId();
         request.setOwnerId(ownerId);
-        validateCurrentUserIsHorseOwner();
-
-        Tournaments tournament = findTournament(request.getTournamentId());
-        Races race = findRace(request.getRaceId());
-        Horses horse = findHorse(request.getHorseId());
-        HorseOwnerProfiles owner = findOwnerProfile(ownerId);
-
-        validateRaceBelongsToTournament(race, tournament.getId());
-        validateRegistrationOpen(tournament, race);
-        validateHorseBelongsToOwner(horse, ownerId);
-        validateHorseActive(horse);
-        validateHorseRankGroupMatchesRace(horse, race);
-        validateDuplicateTournamentHorse(tournament.getId(), horse.getId());
-        validateRaceCapacity(race);
-
+        validateCreateReferences(request);
+        validateRaceBelongsToTournament(request.getRaceId(), request.getTournamentId());
+        validateHorseBelongsToOwner(request.getHorseId(), ownerId);
         RaceRegistrations registration = raceRegistrationMapper.toEntity(request);
-        attachCreateReferences(registration, tournament, race, horse, owner);
+        attachCreateReferences(registration, request);
         RaceRegistrations savedRegistration = raceRegistrationsRepository.save(registration);
 
         return raceRegistrationMapper.toResponse(savedRegistration);
@@ -185,7 +171,7 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
                 id,
                 authService.getCurrentUserId()
         );
-        registration.setStatus(STATUS_DELETED);
+        registration.setStatus(RaceRegistrationStatus.DELETED.getValue());
         raceRegistrationsRepository.save(registration);
     }
 
@@ -216,6 +202,12 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
         registration.setRaces(race);
         registration.setHorses(horse);
         registration.setOwner(owner);
+
+        if (request.getJockeyId() != null) {
+            JockeyProfiles jockey = jockeyProfilesRepository.findById(request.getJockeyId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Jockey profile not found"));
+            registration.setJockey(jockey);
+        }
     }
 
     private void validateUpdateReferences(RaceRegistrationUpdateRequest request) {
@@ -350,110 +342,9 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
     }
 
     private boolean isDeleted(String status) {
-        return STATUS_DELETED.equalsIgnoreCase(status);
-    }
-
-    private void validateCurrentUserIsHorseOwner() {
-        Users user = authService.getCurrentUser();
-
-        if (user == null
-                || user.getRoleType() == null
-                || !RoleType.HORSE_OWNER.getValue().equalsIgnoreCase(user.getRoleType().trim())) {
-            throw new BadRequestException("Current user must be horse owner");
-        }
-    }
-
-    private Tournaments findTournament(Integer id) {
-        return tournamentsRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Tournament not found"));
-    }
-
-    private Races findRace(Integer id) {
-        return racesRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Race not found"));
-    }
-
-    private Horses findHorse(Integer id) {
-        return horsesRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Horse not found"));
-    }
-
-    private HorseOwnerProfiles findOwnerProfile(Integer ownerId) {
-        return horseOwnerProfilesRepository.findById(ownerId)
-                .orElseThrow(() -> new ResourceNotFoundException("Horse owner profile not found"));
-    }
-
-    private void validateRegistrationOpen(Tournaments tournament, Races race) {
-        if (!TournamentStatus.REGISTRATION_OPEN.equalsValue(tournament.getStatus())) {
-            throw new BadRequestException("Registration is not open for this tournament");
-        }
-
-        if (!RaceStatus.REGISTRATION_OPEN.equalsValue(race.getStatus())) {
-            throw new BadRequestException("Registration is not open for this race");
-        }
-    }
-
-    private void validateHorseActive(Horses horse) {
-        if (horse.getStatus() == null || !STATUS_ACTIVE.equalsIgnoreCase(horse.getStatus().trim())) {
-            throw new BadRequestException("Horse is not active");
-        }
-    }
-
-    private void validateHorseRankGroupMatchesRace(Horses horse, Races race) {
-        String horseRankGroup = clean(horse.getRankGroup());
-        String raceRankGroup = clean(race.getRankGroup());
-
-        if (!Objects.equals(horseRankGroup, raceRankGroup)) {
-            throw new BadRequestException("Horse rank group does not match race rank group");
-        }
-    }
-
-    private void validateRaceCapacity(Races race) {
-        Integer maxHorses = race.getMaxHorses();
-
-        if (maxHorses == null || maxHorses < 1) {
-            return;
-        }
-
-        long approvedRegistrationCount = raceRegistrationsRepository.countByRaces_IdAndStatusIgnoreCase(
-                race.getId(),
-                RaceRegistrationStatus.APPROVED.getValue()
-        );
-
-        if (approvedRegistrationCount >= maxHorses) {
-            throw new BadRequestException("Race maximum horses limit has been reached");
-        }
-    }
-
-    private void validateRegistrationCanBeApproved(RaceRegistrations registration) {
-        if (!RaceRegistrationStatus.PENDING.equalsValue(registration.getStatus())) {
-            throw new BadRequestException("Only pending registrations can be approved");
-        }
-
-        Tournaments tournament = registration.getTournaments();
-        Races race = registration.getRaces();
-        Horses horse = registration.getHorses();
-
-        validateRegistrationOpen(tournament, race);
-        validateHorseActive(horse);
-        validateHorseRankGroupMatchesRace(horse, race);
-        validateRaceCapacity(race);
-    }
-
-    private Users currentUserReference() {
-        Users user = new Users();
-        user.setId(authService.getCurrentUserId());
-        return user;
-    }
-
-    private String clean(String value) {
-        if (value == null) {
-            return null;
-        }
-
-        String cleaned = value.trim();
-
-        return cleaned.isBlank() ? null : cleaned.toLowerCase();
+        return RaceRegistrationStatus.DELETED.getValue().equalsIgnoreCase(status);
     }
 
 }
+
+

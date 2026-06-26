@@ -6,17 +6,8 @@ import com.group5.htms.dto.bet.request.BetCreateRequest;
 import com.group5.htms.dto.bet.request.BetUpdateRequest;
 import com.group5.htms.dto.bet.response.BetListResponse;
 import com.group5.htms.dto.bet.response.BetResponse;
-import com.group5.htms.dto.betoption.response.BetOptionResponse;
-import com.group5.htms.entity.BetOptions;
 import com.group5.htms.entity.Bets;
-import com.group5.htms.entity.Users;
-import com.group5.htms.entity.WalletTransactions;
-import com.group5.htms.entity.Wallets;
-import com.group5.htms.enums.RaceStatus;
-import com.group5.htms.enums.WalletStatus;
-import com.group5.htms.enums.WalletTransactionStatus;
-import com.group5.htms.enums.WalletTransactionType;
-import com.group5.htms.exception.BadRequestException;
+import com.group5.htms.enums.BetStatus;
 import com.group5.htms.mapper.BetMapper;
 import com.group5.htms.repository.BetOptionsRepository;
 import com.group5.htms.repository.BetsRepository;
@@ -39,9 +30,6 @@ import java.util.Objects;
 @Service
 @RequiredArgsConstructor
 public class BetServiceImpl implements BetService {
-    private static final String STATUS_DELETED = "deleted";
-    private static final String BET_STATUS_PENDING = "pending";
-    private static final String REF_TYPE_BET = "bet";
 
     private final BetsRepository betsRepository;
     private final BetOptionsRepository betOptionsRepository;
@@ -138,7 +126,7 @@ public class BetServiceImpl implements BetService {
     @Transactional
     public void deleteBet(Integer id) {
         Bets bet = findBetForCurrentSpectator(id);
-        bet.setStatus(STATUS_DELETED);
+        bet.setStatus(BetStatus.DELETED.getValue());
         betsRepository.save(bet);
     }
 
@@ -257,6 +245,7 @@ public class BetServiceImpl implements BetService {
     }
 
     private boolean isDeleted(String status) {
-        return STATUS_DELETED.equalsIgnoreCase(status);
+        return BetStatus.DELETED.getValue().equalsIgnoreCase(status);
     }
 }
+

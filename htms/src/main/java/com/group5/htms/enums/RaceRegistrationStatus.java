@@ -7,6 +7,7 @@ public enum RaceRegistrationStatus {
     PENDING("pending"),
     APPROVED("approved"),
     REJECTED("rejected"),
+    CONFIRMED("confirmed"),
     CANCELLED("cancelled"),
     DELETED("deleted");
 

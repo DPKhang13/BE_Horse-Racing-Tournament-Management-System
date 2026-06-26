@@ -16,6 +16,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 import org.hibernate.annotations.ColumnDefault;
+import com.group5.htms.enums.UserStatus;
 
 import java.time.Instant;
 
@@ -78,7 +79,7 @@ public class Users {
     @PrePersist
     public void prePersist() {
         if (this.status == null) {
-            this.status = "active";
+            this.status = UserStatus.ACTIVE.getValue();
         }
 
         if (this.createdAt == null) {
@@ -86,3 +87,4 @@ public class Users {
         }
     }
 }
+

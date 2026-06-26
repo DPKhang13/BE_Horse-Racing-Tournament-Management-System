@@ -5,6 +5,8 @@ import lombok.Getter;
 @Getter
 public enum RaceStatus {
     SCHEDULED("scheduled"),
+    UPCOMING("upcoming"),
+    ONGOING("ongoing"),
     REGISTRATION_OPEN("registration_open"),
     REGISTRATION_CLOSED("registration_closed"),
     READY("ready"),
@@ -28,6 +30,8 @@ public enum RaceStatus {
             return false;
         }
 
+        for (RaceStatus status : values()) {
+            if (status.value.equalsIgnoreCase(value.trim())) {
         for (RaceStatus status : RaceStatus.values()) {
             if (status.equalsValue(value)) {
                 return true;

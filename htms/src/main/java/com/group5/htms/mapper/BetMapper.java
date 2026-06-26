@@ -7,6 +7,7 @@ import com.group5.htms.dto.bet.response.BetResponse;
 import com.group5.htms.entity.BetOptions;
 import com.group5.htms.entity.Bets;
 import com.group5.htms.entity.Users;
+import com.group5.htms.enums.BetStatus;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -22,7 +23,7 @@ public class BetMapper {
                 .betPoints(request.getBetPoints())
                 .betRate(request.getBetRate())
                 .rewardPoints(BigDecimal.ZERO)
-                .status("pending")
+                .status(BetStatus.PENDING.getValue())
                 .placedAt(Instant.now())
                 .build();
     }
@@ -136,3 +137,4 @@ public class BetMapper {
         return value == null ? Instant.now() : value;
     }
 }
+
