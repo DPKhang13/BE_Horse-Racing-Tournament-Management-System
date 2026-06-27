@@ -5,6 +5,8 @@ import com.group5.htms.dto.bet.request.BetCreateRequest;
 import com.group5.htms.dto.bet.request.BetUpdateRequest;
 import com.group5.htms.dto.bet.response.BetListResponse;
 import com.group5.htms.dto.bet.response.BetResponse;
+import com.group5.htms.dto.dashboard.response.PredictionRaceResponse;
+import com.group5.htms.dto.dashboard.response.SpectatorDashboardResponse;
 import com.group5.htms.service.BetService;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
@@ -27,6 +29,20 @@ import java.util.List;
 @RequiredArgsConstructor
 public class BetController {
     private final BetService betService;
+
+    @Operation(summary = "Get spectator dashboard", description = "Dashboard tổng hợp theo JWT spectator: wallet, summary count, upcoming races, active bets, latest results, notifications và race đang mở dự đoán.")
+    @GetMapping("/dashboard")
+    @PreAuthorize("hasRole('SPECTATOR')")
+    public ResponseEntity<SpectatorDashboardResponse> getSpectatorDashboard() {
+        return ResponseEntity.ok(betService.getSpectatorDashboard());
+    }
+
+    @Operation(summary = "Get open prediction races", description = "Lấy race đang mở dự đoán kèm bet optionId để FE đặt cược.")
+    @GetMapping("/open-predictions")
+    @PreAuthorize("hasRole('SPECTATOR')")
+    public ResponseEntity<List<PredictionRaceResponse>> getOpenPredictionRaces() {
+        return ResponseEntity.ok(betService.getOpenPredictionRaces());
+    }
 
     @Operation(summary = "Get all bets", description = "Lấy danh sách tất cả bet.")
     @GetMapping("/get-all")

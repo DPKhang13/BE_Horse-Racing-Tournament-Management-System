@@ -1,7 +1,6 @@
 package com.group5.htms.repository;
 
 import com.group5.htms.entity.JockeyHorseAssignments;
-import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -24,13 +23,6 @@ public interface JockeyHorseAssignmentsRepository extends JpaRepository<JockeyHo
 
     List<JockeyHorseAssignments> findByReg_Owner_IdAndStatusIgnoreCaseOrderByInvitedAtDesc(Integer ownerId, String status);
 
-    @EntityGraph(attributePaths = {
-            "races",
-            "reg",
-            "reg.horses",
-            "jockey",
-            "jockey.users"
-    })
     List<JockeyHorseAssignments> findByRaces_IdAndStatusIgnoreCase(Integer raceId, String status);
 
     List<JockeyHorseAssignments> findByRaces_IdAndJockey_IdAndStatusIn(
