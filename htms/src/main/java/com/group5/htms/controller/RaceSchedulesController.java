@@ -93,6 +93,12 @@ public class RaceSchedulesController {
         return ResponseEntity.ok(raceService.startRace(raceId, request));
     }
 
+    @Operation(summary = "Complete race", description = "Admin chuyển race sang trạng thái completed sau khi đã publish kết quả.")
+    @PatchMapping("/races/{raceId}/complete")
+    public ResponseEntity<RaceResponse> completeRace(@PathVariable Integer raceId) {
+        return ResponseEntity.ok(raceService.completeRace(raceId));
+    }
+
     @PatchMapping("/races/cancel-race/{raceId}")
     public ResponseEntity<Map<String, String>> cancelRace(@PathVariable Integer raceId) {
         raceService.cancelRace(raceId);

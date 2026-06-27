@@ -319,6 +319,81 @@ public class TournamentServiceImpl implements TournamentService {
                 .build();
     }
 
+    @Override
+    @Transactional
+    public TournamentResponse startTournament(Integer tournamentId) {
+        Tournaments tournament = getTournamentEntity(tournamentId);
+
+        if (TournamentStatus.CANCELLED.equalsValue(tournament.getStatus())) {
+            throw new BadRequestException("Cancelled tournament cannot be started");
+        }
+
+        if (TournamentStatus.COMPLETED.equalsValue(tournament.getStatus())) {
+            throw new BadRequestException("Completed tournament cannot be started");
+        }
+
+        if (TournamentStatus.IN_PROGRESS.equalsValue(tournament.getStatus())) {
+            throw new BadRequestException("Tournament is already in progress");
+        }
+
+        if (!TournamentStatus.REGISTRATION_CLOSED.equalsValue(tournament.getStatus())) {
+            throw new BadRequestException("Only registration closed tournaments can be started");
+        }
+
+        List<Races> races = racesRepository.findBySchedule_Tournaments_IdOrderByScheduledAtAsc(tournamentId);
+        if (races.isEmpty()) {
+            throw new BadRequestException("Tournament must have at least one race before starting");
+        }
+
+        boolean hasRunnableRace = races.stream().anyMatch(this::isRunnableRace);
+        if (!hasRunnableRace) {
+            throw new BadRequestException("Tournament must have at least one ready race before starting");
+        }
+
+        tournament.setStatus(TournamentStatus.IN_PROGRESS.getValue());
+
+        return tournamentMapper.toResponse(tournamentsRepository.save(tournament));
+    }
+
+    @Override
+    @Transactional
+    public TournamentResponse completeTournament(Integer tournamentId) {
+        Tournaments tournament = getTournamentEntity(tournamentId);
+
+        if (TournamentStatus.CANCELLED.equalsValue(tournament.getStatus())) {
+            throw new BadRequestException("Cancelled tournament cannot be completed");
+        }
+
+        if (TournamentStatus.COMPLETED.equalsValue(tournament.getStatus())) {
+            throw new BadRequestException("Tournament is already completed");
+        }
+
+        if (!TournamentStatus.IN_PROGRESS.equalsValue(tournament.getStatus())) {
+            throw new BadRequestException("Only in progress tournaments can be completed");
+        }
+
+        List<Races> races = racesRepository.findBySchedule_Tournaments_IdOrderByScheduledAtAsc(tournamentId);
+        if (races.isEmpty()) {
+            throw new BadRequestException("Tournament must have at least one race before completing");
+        }
+
+        boolean hasCompletedRace = races.stream()
+                .anyMatch(race -> RaceStatus.COMPLETED.equalsValue(race.getStatus()));
+        if (!hasCompletedRace) {
+            throw new BadRequestException("Tournament must have at least one completed race before completing");
+        }
+
+        boolean hasUnfinishedRace = races.stream()
+                .anyMatch(race -> !isTerminalRace(race));
+        if (hasUnfinishedRace) {
+            throw new BadRequestException("All races must be completed or cancelled before completing tournament");
+        }
+
+        tournament.setStatus(TournamentStatus.COMPLETED.getValue());
+
+        return tournamentMapper.toResponse(tournamentsRepository.save(tournament));
+    }
+
     private Tournaments getTournamentEntity(Integer tournamentId) {
         if (tournamentId == null) {
             throw new BadRequestException("Tournament id is required");
@@ -403,6 +478,21 @@ public class TournamentServiceImpl implements TournamentService {
         races.stream()
                 .filter(race -> RaceStatus.canOpenRegistration(race.getStatus()))
                 .forEach(race -> race.setStatus(RaceStatus.REGISTRATION_OPEN.getValue()));
+    }
+
+    private boolean isRunnableRace(Races race) {
+        String status = race.getStatus();
+
+        return RaceStatus.READY.equalsValue(status)
+                || RaceStatus.OPEN_FOR_BETTING.equalsValue(status)
+                || RaceStatus.IN_PROGRESS.equalsValue(status);
+    }
+
+    private boolean isTerminalRace(Races race) {
+        String status = race.getStatus();
+
+        return RaceStatus.COMPLETED.equalsValue(status)
+                || RaceStatus.CANCELLED.equalsValue(status);
     }
 
     private Users getCurrentUser() {

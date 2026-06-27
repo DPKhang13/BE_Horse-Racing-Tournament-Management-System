@@ -30,4 +30,8 @@ public interface TournamentService {
 
     CloseRegistrationResponse closeRegistration(Integer tournamentId, CloseRegistrationRequest request);
 
+    TournamentResponse startTournament(Integer tournamentId);
+
+    TournamentResponse completeTournament(Integer tournamentId);
+
 }

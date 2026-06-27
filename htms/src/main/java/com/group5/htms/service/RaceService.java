@@ -38,6 +38,8 @@ public interface RaceService {
 
     RaceStartResponse startRace(Integer raceId, RaceStartRequest request);
 
+    RaceResponse completeRace(Integer raceId);
+
     void cancelRace(Integer raceId);
 
     List<RaceListResponse> getRacesByTournament(Integer tournamentId, String status);

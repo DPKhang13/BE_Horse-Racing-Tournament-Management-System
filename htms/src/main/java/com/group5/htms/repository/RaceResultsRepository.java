@@ -10,5 +10,7 @@ import java.util.Optional;
 public interface RaceResultsRepository extends JpaRepository<RaceResults, Integer> {
     long countByAssignment_Jockey_IdAndFinishPosition(Integer jockeyId, Integer finishPosition);
 
+    long countByRaces_IdAndStatusIgnoreCase(Integer raceId, String status);
+
     Optional<RaceResults> findByRaces_IdAndAssignment_Id(Integer raceId, Integer assignmentId);
 }

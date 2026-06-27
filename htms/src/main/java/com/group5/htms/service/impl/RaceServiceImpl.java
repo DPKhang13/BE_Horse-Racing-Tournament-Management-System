@@ -13,6 +13,7 @@ import com.group5.htms.dto.schedule.response.TournamentScheduleResponse;
 import com.group5.htms.entity.Races;
 import com.group5.htms.entity.TournamentSchedules;
 import com.group5.htms.entity.Tournaments;
+import com.group5.htms.enums.RaceResultStatus;
 import com.group5.htms.enums.RaceStatus;
 import com.group5.htms.enums.JockeyAssignmentStatus;
 import com.group5.htms.exception.BadRequestException;
@@ -23,6 +24,7 @@ import com.group5.htms.repository.JockeyHorseAssignmentsRepository;
 import com.group5.htms.repository.RaceRefereeAssignmentsRepository;
 import com.group5.htms.repository.RaceRegistrationsRepository;
 import com.group5.htms.repository.RacePointRulesRepository;
+import com.group5.htms.repository.RaceResultsRepository;
 import com.group5.htms.repository.RacesRepository;
 import com.group5.htms.repository.TournamentSchedulesRepository;
 import com.group5.htms.repository.TournamentsRepository;
@@ -46,6 +48,7 @@ public class RaceServiceImpl implements RaceService {
     private final JockeyHorseAssignmentsRepository jockeyHorseAssignmentsRepository;
     private final RaceRefereeAssignmentsRepository raceRefereeAssignmentsRepository;
     private final RacePointRulesRepository racePointRulesRepository;
+    private final RaceResultsRepository raceResultsRepository;
     private final RaceMapper raceMapper;
     private final TournamentScheduleMapper tournamentScheduleMapper;
     private final BetOptionService betOptionService;
@@ -208,6 +211,35 @@ public class RaceServiceImpl implements RaceService {
                 .bettingClosed(true)
                 .message("Race started successfully")
                 .build();
+    }
+
+    @Override
+    @Transactional
+    public RaceResponse completeRace(Integer raceId) {
+        Races race = getRaceEntity(raceId);
+
+        if (RaceStatus.CANCELLED.equalsValue(race.getStatus())) {
+            throw new BadRequestException("Cancelled race cannot be completed");
+        }
+
+        if (RaceStatus.COMPLETED.equalsValue(race.getStatus())) {
+            throw new BadRequestException("Race is already completed");
+        }
+
+        if (!RaceStatus.canCompleteRace(race.getStatus())) {
+            throw new BadRequestException("Only in progress races can be completed");
+        }
+
+        if (raceResultsRepository.countByRaces_IdAndStatusIgnoreCase(
+                race.getId(),
+                RaceResultStatus.PUBLISHED.getValue()
+        ) < 1) {
+            throw new BadRequestException("Race must have at least one published result before completing");
+        }
+
+        race.setStatus(RaceStatus.COMPLETED.getValue());
+
+        return toDetailResponse(racesRepository.save(race));
     }
 
     @Override
