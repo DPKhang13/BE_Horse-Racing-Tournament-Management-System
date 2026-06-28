@@ -161,13 +161,21 @@ public class RefereeAssignmentServiceImpl implements RefereeAssignmentService {
         Integer maxRefereesValue = race.getMaxReferees();
         int maxReferees = maxRefereesValue == null
                 ? DEFAULT_MAX_REFEREES
-                : maxRefereesValue;
+                : Math.min(maxRefereesValue, DEFAULT_MAX_REFEREES);
+
+        if (maxRefereesValue != null && maxRefereesValue > DEFAULT_MAX_REFEREES) {
+            maxReferees = DEFAULT_MAX_REFEREES;
+        }
 
         if (maxReferees <= 0) {
             throw new BadRequestException("Maximum number of referees reached for this race");
         }
 
         long currentCount = raceRefereeAssignmentsRepository.countByRaces_Id(race.getId());
+
+        if (currentCount >= DEFAULT_MAX_REFEREES) {
+            throw new BadRequestException("Maximum number of referees for one race is 3");
+        }
 
         if (currentCount >= maxReferees) {
             throw new BadRequestException("Maximum number of referees reached for this race");

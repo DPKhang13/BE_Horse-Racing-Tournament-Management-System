@@ -18,4 +18,6 @@ public interface WalletTransactionsRepository extends JpaRepository<WalletTransa
     List<WalletTransactions> findByUsersIdOrderByCreatedAtDesc(Integer userId);
 
     Optional<WalletTransactions> findByIdAndUsersId(Integer txId, Integer userId);
+
+    boolean existsByRefTypeAndRefIdAndTxTypeIgnoreCase(String refType, Integer refId, String txType);
 }

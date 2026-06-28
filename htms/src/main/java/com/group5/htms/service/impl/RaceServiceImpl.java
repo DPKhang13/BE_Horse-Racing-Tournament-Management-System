@@ -216,30 +216,7 @@ public class RaceServiceImpl implements RaceService {
     @Override
     @Transactional
     public RaceResponse completeRace(Integer raceId) {
-        Races race = getRaceEntity(raceId);
-
-        if (RaceStatus.CANCELLED.equalsValue(race.getStatus())) {
-            throw new BadRequestException("Cancelled race cannot be completed");
-        }
-
-        if (RaceStatus.COMPLETED.equalsValue(race.getStatus())) {
-            throw new BadRequestException("Race is already completed");
-        }
-
-        if (!RaceStatus.canCompleteRace(race.getStatus())) {
-            throw new BadRequestException("Only in progress races can be completed");
-        }
-
-        if (raceResultsRepository.countByRaces_IdAndStatusIgnoreCase(
-                race.getId(),
-                RaceResultStatus.PUBLISHED.getValue()
-        ) < 1) {
-            throw new BadRequestException("Race must have at least one published result before completing");
-        }
-
-        race.setStatus(RaceStatus.COMPLETED.getValue());
-
-        return toDetailResponse(racesRepository.save(race));
+        throw new BadRequestException("Use race result publish workflow to complete race");
     }
 
     @Override

@@ -4,6 +4,7 @@ import com.group5.htms.entity.RaceResults;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -13,4 +14,10 @@ public interface RaceResultsRepository extends JpaRepository<RaceResults, Intege
     long countByRaces_IdAndStatusIgnoreCase(Integer raceId, String status);
 
     Optional<RaceResults> findByRaces_IdAndAssignment_Id(Integer raceId, Integer assignmentId);
+
+    List<RaceResults> findByRaces_IdOrderByFinishPositionAsc(Integer raceId);
+
+    List<RaceResults> findByRaces_IdAndStatusIgnoreCaseOrderByFinishPositionAsc(Integer raceId, String status);
+
+    boolean existsByRaces_IdAndStatusIgnoreCase(Integer raceId, String status);
 }
