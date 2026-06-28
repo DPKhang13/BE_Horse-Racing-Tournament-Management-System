@@ -4,6 +4,7 @@ import com.group5.htms.dto.tournament.request.CloseRegistrationRequest;
 import com.group5.htms.dto.tournament.request.OpenRegistrationRequest;
 import com.group5.htms.dto.tournament.response.CloseRegistrationResponse;
 import com.group5.htms.dto.tournament.response.OpenRegistrationResponse;
+import com.group5.htms.dto.tournament.response.TournamentResponse;
 import com.group5.htms.service.TournamentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -36,5 +37,19 @@ public class AdminTournamentController {
             @Valid @RequestBody(required = false) CloseRegistrationRequest request
     ) {
         return ResponseEntity.ok(tournamentService.closeRegistration(tournamentId, request));
+    }
+
+    @PatchMapping("/{tournamentId}/start")
+    public ResponseEntity<TournamentResponse> startTournament(
+            @PathVariable Integer tournamentId
+    ) {
+        return ResponseEntity.ok(tournamentService.startTournament(tournamentId));
+    }
+
+    @PatchMapping("/{tournamentId}/complete")
+    public ResponseEntity<TournamentResponse> completeTournament(
+            @PathVariable Integer tournamentId
+    ) {
+        return ResponseEntity.ok(tournamentService.completeTournament(tournamentId));
     }
 }
