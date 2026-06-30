@@ -88,6 +88,8 @@ public class HorseMapper {
                 .ownerId(owner == null ? null : owner.getId())
                 .name(horse.getName())
                 .breed(horse.getBreed())
+                .age(horse.getAge())
+                .weightKg(horse.getWeightKg())
                 .rankGroup(horse.getRankGroup())
                 .rankingPoints(horse.getRankingPoints())
                 .avatarUrl(horse.getAvatarUrl())

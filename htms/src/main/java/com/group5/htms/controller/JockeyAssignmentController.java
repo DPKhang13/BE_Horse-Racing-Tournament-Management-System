@@ -38,7 +38,7 @@ public class JockeyAssignmentController {
 
     @Operation(summary = "Get my jockey invitations", description = "Lấy danh sách lời mời của jockey đang đăng nhập.")
     @GetMapping("/get-my-invitations")
-    @PreAuthorize("hasRole('JOCKEY')")
+    @PreAuthorize("hasAnyRole('JOCKEY', 'ADMIN')")
     public ResponseEntity<List<JockeyAssignmentListResponse>> getMyInvitations(
             @RequestParam(required = false) String status
     ) {
@@ -47,7 +47,7 @@ public class JockeyAssignmentController {
 
     @Operation(summary = "Get sent jockey invitations", description = "Lấy danh sách jockey mà horse owner đang đăng nhập đã mời.")
     @GetMapping("/get-sent-invitations")
-    @PreAuthorize("hasRole('HORSE_OWNER')")
+    @PreAuthorize("hasAnyRole('HORSE_OWNER', 'ADMIN')")
     public ResponseEntity<List<JockeyAssignmentListResponse>> getSentInvitations(
             @RequestParam(required = false) String status
     ) {

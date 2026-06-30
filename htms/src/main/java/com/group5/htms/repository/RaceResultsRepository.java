@@ -1,6 +1,7 @@
 package com.group5.htms.repository;
 
 import com.group5.htms.entity.RaceResults;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -20,4 +21,5 @@ public interface RaceResultsRepository extends JpaRepository<RaceResults, Intege
     List<RaceResults> findByRaces_IdAndStatusIgnoreCaseOrderByFinishPositionAsc(Integer raceId, String status);
 
     boolean existsByRaces_IdAndStatusIgnoreCase(Integer raceId, String status);
+    List<RaceResults> findByStatusIgnoreCaseOrderByPublishedAtDesc(String status, Pageable pageable);
 }

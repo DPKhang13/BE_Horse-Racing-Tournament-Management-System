@@ -3,6 +3,8 @@ package com.group5.htms.dto.horse.response;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.math.BigDecimal;
+
 @Builder
 @Getter
 public class HorseListResponse {
@@ -10,6 +12,8 @@ public class HorseListResponse {
     private Integer ownerId;
     private String name;
     private String breed;
+    private Integer age;
+    private BigDecimal weightKg;
     private String rankGroup;
     private Integer rankingPoints;
     private String avatarUrl;
