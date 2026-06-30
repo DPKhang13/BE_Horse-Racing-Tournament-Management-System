@@ -35,7 +35,7 @@ public class RaceController {
             description = "Lấy danh sách race thuộc một tournament để chủ ngựa chọn khi đăng ký giải đấu."
     )
     @GetMapping("/tournaments/{tournamentId}/get-race-list")
-    @PreAuthorize("hasRole('HORSE_OWNER')")
+    @PreAuthorize("hasAnyRole('HORSE_OWNER', 'ADMIN')")
     public ResponseEntity<List<RaceListResponse>> getRacesByTournament(
             @PathVariable Integer tournamentId,
             @RequestParam(required = false) String status

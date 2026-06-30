@@ -45,6 +45,17 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // Cho phép browser gửi preflight request
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/bets/get-all",
+                                "/api/jockey-assignments/get-all",
+                                "/api/horses/get-all",
+                                "/api/jockeys/get-all",
+                                "/api/bet-options/get-all",
+                                "/api/notifications/get-all",
+                                "/api/race-registrations/get-all",
+                                "/api/race-rounds/get-all",
+                                "/api/race-results/get-all"
+                        ).permitAll()
 
                         // Public APIs
                         .requestMatchers(

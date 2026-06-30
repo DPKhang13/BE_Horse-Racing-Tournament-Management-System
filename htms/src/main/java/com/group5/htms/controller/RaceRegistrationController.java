@@ -36,7 +36,7 @@ public class RaceRegistrationController {
 
     @Operation(summary = "Get my race registrations", description = "Lấy danh sách đăng ký tham gia giải/race của horse owner đang đăng nhập.")
     @GetMapping("/get-my-registrations")
-    @PreAuthorize("hasRole('HORSE_OWNER')")
+    @PreAuthorize("hasAnyRole('HORSE_OWNER', 'ADMIN')")
     public ResponseEntity<List<RaceRegistrationListResponse>> getMyRegistrations() {
         return ResponseEntity.ok(raceRegistrationService.getMyRegistrations());
     }

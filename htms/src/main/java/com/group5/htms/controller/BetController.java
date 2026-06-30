@@ -32,14 +32,14 @@ public class BetController {
 
     @Operation(summary = "Get spectator dashboard", description = "Dashboard tổng hợp theo JWT spectator: wallet, summary count, upcoming races, active bets, latest results, notifications và race đang mở dự đoán.")
     @GetMapping("/dashboard")
-    @PreAuthorize("hasRole('SPECTATOR')")
+    @PreAuthorize("hasAnyRole('SPECTATOR', 'ADMIN')")
     public ResponseEntity<SpectatorDashboardResponse> getSpectatorDashboard() {
         return ResponseEntity.ok(betService.getSpectatorDashboard());
     }
 
     @Operation(summary = "Get open prediction races", description = "Lấy race đang mở dự đoán kèm bet optionId để FE đặt cược.")
     @GetMapping("/open-predictions")
-    @PreAuthorize("hasRole('SPECTATOR')")
+    @PreAuthorize("hasAnyRole('SPECTATOR', 'ADMIN')")
     public ResponseEntity<List<PredictionRaceResponse>> getOpenPredictionRaces() {
         return ResponseEntity.ok(betService.getOpenPredictionRaces());
     }
