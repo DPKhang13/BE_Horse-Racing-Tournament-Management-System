@@ -51,6 +51,7 @@ import com.group5.htms.repository.WalletsRepository;
 import com.group5.htms.service.AuthService;
 import com.group5.htms.service.RaceResultService;
 import com.group5.htms.validation.RaceResultValidator;
+import com.group5.htms.util.RankGroupUtil;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

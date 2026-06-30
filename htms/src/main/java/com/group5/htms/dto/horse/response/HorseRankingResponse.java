@@ -15,6 +15,7 @@ public class HorseRankingResponse {
     private String rankGroup;
     private Integer rankingPoints;
     private Integer totalWins;
+    private Integer totalRaces;
     private String avatarUrl;
     private String status;
     private String ownerFullName;

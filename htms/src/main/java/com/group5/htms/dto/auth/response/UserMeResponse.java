@@ -43,6 +43,7 @@ public class UserMeResponse {
         private String licenseNumber;
         private Integer rankingPoints;
         private Integer totalWins;
+        private Integer totalRaces;
         private Integer experienceYears;
         private String status;
     }

@@ -20,6 +20,9 @@ public class HorseValidator {
         if (request.getOwnerId() != null) {
             throw new BadRequestException("Owner is taken from current authenticated user");
         }
+        if (hasText(request.getRankGroup())) {
+            throw new BadRequestException("Horse rank group is calculated from ranking points");
+        }
         if (request.getRankingPoints() != null
                 || request.getTotalWins() != null
                 || hasText(request.getStatus())

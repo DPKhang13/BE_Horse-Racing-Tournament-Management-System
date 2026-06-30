@@ -18,6 +18,7 @@ public class HorseListResponse {
     private Integer rankingPoints;
     private String avatarUrl;
     private Integer totalWins;
+    private Integer totalRaces;
     private String status;
     private String ownerFullName;
     private String ownerStableName;

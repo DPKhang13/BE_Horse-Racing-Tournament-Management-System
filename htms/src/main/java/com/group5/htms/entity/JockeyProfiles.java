@@ -53,6 +53,11 @@ public class JockeyProfiles {
 
     @NotNull
     @ColumnDefault("0")
+    @Column(name = "total_races", nullable = false)
+    private Integer totalRaces;
+
+    @NotNull
+    @ColumnDefault("0")
     @Column(name = "experience_years", nullable = false)
     private Integer experienceYears;
 
@@ -66,6 +71,14 @@ public class JockeyProfiles {
     public void prePersist() {
         if (this.rankingPoints == null) {
             this.rankingPoints = 0;
+        }
+
+        if (this.totalWins == null) {
+            this.totalWins = 0;
+        }
+
+        if (this.totalRaces == null) {
+            this.totalRaces = 0;
         }
 
         if (this.experienceYears == null) {

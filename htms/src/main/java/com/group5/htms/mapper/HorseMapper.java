@@ -9,6 +9,7 @@ import com.group5.htms.entity.HorseOwnerProfiles;
 import com.group5.htms.entity.Horses;
 import com.group5.htms.entity.Users;
 import com.group5.htms.enums.HorseStatus;
+import com.group5.htms.util.RankGroupUtil;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -23,10 +24,11 @@ public class HorseMapper {
                 .breed(trim(request.getBreed()))
                 .age(request.getAge())
                 .weightKg(request.getWeightKg())
-                .rankGroup(trim(request.getRankGroup()))
+                .rankGroup(RankGroupUtil.fromRankingPoints(0))
                 .rankingPoints(0)
                 .avatarUrl(trim(request.getAvatarUrl()))
                 .totalWins(0)
+                .totalRaces(0)
                 .status(HorseStatus.ACTIVE.getValue())
                 .registeredAt(Instant.now())
                 .build();
@@ -45,10 +47,7 @@ public class HorseMapper {
         if (hasPositiveUpdateValue(request.getWeightKg())) {
             horse.setWeightKg(request.getWeightKg());
         }
-        if (hasUpdateValue(request.getRankGroup())) {
-            horse.setRankGroup(trim(request.getRankGroup()));
-        }
-        if (hasUpdateValue(request.getAvatarUrl())) {
+if (hasUpdateValue(request.getAvatarUrl())) {
             horse.setAvatarUrl(trim(request.getAvatarUrl()));
         }
     }
@@ -69,6 +68,7 @@ public class HorseMapper {
                 .rankingPoints(horse.getRankingPoints())
                 .avatarUrl(horse.getAvatarUrl())
                 .totalWins(horse.getTotalWins())
+                .totalRaces(horse.getTotalRaces())
                 .status(horse.getStatus())
                 .registeredAt(horse.getRegisteredAt())
                 .ownerFullName(ownerUser == null ? null : ownerUser.getFullName())
@@ -94,6 +94,7 @@ public class HorseMapper {
                 .rankingPoints(horse.getRankingPoints())
                 .avatarUrl(horse.getAvatarUrl())
                 .totalWins(horse.getTotalWins())
+                .totalRaces(horse.getTotalRaces())
                 .status(horse.getStatus())
                 .ownerFullName(ownerUser == null ? null : ownerUser.getFullName())
                 .ownerStableName(owner == null ? null : owner.getStableName())
@@ -114,6 +115,7 @@ public class HorseMapper {
                 .rankGroup(horse.getRankGroup())
                 .rankingPoints(horse.getRankingPoints())
                 .totalWins(horse.getTotalWins())
+                .totalRaces(horse.getTotalRaces())
                 .avatarUrl(horse.getAvatarUrl())
                 .status(horse.getStatus())
                 .ownerFullName(ownerUser == null ? null : ownerUser.getFullName())

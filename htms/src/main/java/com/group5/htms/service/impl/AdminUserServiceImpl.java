@@ -428,6 +428,7 @@ public class AdminUserServiceImpl implements AdminUserService {
                 .licenseNumber(clean(request.getLicenseNumber()))
                 .rankingPoints(0)
                 .totalWins(0)
+                .totalRaces(0)
                 .experienceYears(request.getExperienceYears() == null ? 0 : Math.max(request.getExperienceYears(), 0))
                 .status(JockeyStatus.AVAILABLE.getValue())
                 .build();
