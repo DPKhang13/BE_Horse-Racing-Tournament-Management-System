@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/owner/jockey-assignments")
-@PreAuthorize("hasRole('HORSE_OWNER')")
+@PreAuthorize("hasAnyRole('HORSE_OWNER', 'ADMIN')")
 public class HorseJockeyAssignmentController {
     private final JockeyAssignmentService jockeyAssignmentService;
 

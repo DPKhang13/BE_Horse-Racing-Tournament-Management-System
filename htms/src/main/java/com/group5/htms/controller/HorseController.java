@@ -55,14 +55,14 @@ public class HorseController {
 
     @Operation(summary = "Create horse", description = "Tạo mới một ngựa. Owner role được lấy từ JWT của user đang đăng nhập.")
     @PostMapping("/create")
-    @PreAuthorize("hasRole('HORSE_OWNER')")
+    @PreAuthorize("hasAnyRole('HORSE_OWNER', 'ADMIN')")
     public ResponseEntity<HorseResponse> createHorse(@Valid @RequestBody HorseCreateRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(horseService.createHorse(request));
     }
 
     @Operation(summary = "Update horse", description = "Cập nhật thông tin ngựa theo horse id. Field nào không gửi lên sẽ được giữ nguyên.")
     @PutMapping("/update/{id}")
-    @PreAuthorize("hasRole('HORSE_OWNER')")
+    @PreAuthorize("hasAnyRole('HORSE_OWNER', 'ADMIN')")
     public ResponseEntity<HorseResponse> updateHorse(
             @PathVariable Integer id,
             @Valid @RequestBody HorseUpdateRequest request

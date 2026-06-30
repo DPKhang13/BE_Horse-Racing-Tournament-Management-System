@@ -2,6 +2,7 @@ package com.group5.htms.service.impl;
 
 import com.group5.htms.exception.ResourceNotFoundException;
 import com.group5.htms.enums.HorseStatus;
+import com.group5.htms.enums.RoleType;
 import com.group5.htms.dto.horse.request.HorseCreateRequest;
 import com.group5.htms.dto.horse.request.HorseUpdateRequest;
 import com.group5.htms.dto.horse.response.HorseCountResponse;
@@ -69,7 +70,7 @@ public class HorseServiceImpl implements HorseService {
     @Override
     @Transactional
     public HorseResponse createHorse(HorseCreateRequest request) {
-        Integer ownerId = authService.getCurrentUserId();
+        Integer ownerId = resolveHorseOwnerId(request.getOwnerId());
         HorseOwnerProfiles owner = findOwnerProfile(ownerId);
         request.setOwnerId(ownerId);
         Horses horse = horseMapper.toEntity(request);
@@ -89,6 +90,14 @@ public class HorseServiceImpl implements HorseService {
     }
 
 
+    private Integer resolveHorseOwnerId(Integer requestedOwnerId) {
+        if (authService.currentUserHasRole(RoleType.ADMIN.getValue()) && requestedOwnerId != null) {
+            return requestedOwnerId;
+        }
+
+        return authService.getCurrentUserId();
+    }
+
     private Horses findHorse(Integer id) {
         return horsesRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Horse not found"));
@@ -98,7 +107,9 @@ public class HorseServiceImpl implements HorseService {
         Horses horse = findHorse(id);
         Integer ownerId = authService.getCurrentUserId();
 
-        horseValidator.ensureOwnerCanManageHorse(horse, ownerId);
+        if (!authService.currentUserHasRole(RoleType.ADMIN.getValue())) {
+            horseValidator.ensureOwnerCanManageHorse(horse, ownerId);
+        }
 
         return horse;
     }

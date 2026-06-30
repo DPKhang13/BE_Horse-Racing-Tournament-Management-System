@@ -27,6 +27,8 @@ public interface AuthService {
 
     Integer getCurrentUserId();
 
+    boolean currentUserHasRole(String roleType);
+
     OtpVerifyResponse verifyOtp(VerifyOtpRequest request);
 
     OtpVerifyResponse resendOtp(ResendOtpRequest request);

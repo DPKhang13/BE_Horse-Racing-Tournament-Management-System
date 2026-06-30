@@ -14,6 +14,7 @@ import com.group5.htms.entity.Races;
 import com.group5.htms.entity.Tournaments;
 import com.group5.htms.entity.Users;
 import com.group5.htms.enums.RaceRegistrationStatus;
+import com.group5.htms.enums.RoleType;
 import com.group5.htms.exception.ResourceNotFoundException;
 import com.group5.htms.mapper.RaceRegistrationMapper;
 import com.group5.htms.repository.HorseOwnerProfilesRepository;
@@ -82,7 +83,9 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
         HorseOwnerProfiles owner = findOwner(ownerId);
 
         raceRegistrationValidator.ensureRaceBelongsToTournament(race, tournament.getId());
-        raceRegistrationValidator.ensureHorseBelongsToOwner(horse, ownerId);
+        if (!authService.currentUserHasRole(RoleType.ADMIN.getValue())) {
+            raceRegistrationValidator.ensureHorseBelongsToOwner(horse, ownerId);
+        }
         raceRegistrationValidator.ensureRegistrationOpen(tournament, race);
         raceRegistrationValidator.ensureHorseNotRegisteredInTournament(
                 raceRegistrationsRepository.existsByTournaments_IdAndHorses_Id(tournament.getId(), horse.getId())
@@ -105,7 +108,9 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
     @Transactional
     public RaceRegistrationResponse updateRegistration(Integer id, RaceRegistrationUpdateRequest request) {
         Integer ownerId = authService.getCurrentUserId();
-        RaceRegistrations registration = findRegistrationForCurrentOwner(id, ownerId);
+        RaceRegistrations registration = authService.currentUserHasRole(RoleType.ADMIN.getValue())
+                ? findRegistration(id)
+                : findRegistrationForCurrentOwner(id, ownerId);
 
         raceRegistrationValidator.ensureNoWorkflowFields(request);
 
@@ -120,7 +125,9 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
                 : findHorse(request.getHorseId());
 
         raceRegistrationValidator.ensureRaceBelongsToTournament(race, tournament.getId());
-        raceRegistrationValidator.ensureHorseBelongsToOwner(horse, ownerId);
+        if (!authService.currentUserHasRole(RoleType.ADMIN.getValue())) {
+            raceRegistrationValidator.ensureHorseBelongsToOwner(horse, ownerId);
+        }
         raceRegistrationValidator.ensureHorseNotRegisteredInTournamentForUpdate(
                 raceRegistrationsRepository.existsByTournaments_IdAndHorses_IdAndIdNot(
                         tournament.getId(),
@@ -170,6 +177,14 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
         return raceRegistrationMapper.toResponse(raceRegistrationsRepository.save(registration));
     }
 
+
+    private Integer resolveOwnerId(Integer requestedOwnerId) {
+        if (authService.currentUserHasRole(RoleType.ADMIN.getValue()) && requestedOwnerId != null) {
+            return requestedOwnerId;
+        }
+
+        return authService.getCurrentUserId();
+    }
 
     private RaceRegistrations findRegistration(Integer id) {
         return raceRegistrationsRepository.findById(id)

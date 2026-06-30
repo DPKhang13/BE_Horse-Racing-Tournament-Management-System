@@ -49,7 +49,7 @@ public class RaceRegistrationController {
 
     @Operation(summary = "Create race registration", description = "Đăng ký một ngựa vào race. Owner role được lấy từ JWT của user đang đăng nhập.")
     @PostMapping("/create")
-    @PreAuthorize("hasRole('HORSE_OWNER')")
+    @PreAuthorize("hasAnyRole('HORSE_OWNER', 'ADMIN')")
     public ResponseEntity<RaceRegistrationResponse> createRegistration(
             @Valid @RequestBody RaceRegistrationCreateRequest request
     ) {
@@ -58,7 +58,7 @@ public class RaceRegistrationController {
 
     @Operation(summary = "Update race registration", description = "Cập nhật thông tin đăng ký race. Field nào không gửi lên sẽ giữ nguyên.")
     @PutMapping("/update/{id}")
-    @PreAuthorize("hasRole('HORSE_OWNER')")
+    @PreAuthorize("hasAnyRole('HORSE_OWNER', 'ADMIN')")
     public ResponseEntity<RaceRegistrationResponse> updateRegistration(
             @PathVariable Integer id,
             @Valid @RequestBody RaceRegistrationUpdateRequest request

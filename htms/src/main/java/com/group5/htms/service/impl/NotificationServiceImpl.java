@@ -6,6 +6,7 @@ import com.group5.htms.dto.notification.request.NotificationUpdateRequest;
 import com.group5.htms.dto.notification.response.NotificationListResponse;
 import com.group5.htms.dto.notification.response.NotificationResponse;
 import com.group5.htms.entity.Notifications;
+import com.group5.htms.enums.RoleType;
 import com.group5.htms.mapper.NotificationMapper;
 import com.group5.htms.repository.NotificationsRepository;
 import com.group5.htms.service.AuthService;
@@ -27,9 +28,7 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     public List<NotificationListResponse> getAllNotifications() {
-        Integer currentUserId = authService.getCurrentUserId();
-
-        return notificationsRepository.findByUsers_Id(currentUserId)
+        return notificationsRepository.findAll()
                 .stream()
                 .map(notificationMapper::toListResponse)
                 .toList();
@@ -78,7 +77,7 @@ public class NotificationServiceImpl implements NotificationService {
         Notifications notification = findNotification(id);
         Integer currentUserId = authService.getCurrentUserId();
 
-        if (!Objects.equals(notification.getUsers().getId(), currentUserId)) {
+        if (!authService.currentUserHasRole(RoleType.ADMIN.getValue()) && !Objects.equals(notification.getUsers().getId(), currentUserId)) {
             throw new AccessDeniedException("You do not own this notification");
         }
 

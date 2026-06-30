@@ -58,14 +58,14 @@ public class BetController {
 
     @Operation(summary = "Create bet", description = "Tạo bet cho một assignment. Spectator role được lấy từ JWT của user đang đăng nhập.")
     @PostMapping("/create")
-    @PreAuthorize("hasRole('SPECTATOR')")
+    @PreAuthorize("hasAnyRole('SPECTATOR', 'ADMIN')")
     public ResponseEntity<BetResponse> createBet(@Valid @RequestBody BetCreateRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(betService.createBet(request));
     }
 
     @Operation(summary = "Update bet", description = "Cập nhật bet. Field nào không gửi lên sẽ giữ nguyên.")
     @PutMapping("/update/{id}")
-    @PreAuthorize("hasRole('SPECTATOR')")
+    @PreAuthorize("hasAnyRole('SPECTATOR', 'ADMIN')")
     public ResponseEntity<BetResponse> updateBet(
             @PathVariable Integer id,
             @Valid @RequestBody BetUpdateRequest request

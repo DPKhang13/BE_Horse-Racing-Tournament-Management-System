@@ -252,6 +252,13 @@ public class AuthServiceImpl implements AuthService {
         return getCurrentUser().getId();
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public boolean currentUserHasRole(String roleType) {
+        Users user = getCurrentUser();
+        return user.getRoleType() != null && user.getRoleType().equalsIgnoreCase(roleType);
+    }
+
     /*
      Tạo token mới và set vào cookie.
      AccessToken:

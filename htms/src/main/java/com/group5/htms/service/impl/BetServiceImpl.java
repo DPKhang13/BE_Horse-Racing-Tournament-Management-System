@@ -19,6 +19,7 @@ import com.group5.htms.entity.Wallets;
 import com.group5.htms.enums.BetStatus;
 import com.group5.htms.enums.RaceResultStatus;
 import com.group5.htms.enums.RaceStatus;
+import com.group5.htms.enums.RoleType;
 import com.group5.htms.enums.WalletTransactionStatus;
 import com.group5.htms.enums.WalletTransactionType;
 import com.group5.htms.exception.BadRequestException;
@@ -293,7 +294,7 @@ public class BetServiceImpl implements BetService {
         Bets bet = findBet(id);
         Integer userId = authService.getCurrentUserId();
 
-        if (!Objects.equals(bet.getUsers().getId(), userId)) {
+        if (!authService.currentUserHasRole(RoleType.ADMIN.getValue()) && !Objects.equals(bet.getUsers().getId(), userId)) {
             throw new AccessDeniedException("You do not own this bet");
         }
 

@@ -12,6 +12,7 @@ import com.group5.htms.entity.Races;
 import com.group5.htms.enums.JockeyAssignmentStatus;
 import com.group5.htms.enums.JockeyStatus;
 import com.group5.htms.enums.RaceRegistrationStatus;
+import com.group5.htms.enums.RoleType;
 import com.group5.htms.exception.ResourceNotFoundException;
 import com.group5.htms.mapper.JockeyAssignmentMapper;
 import com.group5.htms.repository.JockeyHorseAssignmentsRepository;
@@ -93,7 +94,9 @@ public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
         Races race = findRace(request.getRaceId());
         JockeyProfiles jockey = findJockey(request.getJockeyId());
 
-        jockeyAssignmentValidator.ensureOwnerCanManageRegistration(registration, authService.getCurrentUserId());
+        if (!authService.currentUserHasRole(RoleType.ADMIN.getValue())) {
+            jockeyAssignmentValidator.ensureOwnerCanManageRegistration(registration, authService.getCurrentUserId());
+        }
         jockeyAssignmentValidator.ensureRaceMatchesRegistration(race, registration);
         jockeyAssignmentValidator.ensureRegistrationCanInviteJockey(registration);
         jockeyAssignmentValidator.ensureRegistrationStillOpen(registration, race);
@@ -168,7 +171,9 @@ public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
                 ? assignment.getJockey()
                 : findJockey(request.getJockeyId());
 
-        jockeyAssignmentValidator.ensureOwnerCanManageRegistration(registration, authService.getCurrentUserId());
+        if (!authService.currentUserHasRole(RoleType.ADMIN.getValue())) {
+            jockeyAssignmentValidator.ensureOwnerCanManageRegistration(registration, authService.getCurrentUserId());
+        }
         jockeyAssignmentValidator.ensureRaceMatchesRegistration(race, registration);
         jockeyAssignmentValidator.ensureRegistrationCanInviteJockey(registration);
         jockeyAssignmentValidator.ensureRegistrationStillOpen(registration, race);
@@ -272,7 +277,9 @@ public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
 
     private JockeyHorseAssignments findAssignmentForCurrentOwner(Integer id) {
         JockeyHorseAssignments assignment = findAssignment(id);
-        jockeyAssignmentValidator.ensureOwnerCanManageRegistration(assignment.getReg(), authService.getCurrentUserId());
+        if (!authService.currentUserHasRole(RoleType.ADMIN.getValue())) {
+            jockeyAssignmentValidator.ensureOwnerCanManageRegistration(assignment.getReg(), authService.getCurrentUserId());
+        }
         return assignment;
     }
 
