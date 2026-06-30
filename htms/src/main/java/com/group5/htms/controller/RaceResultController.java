@@ -66,4 +66,5 @@ public class RaceResultController {
     ) {
         return ResponseEntity.ok(raceResultService.publishResult(id, request));
     }
+
 }

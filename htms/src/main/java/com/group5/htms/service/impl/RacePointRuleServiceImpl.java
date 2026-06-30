@@ -4,25 +4,24 @@ import com.group5.htms.dto.racepointrule.request.RacePointRuleItemRequest;
 import com.group5.htms.dto.racepointrule.response.RacePointRuleResponse;
 import com.group5.htms.entity.RacePointRules;
 import com.group5.htms.entity.Races;
-import com.group5.htms.enums.RaceStatus;
 import com.group5.htms.exception.BadRequestException;
 import com.group5.htms.exception.ResourceNotFoundException;
 import com.group5.htms.repository.RacePointRulesRepository;
 import com.group5.htms.repository.RacesRepository;
 import com.group5.htms.service.RacePointRuleService;
+import com.group5.htms.validation.RacePointRuleValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 public class RacePointRuleServiceImpl implements RacePointRuleService {
     private final RacesRepository racesRepository;
     private final RacePointRulesRepository racePointRulesRepository;
+    private final RacePointRuleValidator racePointRuleValidator;
 
     @Override
     @Transactional(readOnly = true)
@@ -35,14 +34,9 @@ public class RacePointRuleServiceImpl implements RacePointRuleService {
     @Transactional
     public List<RacePointRuleResponse> createPointRules(Integer raceId, List<RacePointRuleItemRequest> request) {
         Races race = getRaceEntity(raceId);
-        ensurePointRulesEditable(race);
-        validateRequest(request);
-
-        for (RacePointRuleItemRequest item : request) {
-            if (racePointRulesRepository.existsByRace_IdAndFinishPosition(race.getId(), item.getFinishPosition())) {
-                throw new BadRequestException("Finish position already exists in race point rules");
-            }
-        }
+        racePointRuleValidator.ensurePointRulesEditable(race);
+        racePointRuleValidator.validateRequest(request);
+        racePointRuleValidator.ensureFinishPositionsDoNotExist(race.getId(), request);
 
         savePointRules(race, request);
         return toResponseList(race.getId());
@@ -52,8 +46,8 @@ public class RacePointRuleServiceImpl implements RacePointRuleService {
     @Transactional
     public List<RacePointRuleResponse> replacePointRules(Integer raceId, List<RacePointRuleItemRequest> request) {
         Races race = getRaceEntity(raceId);
-        ensurePointRulesEditable(race);
-        validateRequest(request);
+        racePointRuleValidator.ensurePointRulesEditable(race);
+        racePointRuleValidator.validateRequest(request);
 
         racePointRulesRepository.deleteByRace_Id(race.getId());
         savePointRules(race, request);
@@ -64,7 +58,7 @@ public class RacePointRuleServiceImpl implements RacePointRuleService {
     @Transactional
     public void deletePointRule(Integer raceId, Integer ruleId) {
         Races race = getRaceEntity(raceId);
-        ensurePointRulesEditable(race);
+        racePointRuleValidator.ensurePointRulesEditable(race);
 
         RacePointRules rule = racePointRulesRepository.findById(ruleId)
                 .filter(existingRule -> existingRule.getRace() != null
@@ -83,32 +77,6 @@ public class RacePointRuleServiceImpl implements RacePointRuleService {
                     .note(clean(item.getNote()))
                     .build();
             racePointRulesRepository.save(rule);
-        }
-    }
-
-    private void validateRequest(List<RacePointRuleItemRequest> request) {
-        if (request == null || request.isEmpty()) {
-            throw new BadRequestException("Point rules are required");
-        }
-
-        Set<Integer> positions = new HashSet<>();
-        for (RacePointRuleItemRequest item : request) {
-            if (item == null) {
-                throw new BadRequestException("Point rule item is required");
-            }
-
-            if (!positions.add(item.getFinishPosition())) {
-                throw new BadRequestException("Duplicate finish position in point rules");
-            }
-        }
-    }
-
-    private void ensurePointRulesEditable(Races race) {
-        String status = clean(race.getStatus());
-        if (RaceStatus.IN_PROGRESS.getValue().equals(status)
-                || RaceStatus.COMPLETED.getValue().equals(status)
-                || RaceStatus.CANCELLED.getValue().equals(status)) {
-            throw new BadRequestException("Cannot update point rules after race has started");
         }
     }
 

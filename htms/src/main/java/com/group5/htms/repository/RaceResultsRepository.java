@@ -16,5 +16,10 @@ public interface RaceResultsRepository extends JpaRepository<RaceResults, Intege
 
     Optional<RaceResults> findByRaces_IdAndAssignment_Id(Integer raceId, Integer assignmentId);
 
+    List<RaceResults> findByRaces_IdOrderByFinishPositionAsc(Integer raceId);
+
+    List<RaceResults> findByRaces_IdAndStatusIgnoreCaseOrderByFinishPositionAsc(Integer raceId, String status);
+
+    boolean existsByRaces_IdAndStatusIgnoreCase(Integer raceId, String status);
     List<RaceResults> findByStatusIgnoreCaseOrderByPublishedAtDesc(String status, Pageable pageable);
 }
