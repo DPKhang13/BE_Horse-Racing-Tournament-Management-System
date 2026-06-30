@@ -27,6 +27,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/admin/users")
 @RequiredArgsConstructor
@@ -44,6 +46,45 @@ public class AdminUserController {
         return ResponseEntity.ok(adminUserService.getUsers(roleType, status, keyword, pageable));
     }
 
+
+    @GetMapping("/horse-owners")
+    public ResponseEntity<List<AdminUserListResponse>> getHorseOwners() {
+        return ResponseEntity.ok(adminUserService.getHorseOwners());
+    }
+
+    @GetMapping("/jockeys")
+    public ResponseEntity<List<AdminUserListResponse>> getJockeys() {
+        return ResponseEntity.ok(adminUserService.getJockeys());
+    }
+
+    @GetMapping("/referees")
+    public ResponseEntity<List<AdminUserListResponse>> getReferees() {
+        return ResponseEntity.ok(adminUserService.getReferees());
+    }
+
+    @PutMapping("/horse-owners/{userId}/profile")
+    public ResponseEntity<AdminUserDetailResponse> updateHorseOwnerProfile(
+            @PathVariable Integer userId,
+            @Valid @RequestBody AdminUserUpdateRequest request
+    ) {
+        return ResponseEntity.ok(adminUserService.updateHorseOwnerProfile(userId, request));
+    }
+
+    @PutMapping("/jockeys/{userId}/profile")
+    public ResponseEntity<AdminUserDetailResponse> updateJockeyProfile(
+            @PathVariable Integer userId,
+            @Valid @RequestBody AdminUserUpdateRequest request
+    ) {
+        return ResponseEntity.ok(adminUserService.updateJockeyProfile(userId, request));
+    }
+
+    @PutMapping("/referees/{userId}/profile")
+    public ResponseEntity<AdminUserDetailResponse> updateRefereeProfile(
+            @PathVariable Integer userId,
+            @Valid @RequestBody AdminUserUpdateRequest request
+    ) {
+        return ResponseEntity.ok(adminUserService.updateRefereeProfile(userId, request));
+    }
     @GetMapping("/{userId}")
     public ResponseEntity<AdminUserDetailResponse> getUserById(@PathVariable Integer userId) {
         return ResponseEntity.ok(adminUserService.getUserById(userId));
@@ -74,6 +115,11 @@ public class AdminUserController {
         return ResponseEntity.ok(adminUserService.updateStatus(userId, request));
     }
 
+
+    @PatchMapping("/{userId}/ban")
+    public ResponseEntity<AdminUserDetailResponse> banUser(@PathVariable Integer userId) {
+        return ResponseEntity.ok(adminUserService.banUser(userId));
+    }
     @PatchMapping("/{userId}/reset-password")
     public ResponseEntity<AdminUserResetPasswordResponse> resetPassword(
             @PathVariable Integer userId,

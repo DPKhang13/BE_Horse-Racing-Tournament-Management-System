@@ -60,6 +60,16 @@ public class HorseController {
         return ResponseEntity.status(HttpStatus.CREATED).body(horseService.createHorse(request));
     }
 
+
+    @Operation(summary = "Admin create horse for owner", description = "Admin tạo ngựa cho horse owner theo owner id.")
+    @PostMapping("/admin/owners/{ownerId}/create")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<HorseResponse> createHorseForOwner(
+            @PathVariable Integer ownerId,
+            @Valid @RequestBody HorseCreateRequest request
+    ) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(horseService.createHorseForOwner(ownerId, request));
+    }
     @Operation(summary = "Update horse", description = "Cập nhật thông tin ngựa theo horse id. Field nào không gửi lên sẽ được giữ nguyên.")
     @PutMapping("/update/{id}")
     @PreAuthorize("hasAnyRole('HORSE_OWNER', 'ADMIN')")

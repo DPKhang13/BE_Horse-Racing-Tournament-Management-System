@@ -79,6 +79,13 @@ public class HorseServiceImpl implements HorseService {
         return horseMapper.toResponse(horsesRepository.save(horse));
     }
 
+
+    @Override
+    @Transactional
+    public HorseResponse createHorseForOwner(Integer ownerId, HorseCreateRequest request) {
+        request.setOwnerId(ownerId);
+        return createHorse(request);
+    }
     @Override
     @Transactional
     public HorseResponse updateHorse(Integer id, HorseUpdateRequest request) {

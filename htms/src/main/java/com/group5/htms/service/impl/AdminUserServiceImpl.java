@@ -108,6 +108,24 @@ public class AdminUserServiceImpl implements AdminUserService {
                 ));
     }
 
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<AdminUserListResponse> getHorseOwners() {
+        return getUsersByRole(RoleType.HORSE_OWNER);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<AdminUserListResponse> getJockeys() {
+        return getUsersByRole(RoleType.JOCKEY);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<AdminUserListResponse> getReferees() {
+        return getUsersByRole(RoleType.RACE_REFEREE);
+    }
     @Override
     @Transactional(readOnly = true)
     public AdminUserDetailResponse getUserById(Integer userId) {
@@ -130,6 +148,30 @@ public class AdminUserServiceImpl implements AdminUserService {
         return toDetailResponse(usersRepository.save(user));
     }
 
+
+    @Override
+    @Transactional
+    public AdminUserDetailResponse updateHorseOwnerProfile(Integer userId, AdminUserUpdateRequest request) {
+        Users user = findUserByRole(userId, RoleType.HORSE_OWNER);
+        updateOwnerProfile(user, request);
+        return toDetailResponse(user);
+    }
+
+    @Override
+    @Transactional
+    public AdminUserDetailResponse updateJockeyProfile(Integer userId, AdminUserUpdateRequest request) {
+        Users user = findUserByRole(userId, RoleType.JOCKEY);
+        updateJockeyProfile(user, request);
+        return toDetailResponse(user);
+    }
+
+    @Override
+    @Transactional
+    public AdminUserDetailResponse updateRefereeProfile(Integer userId, AdminUserUpdateRequest request) {
+        Users user = findUserByRole(userId, RoleType.RACE_REFEREE);
+        updateRefereeProfile(user, request);
+        return toDetailResponse(user);
+    }
     @Override
     @Transactional
     public AdminUserDetailResponse updateStatus(Integer userId, AdminUserStatusUpdateRequest request) {
@@ -148,6 +190,15 @@ public class AdminUserServiceImpl implements AdminUserService {
         return toDetailResponse(usersRepository.save(user));
     }
 
+
+    @Override
+    @Transactional
+    public AdminUserDetailResponse banUser(Integer userId) {
+        Users user = findManagedRoleUser(userId);
+        ensureCanDeactivateUser(user);
+        user.setStatus(UserStatus.INACTIVE.getValue());
+        return toDetailResponse(usersRepository.save(user));
+    }
     @Override
     @Transactional
     public AdminUserResetPasswordResponse resetPassword(Integer userId, AdminUserResetPasswordRequest request) {
@@ -168,6 +219,18 @@ public class AdminUserServiceImpl implements AdminUserService {
                 .build();
     }
 
+
+    private List<AdminUserListResponse> getUsersByRole(RoleType roleType) {
+        return usersRepository.findByRoleTypeIgnoreCaseOrderByFullNameAsc(roleType.getValue())
+                .stream()
+                .map(user -> adminUserMapper.toListResponse(
+                        user,
+                        findOwnerProfile(user),
+                        findJockeyProfile(user),
+                        findRefereeProfile(user)
+                ))
+                .toList();
+    }
     private Specification<Users> buildUserSpecification(String roleType, String status, String keyword) {
         return (root, query, criteriaBuilder) -> {
             List<Predicate> predicates = new ArrayList<>();
@@ -399,6 +462,25 @@ public class AdminUserServiceImpl implements AdminUserService {
         return jockey;
     }
 
+
+    private Users findUserByRole(Integer userId, RoleType roleType) {
+        Users user = findUser(userId);
+        if (user.getRoleType() == null || !roleType.getValue().equalsIgnoreCase(user.getRoleType())) {
+            throw new BadRequestException("User does not have required role");
+        }
+        return user;
+    }
+
+    private Users findManagedRoleUser(Integer userId) {
+        Users user = findUser(userId);
+        if (user.getRoleType() == null
+                || (!RoleType.HORSE_OWNER.getValue().equalsIgnoreCase(user.getRoleType())
+                && !RoleType.JOCKEY.getValue().equalsIgnoreCase(user.getRoleType())
+                && !RoleType.RACE_REFEREE.getValue().equalsIgnoreCase(user.getRoleType()))) {
+            throw new BadRequestException("Only horse owner, jockey, or referee users can be banned here");
+        }
+        return user;
+    }
     private Users findUser(Integer userId) {
         if (userId == null) {
             throw new BadRequestException("User id is required");

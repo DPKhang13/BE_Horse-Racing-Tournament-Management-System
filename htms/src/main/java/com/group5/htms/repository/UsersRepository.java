@@ -3,6 +3,7 @@ package com.group5.htms.repository;
 import com.group5.htms.entity.Users;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import java.util.List;
 import java.util.Optional;
 
 public interface UsersRepository extends JpaRepository<Users, Integer>, JpaSpecificationExecutor<Users> {
@@ -22,4 +23,6 @@ public interface UsersRepository extends JpaRepository<Users, Integer>, JpaSpeci
     long countByRoleTypeIgnoreCaseAndStatusIgnoreCase(String roleType, String status);
 
     Optional<Users> findByUsernameOrEmail(String username, String email);
+
+    List<Users> findByRoleTypeIgnoreCaseOrderByFullNameAsc(String roleType);
 }

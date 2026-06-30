@@ -20,5 +20,7 @@ public interface HorseService {
 
     HorseResponse createHorse(HorseCreateRequest request);
 
+    HorseResponse createHorseForOwner(Integer ownerId, HorseCreateRequest request);
+
     HorseResponse updateHorse(Integer id, HorseUpdateRequest request);
 }
