@@ -34,9 +34,9 @@ public class RaceResultController {
         return ResponseEntity.ok(raceResultService.getAllResults());
     }
 
-    @Operation(summary = "Get race result by id", description = "Lấy thông tin kết quả race theo result id.")
+    @Operation(summary = "Get race results by race id", description = "Lấy danh sách kết quả race theo race id.")
     @GetMapping("/get-by-id/{id}")
-    public ResponseEntity<RaceResultResponse> getResultById(@PathVariable Integer id) {
+    public ResponseEntity<List<RaceResultResponse>> getResultById(@PathVariable Integer id) {
         return ResponseEntity.ok(raceResultService.getResultById(id));
     }
 
@@ -68,3 +68,4 @@ public class RaceResultController {
     }
 
 }
+

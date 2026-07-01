@@ -15,7 +15,7 @@ import java.util.List;
 public interface RaceResultService {
     List<RaceResultListResponse> getAllResults();
 
-    RaceResultResponse getResultById(Integer id);
+    List<RaceResultResponse> getResultById(Integer id);
 
     RaceResultResponse createResult(RaceResultCreateRequest request);
 
@@ -41,3 +41,4 @@ public interface RaceResultService {
 
     List<RaceResultResponse> getPublicResults(Integer raceId);
 }
+

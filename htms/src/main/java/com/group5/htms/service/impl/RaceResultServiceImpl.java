@@ -106,8 +106,12 @@ public class RaceResultServiceImpl implements RaceResultService {
 
     @Override
     @Transactional(readOnly = true)
-    public RaceResultResponse getResultById(Integer id) {
-        return raceResultMapper.toResponse(findResult(id));
+    public List<RaceResultResponse> getResultById(Integer id) {
+        Races race = getRace(id);
+        return raceResultsRepository.findByRaces_IdOrderByFinishPositionAsc(race.getId())
+                .stream()
+                .map(raceResultMapper::toResponse)
+                .toList();
     }
 
     @Override
@@ -726,3 +730,6 @@ public class RaceResultServiceImpl implements RaceResultService {
         private BigDecimal totalRewardsPaid = BigDecimal.ZERO;
     }
 }
+
+
+
