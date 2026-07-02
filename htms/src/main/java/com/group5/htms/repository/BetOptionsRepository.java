@@ -7,7 +7,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.stereotype.Repository;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -24,9 +23,8 @@ public interface BetOptionsRepository extends JpaRepository<BetOptions, Integer>
 
     List<BetOptions> findByRaces_IdOrderByCurrentRateAsc(Integer raceId);
 
-    List<BetOptions> findByRaces_StatusIgnoreCaseAndRaces_PredictionClosesAtAfterOrderByRaces_ScheduledAtAscCurrentRateAsc(
+    List<BetOptions> findByRaces_StatusIgnoreCaseOrderByRaces_ScheduledAtAscCurrentRateAsc(
             String status,
-            Instant predictionClosesAt,
             Pageable pageable
     );
 
@@ -34,3 +32,5 @@ public interface BetOptionsRepository extends JpaRepository<BetOptions, Integer>
 
     boolean existsByRaces_IdAndHorses_Id(Integer raceId, Integer horseId);
 }
+
+

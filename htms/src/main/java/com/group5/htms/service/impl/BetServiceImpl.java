@@ -150,11 +150,9 @@ public class BetServiceImpl implements BetService {
     @Override
     @Transactional(readOnly = true)
     public List<PredictionRaceResponse> getOpenPredictionRaces() {
-        Instant now = Instant.now();
         List<BetOptions> options = betOptionsRepository
-                .findByRaces_StatusIgnoreCaseAndRaces_PredictionClosesAtAfterOrderByRaces_ScheduledAtAscCurrentRateAsc(
+                .findByRaces_StatusIgnoreCaseOrderByRaces_ScheduledAtAscCurrentRateAsc(
                         RaceStatus.OPEN_FOR_BETTING.getValue(),
-                        now,
                         PageRequest.of(0, OPEN_PREDICTION_OPTION_LIMIT)
                 );
 
@@ -266,6 +264,14 @@ public class BetServiceImpl implements BetService {
                 .tournamentName(race.getSchedule().getTournaments().getName())
                 .location(race.getSchedule().getTournaments().getLocation())
                 .build();
+    }
+
+    private String predictionStatus(Races race) {
+        Instant predictionClosesAt = race.getPredictionClosesAt();
+        if (predictionClosesAt != null && !Instant.now().isBefore(predictionClosesAt)) {
+            return "đã đóng";
+        }
+        return "open for betting";
     }
 
     private PredictionRaceResponse.OptionItem toPredictionOption(BetOptions option) {
@@ -393,7 +399,7 @@ public class BetServiceImpl implements BetService {
                     .predictionClosesAt(race.getPredictionClosesAt())
                     .distanceM(race.getDistanceM())
                     .trackType(race.getTrackType())
-                    .status(race.getStatus())
+                    .status(predictionStatus(race))
                     .tournamentId(race.getSchedule().getTournaments().getId())
                     .tournamentName(race.getSchedule().getTournaments().getName())
                     .location(race.getSchedule().getTournaments().getLocation())
@@ -402,3 +408,7 @@ public class BetServiceImpl implements BetService {
         }
     }
 }
+
+
+
+
