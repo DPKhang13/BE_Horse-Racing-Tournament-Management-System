@@ -35,6 +35,16 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<NotificationListResponse> getCurrentUserNotifications() {
+        Integer currentUserId = authService.getCurrentUserId();
+        return notificationsRepository.findByUsers_IdOrderByCreatedAtDesc(currentUserId)
+                .stream()
+                .map(notificationMapper::toListResponse)
+                .toList();
+    }
+
+    @Override
     public NotificationResponse getNotificationById(Integer id) {
         return notificationMapper.toResponse(findNotificationForCurrentUser(id));
     }
@@ -74,7 +84,6 @@ public class NotificationServiceImpl implements NotificationService {
         return notificationMapper.toResponse(notificationsRepository.save(notification));
     }
 
-
     private Notifications findNotificationForMarkRead(Integer id) {
         Notifications notification = findNotification(id);
         if (authService.currentUserHasRole(RoleType.ADMIN.getValue())
@@ -106,8 +115,4 @@ public class NotificationServiceImpl implements NotificationService {
         return notification;
     }
 }
-
-
-
-
 

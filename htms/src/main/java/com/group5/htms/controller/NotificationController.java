@@ -34,6 +34,13 @@ public class NotificationController {
         return ResponseEntity.ok(notificationService.getAllNotifications());
     }
 
+    @Operation(summary = "Get current user notifications", description = "Lấy danh sách notification của user đang đăng nhập.")
+    @GetMapping("/my-notifications")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<List<NotificationListResponse>> getCurrentUserNotifications() {
+        return ResponseEntity.ok(notificationService.getCurrentUserNotifications());
+    }
+
     @Operation(summary = "Get notification by id", description = "Lấy notification theo id.")
     @GetMapping("/get-by-id/{id}")
     public ResponseEntity<NotificationResponse> getNotificationById(@PathVariable Integer id) {
@@ -74,6 +81,3 @@ public class NotificationController {
         return ResponseEntity.ok(notificationService.markAsRead(id));
     }
 }
-
-
-

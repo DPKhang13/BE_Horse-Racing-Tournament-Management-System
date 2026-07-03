@@ -10,6 +10,8 @@ import java.util.List;
 public interface NotificationService {
     List<NotificationListResponse> getAllNotifications();
 
+    List<NotificationListResponse> getCurrentUserNotifications();
+
     NotificationResponse getNotificationById(Integer id);
 
     NotificationResponse createNotification(NotificationCreateRequest request);
@@ -20,4 +22,3 @@ public interface NotificationService {
 
     void deleteNotification(Integer id);
 }
-
