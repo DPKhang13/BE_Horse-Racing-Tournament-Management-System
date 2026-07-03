@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -58,6 +59,14 @@ public class NotificationController {
         return ResponseEntity.ok(notificationService.updateNotification(id, request));
     }
 
+    @Operation(summary = "Delete notification", description = "Xóa notification theo id.")
+    @DeleteMapping("/delete/{id}")
+    @PreAuthorize("hasAnyRole('SPECTATOR', 'ADMIN')")
+    public ResponseEntity<Void> deleteNotification(@PathVariable Integer id) {
+        notificationService.deleteNotification(id);
+        return ResponseEntity.noContent().build();
+    }
+
     @Operation(summary = "Mark notification as read", description = "Đánh dấu notification là đã đọc.")
     @PutMapping("/mark-read/{id}")
     @PreAuthorize("hasAnyRole('SPECTATOR', 'ADMIN')")
@@ -65,4 +74,6 @@ public class NotificationController {
         return ResponseEntity.ok(notificationService.markAsRead(id));
     }
 }
+
+
 

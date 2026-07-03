@@ -17,4 +17,7 @@ public interface NotificationService {
     NotificationResponse updateNotification(Integer id, NotificationUpdateRequest request);
 
     NotificationResponse markAsRead(Integer id);
+
+    void deleteNotification(Integer id);
 }
+

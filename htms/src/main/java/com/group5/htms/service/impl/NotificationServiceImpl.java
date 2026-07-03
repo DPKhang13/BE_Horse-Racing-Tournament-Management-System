@@ -60,6 +60,13 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     @Transactional
+    public void deleteNotification(Integer id) {
+        Notifications notification = findNotificationForCurrentUser(id);
+        notificationsRepository.delete(notification);
+    }
+
+    @Override
+    @Transactional
     public NotificationResponse markAsRead(Integer id) {
         Notifications notification = findNotificationForMarkRead(id);
         notification.setIsRead(true);
@@ -82,6 +89,7 @@ public class NotificationServiceImpl implements NotificationService {
 
         return notification;
     }
+
     private Notifications findNotification(Integer id) {
         return notificationsRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Notification not found"));
@@ -98,6 +106,8 @@ public class NotificationServiceImpl implements NotificationService {
         return notification;
     }
 }
+
+
 
 
 
