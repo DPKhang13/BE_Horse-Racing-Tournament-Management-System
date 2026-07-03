@@ -60,8 +60,9 @@ public class NotificationController {
 
     @Operation(summary = "Mark notification as read", description = "Đánh dấu notification là đã đọc.")
     @PutMapping("/mark-read/{id}")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('SPECTATOR', 'ADMIN')")
     public ResponseEntity<NotificationResponse> markAsRead(@PathVariable Integer id) {
         return ResponseEntity.ok(notificationService.markAsRead(id));
     }
 }
+

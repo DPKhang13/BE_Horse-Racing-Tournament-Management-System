@@ -61,13 +61,27 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     @Transactional
     public NotificationResponse markAsRead(Integer id) {
-        Notifications notification = findNotificationForCurrentUser(id);
+        Notifications notification = findNotificationForMarkRead(id);
         notification.setIsRead(true);
 
         return notificationMapper.toResponse(notificationsRepository.save(notification));
     }
 
 
+    private Notifications findNotificationForMarkRead(Integer id) {
+        Notifications notification = findNotification(id);
+        if (authService.currentUserHasRole(RoleType.ADMIN.getValue())
+                || authService.currentUserHasRole(RoleType.SPECTATOR.getValue())) {
+            return notification;
+        }
+
+        Integer currentUserId = authService.getCurrentUserId();
+        if (!Objects.equals(notification.getUsers().getId(), currentUserId)) {
+            throw new AccessDeniedException("You do not own this notification");
+        }
+
+        return notification;
+    }
     private Notifications findNotification(Integer id) {
         return notificationsRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Notification not found"));
@@ -84,3 +98,6 @@ public class NotificationServiceImpl implements NotificationService {
         return notification;
     }
 }
+
+
+
