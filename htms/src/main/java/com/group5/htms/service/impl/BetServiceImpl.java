@@ -148,13 +148,15 @@ public class BetServiceImpl implements BetService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public List<PredictionRaceResponse> getOpenPredictionRaces() {
-        List<BetOptions> options = betOptionsRepository
-                .findByRaces_StatusIgnoreCaseOrderByRaces_ScheduledAtAscCurrentRateAsc(
-                        RaceStatus.OPEN_FOR_BETTING.getValue(),
-                        PageRequest.of(0, OPEN_PREDICTION_OPTION_LIMIT)
-                );
+        List<BetOptions> options = getOpenPredictionOptions();
+        options.stream()
+                .map(option -> option.getRaces().getId())
+                .distinct()
+                .forEach(betOptionService::recalculateRatesForRace);
+
+        options = getOpenPredictionOptions();
 
         Map<Integer, PredictionRaceAccumulator> raceMap = new LinkedHashMap<>();
         for (BetOptions option : options) {
@@ -180,6 +182,8 @@ public class BetServiceImpl implements BetService {
         Users user = usersRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         BetOptions option = findBetOptionForBetting(request.getOptionId());
+        betOptionService.recalculateRatesForRace(option.getRaces().getId());
+        option = findBetOptionForBetting(request.getOptionId());
         betValidator.ensureRaceOpenForBetting(option);
         betValidator.ensurePredictionStillOpen(option);
 
@@ -236,6 +240,14 @@ public class BetServiceImpl implements BetService {
         return betMapper.toResponse(betsRepository.save(bet));
     }
 
+
+    private List<BetOptions> getOpenPredictionOptions() {
+        return betOptionsRepository
+                .findByRaces_StatusIgnoreCaseOrderByRaces_ScheduledAtAscCurrentRateAsc(
+                        RaceStatus.OPEN_FOR_BETTING.getValue(),
+                        PageRequest.of(0, OPEN_PREDICTION_OPTION_LIMIT)
+                );
+    }
     private SpectatorDashboardResponse.WalletSummary toWalletSummary(Integer userId) {
         return walletsRepository.findByUsersId(userId)
                 .map(wallet -> SpectatorDashboardResponse.WalletSummary.builder()
@@ -408,6 +420,9 @@ public class BetServiceImpl implements BetService {
         }
     }
 }
+
+
+
 
 
 

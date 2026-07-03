@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -130,8 +131,14 @@ public class BetOptionServiceImpl implements BetOptionService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public List<BetOptionResponse> getAllBetOptions() {
+        betOptionsRepository.findAll()
+                .stream()
+                .map(option -> option.getRaces().getId())
+                .distinct()
+                .forEach(this::recalculateRatesForRace);
+
         return betOptionsRepository.findAll()
                 .stream()
                 .map(betOptionMapper::toResponse)
@@ -139,21 +146,20 @@ public class BetOptionServiceImpl implements BetOptionService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public List<BetOptionResponse> getBetOptionsByRace(Integer raceId) {
         if (!racesRepository.existsById(raceId)) {
             throw new ResourceNotFoundException("Race not found");
         }
 
-        return betOptionsRepository.findByRaces_IdOrderByCurrentRateAsc(raceId)
-                .stream()
-                .map(betOptionMapper::toResponse)
-                .toList();
+        return recalculateRatesForRace(raceId);
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public BetOptionResponse getBetOptionById(Integer id) {
+        BetOptions option = findBetOption(id);
+        recalculateRatesForRace(option.getRaces().getId());
         return betOptionMapper.toResponse(findBetOption(id));
     }
 
@@ -193,7 +199,8 @@ public class BetOptionServiceImpl implements BetOptionService {
             int maxTotalWins
     ) {
         BigDecimal rate = baseRateByHorseStrength(option.getHorses(), maxRankingPoints, maxTotalWins)
-                .add(marketAdjustment(option, totalRaceBetPoints));
+                .add(marketAdjustment(option, totalRaceBetPoints))
+                .add(timeAdjustment(option.getRaces()));
 
         if (rate.compareTo(MIN_RATE) < 0) {
             rate = MIN_RATE;
@@ -247,6 +254,29 @@ public class BetOptionServiceImpl implements BetOptionService {
         return BigDecimal.ZERO;
     }
 
+
+    private BigDecimal timeAdjustment(Races race) {
+        Instant predictionClosesAt = race.getPredictionClosesAt();
+        if (predictionClosesAt == null) {
+            return BigDecimal.ZERO;
+        }
+
+        long minutesToClose = Duration.between(Instant.now(), predictionClosesAt).toMinutes();
+        if (minutesToClose <= 0) {
+            return new BigDecimal("-0.75");
+        }
+        if (minutesToClose <= 15) {
+            return new BigDecimal("-0.60");
+        }
+        if (minutesToClose <= 60) {
+            return new BigDecimal("-0.40");
+        }
+        if (minutesToClose <= 360) {
+            return new BigDecimal("-0.20");
+        }
+
+        return BigDecimal.ZERO;
+    }
     private BigDecimal ratio(int value, int maxValue) {
         if (value <= 0 || maxValue <= 0) {
             return BigDecimal.ZERO;
@@ -264,3 +294,5 @@ public class BetOptionServiceImpl implements BetOptionService {
         return value == null ? BigDecimal.ZERO : value;
     }
 }
+
+

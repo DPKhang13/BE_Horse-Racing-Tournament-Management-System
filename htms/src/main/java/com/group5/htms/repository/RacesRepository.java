@@ -29,4 +29,7 @@ public interface RacesRepository extends JpaRepository<Races, Integer> {
     long countByScheduleId(Integer scheduleId);
 
     long countByStatusIgnoreCase(String status);
+
+    List<Races> findByStatusIgnoreCaseOrderByScheduledAtAsc(String status);
 }
+
