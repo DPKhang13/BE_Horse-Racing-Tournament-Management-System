@@ -7,10 +7,14 @@ import com.group5.htms.service.PaymentService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.util.UriComponentsBuilder;
 
+import java.net.URI;
 import java.util.Map;
 
 @RestController
@@ -19,6 +23,9 @@ import java.util.Map;
 public class PaymentController {
 
     private final PaymentService paymentService;
+
+    @Value("${app.frontend.payment-result-url:http://localhost:5173/payment-result}")
+    private String paymentResultUrl;
 
     /*
      Authenticated API.
@@ -42,12 +49,23 @@ public class PaymentController {
      http://localhost:5173/payment-result?status=success
      */
     @GetMapping("/handle-payment-return")
-    public ResponseEntity<VnpayReturnResponse> handleReturn(
+    public ResponseEntity<Void> handleReturn(
             HttpServletRequest request
     ) {
-        return ResponseEntity.ok(
-                paymentService.handleReturn(request.getParameterMap())
-        );
+        VnpayReturnResponse result = paymentService.handleReturn(request.getParameterMap());
+        URI redirectUri = UriComponentsBuilder
+                .fromUriString(paymentResultUrl)
+                .queryParam("success", result.isSuccess())
+                .queryParam("txnRef", result.getTxnRef())
+                .queryParam("responseCode", result.getResponseCode())
+                .queryParam("transactionStatus", result.getTransactionStatus())
+                .queryParam("message", result.getMessage())
+                .build()
+                .toUri();
+
+        return ResponseEntity.status(HttpStatus.FOUND)
+                .location(redirectUri)
+                .build();
     }
 
     /*

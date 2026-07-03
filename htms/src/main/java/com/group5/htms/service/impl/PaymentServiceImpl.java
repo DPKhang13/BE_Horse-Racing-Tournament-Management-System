@@ -122,11 +122,11 @@ public class PaymentServiceImpl implements PaymentService {
 
     /*
      * Return URL:
-     * - Chỉ dùng để hiển thị kết quả thanh toán cho frontend.
-     * - Không cộng point ở đây.
-     * - Không update Wallet ở đây.
+     * - Hiển thị kết quả thanh toán cho frontend.
+     * - Đồng thời xử lý top-up idempotent như fallback nếu IPN chưa tới.
      */
     @Override
+    @Transactional
     public VnpayReturnResponse handleReturn(Map<String, String[]> parameterMap) {
         boolean validSignature = VnpayUtil.verifySignature(
                 parameterMap,
@@ -144,7 +144,8 @@ public class PaymentServiceImpl implements PaymentService {
                 && VnpayResponseCodeStatus.SUCCESS.getValue().equals(transactionStatus);
 
         String txnRef = VnpayUtil.getFirstValue(parameterMap, "vnp_TxnRef");
-        WalletTransactions transaction = findTransactionByTransactionRef(txnRef);
+        WalletTransactions transaction = findTransactionByTransactionRefForUpdate(txnRef);
+        String message = processReturnTopUp(parameterMap, validSignature, success, transaction);
 
         return VnpayReturnResponse.builder()
                 .validSignature(validSignature)
@@ -157,7 +158,7 @@ public class PaymentServiceImpl implements PaymentService {
                 .transactionNo(VnpayUtil.getFirstValue(parameterMap, "vnp_TransactionNo"))
                 .bankCode(VnpayUtil.getFirstValue(parameterMap, "vnp_BankCode"))
                 .payDate(VnpayUtil.getFirstValue(parameterMap, "vnp_PayDate"))
-                .message(success ? "Payment success" : "Payment failed or invalid signature")
+                .message(message)
                 .transaction(toPaymentTransactionResponse(transaction))
                 .build();
     }
@@ -347,6 +348,40 @@ public class PaymentServiceImpl implements PaymentService {
 
     private void failTopUpTransaction(WalletTransactions transaction) {
         transaction.setStatus(WalletTransactionStatus.FAILED.getValue());
+    }
+
+    private String processReturnTopUp(
+            Map<String, String[]> parameterMap,
+            boolean validSignature,
+            boolean paymentSuccess,
+            WalletTransactions transaction
+    ) {
+        if (!validSignature) {
+            return "Payment failed or invalid signature";
+        }
+
+        if (transaction == null || !isVnpayTopUpTransaction(transaction)) {
+            return "Payment transaction not found";
+        }
+
+        BigDecimal vnpayAmount = extractVnpayAmount(parameterMap);
+        if (vnpayAmount == null || vnpayAmount.compareTo(transaction.getCashAmount()) != 0) {
+            return "Payment amount does not match transaction";
+        }
+
+        if (!WalletTransactionStatus.PENDING.getValue().equalsIgnoreCase(transaction.getStatus())) {
+            return paymentSuccess ? "Payment already confirmed" : "Payment already processed";
+        }
+
+        if (paymentSuccess) {
+            completeTopUpTransaction(transaction);
+            walletTransactionsRepository.save(transaction);
+            return "Payment success";
+        }
+
+        failTopUpTransaction(transaction);
+        walletTransactionsRepository.save(transaction);
+        return "Payment failed";
     }
 
     private BigDecimal extractVnpayAmount(Map<String, String[]> parameterMap) {
