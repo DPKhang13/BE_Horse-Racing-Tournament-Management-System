@@ -58,7 +58,13 @@ public class PaymentController {
                 .queryParam("success", result.isSuccess())
                 .queryParam("txnRef", result.getTxnRef())
                 .queryParam("responseCode", result.getResponseCode())
-                .queryParam("transactionStatus", result.getTransactionStatus())
+                .queryParam("vnpayTransactionStatus", result.getTransactionStatus())
+                .queryParam("transactionStatus", result.getTransaction() == null
+                        ? null
+                        : result.getTransaction().getStatus())
+                .queryParam("pointsAdded", result.getTransaction() == null
+                        ? null
+                        : result.getTransaction().getPointsAmount())
                 .queryParam("message", result.getMessage())
                 .build()
                 .toUri();

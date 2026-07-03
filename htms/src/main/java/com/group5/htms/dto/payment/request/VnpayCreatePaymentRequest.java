@@ -17,9 +17,7 @@ public class VnpayCreatePaymentRequest {
      * Optional.
      * Null/blank thì VNPay sẽ cho user tự chọn phương thức thanh toán.
      * Một số bankCode hay dùng:
-     * VNPAYQR = thanh toán QR
      * VNBANK = thẻ ATM/tài khoản nội địa
-     * INTCARD = thẻ quốc tế
      */
     private String bankCode;
 

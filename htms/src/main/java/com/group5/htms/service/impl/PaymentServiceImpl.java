@@ -40,7 +40,7 @@ import java.util.TreeMap;
 @RequiredArgsConstructor
 public class PaymentServiceImpl implements PaymentService {
 
-    private static final BigDecimal DEFAULT_EXCHANGE_RATE = BigDecimal.ONE;
+    private static final BigDecimal DEFAULT_EXCHANGE_RATE = new BigDecimal("0.001");
 
     private static final ZoneId VIETNAM_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
 
