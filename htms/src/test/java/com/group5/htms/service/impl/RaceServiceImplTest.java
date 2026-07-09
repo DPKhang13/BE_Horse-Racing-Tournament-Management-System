@@ -12,12 +12,15 @@ import com.group5.htms.exception.BadRequestException;
 import com.group5.htms.mapper.RaceMapper;
 import com.group5.htms.mapper.TournamentScheduleMapper;
 import com.group5.htms.repository.JockeyHorseAssignmentsRepository;
+import com.group5.htms.repository.RacePointRulesRepository;
 import com.group5.htms.repository.RaceRefereeAssignmentsRepository;
 import com.group5.htms.repository.RaceRegistrationsRepository;
+import com.group5.htms.repository.RaceResultsRepository;
 import com.group5.htms.repository.RacesRepository;
 import com.group5.htms.repository.TournamentSchedulesRepository;
 import com.group5.htms.repository.TournamentsRepository;
 import com.group5.htms.service.BetOptionService;
+import com.group5.htms.validation.RaceValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -56,6 +59,12 @@ class RaceServiceImplTest {
     private RaceRefereeAssignmentsRepository raceRefereeAssignmentsRepository;
 
     @Mock
+    private RacePointRulesRepository racePointRulesRepository;
+
+    @Mock
+    private RaceResultsRepository raceResultsRepository;
+
+    @Mock
     private RaceMapper raceMapper;
 
     @Mock
@@ -65,9 +74,12 @@ class RaceServiceImplTest {
     private BetOptionService betOptionService;
 
     private RaceServiceImpl service;
+    private RaceValidator raceValidator;
 
     @BeforeEach
     void setUp() {
+        raceValidator = new RaceValidator();
+
         service = new RaceServiceImpl(
                 racesRepository,
                 tournamentsRepository,
@@ -75,9 +87,12 @@ class RaceServiceImplTest {
                 raceRegistrationsRepository,
                 jockeyHorseAssignmentsRepository,
                 raceRefereeAssignmentsRepository,
+                racePointRulesRepository,
+                raceResultsRepository,
                 raceMapper,
                 tournamentScheduleMapper,
-                betOptionService
+                betOptionService,
+                raceValidator
         );
     }
 
