@@ -14,6 +14,8 @@ public interface RaceRegistrationsRepository extends JpaRepository<RaceRegistrat
 
     List<RaceRegistrations> findByOwner_IdOrderByRegisteredAtDesc(Integer ownerId);
 
+    List<RaceRegistrations> findByStatusIgnoreCaseAndOwnerConfirmationStatusIgnoreCaseOrderByRegisteredAtDesc(String status, String ownerConfirmationStatus);
+
     long countByRaces_Id(Integer raceId);
 
     long countByRaces_IdAndStatusIgnoreCase(Integer raceId, String status);
@@ -32,3 +34,4 @@ public interface RaceRegistrationsRepository extends JpaRepository<RaceRegistrat
             Integer registrationId
     );
 }
+

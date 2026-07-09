@@ -2,17 +2,21 @@ package com.group5.htms.controller;
 
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationApproveRequest;
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationRejectRequest;
+import com.group5.htms.dto.raceregistration.response.RaceRegistrationListResponse;
 import com.group5.htms.dto.raceregistration.response.RaceRegistrationResponse;
 import com.group5.htms.service.RaceRegistrationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -20,6 +24,12 @@ import org.springframework.web.bind.annotation.RestController;
 @PreAuthorize("hasRole('ADMIN')")
 public class AdminRaceRegistrationController {
     private final RaceRegistrationService raceRegistrationService;
+
+
+    @GetMapping("/pending-approval")
+    public ResponseEntity<List<RaceRegistrationListResponse>> getRegistrationsPendingApproval() {
+        return ResponseEntity.ok(raceRegistrationService.getAdminApprovalRegistrations());
+    }
 
     @PatchMapping("/{registrationId}/approve")
     public ResponseEntity<RaceRegistrationResponse> approveRegistration(
@@ -47,3 +57,5 @@ public class AdminRaceRegistrationController {
         );
     }
 }
+
+

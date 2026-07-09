@@ -15,6 +15,8 @@ public interface RaceRegistrationService {
 
     List<RaceRegistrationListResponse> getMyRegistrations();
 
+    List<RaceRegistrationListResponse> getAdminApprovalRegistrations();
+
     RaceRegistrationResponse getRegistrationById(Integer id);
 
     RaceRegistrationResponse createRegistration(RaceRegistrationCreateRequest request);
@@ -27,3 +29,4 @@ public interface RaceRegistrationService {
 
     RaceRegistrationResponse rejectRegistration(Integer id, RaceRegistrationRejectRequest request);
 }
+

@@ -67,6 +67,18 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<RaceRegistrationListResponse> getAdminApprovalRegistrations() {
+        return raceRegistrationsRepository
+                .findByStatusIgnoreCaseAndOwnerConfirmationStatusIgnoreCaseOrderByRegisteredAtDesc(
+                        RaceRegistrationStatus.PENDING.getValue(),
+                        RaceRegistrationStatus.CONFIRMED.getValue()
+                )
+                .stream()
+                .map(raceRegistrationMapper::toListResponse)
+                .toList();
+    }
+    @Override
+    @Transactional(readOnly = true)
     public RaceRegistrationResponse getRegistrationById(Integer id) {
         return raceRegistrationMapper.toResponse(findRegistration(id));
     }
@@ -226,3 +238,5 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
     }
 
 }
+
+
