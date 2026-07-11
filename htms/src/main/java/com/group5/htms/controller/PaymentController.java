@@ -1,6 +1,7 @@
 package com.group5.htms.controller;
 
 import com.group5.htms.dto.payment.request.VnpayCreatePaymentRequest;
+import com.group5.htms.dto.payment.response.PaymentTransactionResponse;
 import com.group5.htms.dto.payment.response.VnpayCreatePaymentResponse;
 import com.group5.htms.dto.payment.response.VnpayReturnResponse;
 import com.group5.htms.service.PaymentService;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -40,6 +42,19 @@ public class PaymentController {
         return ResponseEntity.ok(
                 paymentService.createPaymentUrl(request, httpServletRequest)
         );
+    }
+
+
+    @GetMapping("/topup-history")
+    @PreAuthorize("hasRole('SPECTATOR')")
+    public ResponseEntity<List<PaymentTransactionResponse>> getTopUpHistory() {
+        return ResponseEntity.ok(paymentService.getTopUpHistory());
+    }
+
+    @GetMapping("/transactions/{txId}")
+    @PreAuthorize("hasRole('SPECTATOR')")
+    public ResponseEntity<PaymentTransactionResponse> getTransactionDetail(@PathVariable Integer txId) {
+        return ResponseEntity.ok(paymentService.getTransactionDetail(txId));
     }
 
     /*
@@ -87,3 +102,5 @@ public class PaymentController {
         );
     }
 }
+
+

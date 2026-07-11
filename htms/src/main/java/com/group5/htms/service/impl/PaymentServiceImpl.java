@@ -33,6 +33,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -118,6 +119,32 @@ public class PaymentServiceImpl implements PaymentService {
                 .paymentUrl(paymentUrl)
                 .transaction(toPaymentTransactionResponse(savedTransaction))
                 .build();
+    }
+
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PaymentTransactionResponse> getTopUpHistory() {
+        Users currentUser = getCurrentUser();
+        return walletTransactionsRepository
+                .findByUsersIdAndTxTypeIgnoreCaseOrderByCreatedAtDesc(
+                        currentUser.getId(),
+                        WalletTransactionType.TOPUP.getValue()
+                )
+                .stream()
+                .map(this::toPaymentTransactionResponse)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PaymentTransactionResponse getTransactionDetail(Integer txId) {
+        Users currentUser = getCurrentUser();
+        WalletTransactions transaction = walletTransactionsRepository
+                .findByIdAndUsersId(txId, currentUser.getId())
+                .orElseThrow(() -> new BadRequestException("Payment transaction not found"));
+
+        return toPaymentTransactionResponse(transaction);
     }
 
     /*
@@ -552,3 +579,5 @@ public class PaymentServiceImpl implements PaymentService {
      * Không expose field gatewayRawResponse ra API public.
      */
 }
+
+
