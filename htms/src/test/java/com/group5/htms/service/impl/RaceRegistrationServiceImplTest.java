@@ -4,6 +4,7 @@ import com.group5.htms.dto.raceregistration.request.RaceRegistrationCreateReques
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationApprovalRequest;
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationApproveRequest;
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationRejectRequest;
+import com.group5.htms.dto.raceregistration.response.RaceRegistrationListResponse;
 import com.group5.htms.dto.raceregistration.response.RaceRegistrationResponse;
 import com.group5.htms.entity.HorseOwnerProfiles;
 import com.group5.htms.entity.Horses;
@@ -31,6 +32,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -79,6 +81,40 @@ class RaceRegistrationServiceImplTest {
                 raceRegistrationMapper,
                 raceRegistrationValidator
         );
+    }
+
+    @Test
+    void getAllRegistrationsReturnsApprovedRegistrationsOnly() {
+        RaceRegistrations approvedRegistration = registration(RaceRegistrationStatus.APPROVED.getValue());
+        RaceRegistrationListResponse expectedResponse = RaceRegistrationListResponse.builder()
+                .regId(10)
+                .status(RaceRegistrationStatus.APPROVED.getValue())
+                .build();
+        when(raceRegistrationsRepository.findByStatusIgnoreCaseOrderByRegisteredAtDesc(
+                RaceRegistrationStatus.APPROVED.getValue()
+        )).thenReturn(List.of(approvedRegistration));
+        when(raceRegistrationMapper.toListResponse(approvedRegistration)).thenReturn(expectedResponse);
+
+        List<RaceRegistrationListResponse> responses = service.getAllRegistrations();
+
+        assertThat(responses).containsExactly(expectedResponse);
+    }
+
+    @Test
+    void getAdminApprovalRegistrationsReturnsPendingRegistrationsOnly() {
+        RaceRegistrations pendingRegistration = registration(RaceRegistrationStatus.PENDING.getValue());
+        RaceRegistrationListResponse expectedResponse = RaceRegistrationListResponse.builder()
+                .regId(10)
+                .status(RaceRegistrationStatus.PENDING.getValue())
+                .build();
+        when(raceRegistrationsRepository.findByStatusIgnoreCaseOrderByRegisteredAtDesc(
+                RaceRegistrationStatus.PENDING.getValue()
+        )).thenReturn(List.of(pendingRegistration));
+        when(raceRegistrationMapper.toListResponse(pendingRegistration)).thenReturn(expectedResponse);
+
+        List<RaceRegistrationListResponse> responses = service.getAdminApprovalRegistrations();
+
+        assertThat(responses).containsExactly(expectedResponse);
     }
 
     @Test
@@ -338,3 +374,4 @@ class RaceRegistrationServiceImplTest {
                 .build();
     }
 }
+

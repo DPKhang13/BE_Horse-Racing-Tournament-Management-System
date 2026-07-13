@@ -13,6 +13,7 @@ import com.group5.htms.dto.schedule.response.TournamentScheduleResponse;
 import com.group5.htms.entity.Races;
 import com.group5.htms.entity.TournamentSchedules;
 import com.group5.htms.entity.Tournaments;
+import com.group5.htms.enums.RaceRegistrationStatus;
 import com.group5.htms.enums.RaceResultStatus;
 import com.group5.htms.enums.RaceStatus;
 import com.group5.htms.enums.JockeyAssignmentStatus;
@@ -264,7 +265,10 @@ public class RaceServiceImpl implements RaceService {
 
         return raceMapper.toListResponse(
                 race,
-                raceRegistrationsRepository.countByRaces_Id(raceId),
+                raceRegistrationsRepository.countByRaces_IdAndStatusIgnoreCase(
+                        raceId,
+                        RaceRegistrationStatus.APPROVED.getValue()
+                ),
                 jockeyHorseAssignmentsRepository.countByRaces_IdAndStatusIgnoreCase(raceId, JockeyAssignmentStatus.ACCEPTED.getValue()),
                 raceRefereeAssignmentsRepository.countByRaces_Id(raceId)
         );
@@ -275,7 +279,10 @@ public class RaceServiceImpl implements RaceService {
 
         return raceMapper.toResponse(
                 race,
-                raceRegistrationsRepository.countByRaces_Id(raceId),
+                raceRegistrationsRepository.countByRaces_IdAndStatusIgnoreCase(
+                        raceId,
+                        RaceRegistrationStatus.APPROVED.getValue()
+                ),
                 jockeyHorseAssignmentsRepository.countByRaces_IdAndStatusIgnoreCase(raceId, JockeyAssignmentStatus.ACCEPTED.getValue()),
                 raceRefereeAssignmentsRepository.countByRaces_Id(raceId),
                 racePointRulesRepository.findByRace_IdOrderByFinishPositionAsc(raceId)
@@ -415,6 +422,4 @@ public class RaceServiceImpl implements RaceService {
         }
     }
 }
-
-
 
