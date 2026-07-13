@@ -7,13 +7,19 @@ import com.group5.htms.entity.Users;
 import com.group5.htms.enums.RaceStatus;
 import com.group5.htms.exception.BadRequestException;
 import com.group5.htms.mapper.BetMapper;
+import com.group5.htms.mapper.NotificationMapper;
+import com.group5.htms.mapper.RaceResultMapper;
 import com.group5.htms.repository.BetOptionsRepository;
 import com.group5.htms.repository.BetsRepository;
+import com.group5.htms.repository.NotificationsRepository;
+import com.group5.htms.repository.RaceResultsRepository;
+import com.group5.htms.repository.RacesRepository;
 import com.group5.htms.repository.UsersRepository;
 import com.group5.htms.repository.WalletTransactionsRepository;
 import com.group5.htms.repository.WalletsRepository;
 import com.group5.htms.service.AuthService;
 import com.group5.htms.service.BetOptionService;
+import com.group5.htms.validation.BetValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -45,6 +51,15 @@ class BetServiceImplTest {
     private UsersRepository usersRepository;
 
     @Mock
+    private RacesRepository racesRepository;
+
+    @Mock
+    private RaceResultsRepository raceResultsRepository;
+
+    @Mock
+    private NotificationsRepository notificationsRepository;
+
+    @Mock
     private AuthService authService;
 
     @Mock
@@ -53,19 +68,34 @@ class BetServiceImplTest {
     @Mock
     private BetMapper betMapper;
 
+    @Mock
+    private RaceResultMapper raceResultMapper;
+
+    @Mock
+    private NotificationMapper notificationMapper;
+
     private BetServiceImpl service;
+    private BetValidator betValidator;
 
     @BeforeEach
     void setUp() {
+        betValidator = new BetValidator();
+
         service = new BetServiceImpl(
                 betsRepository,
                 betOptionsRepository,
                 walletsRepository,
                 walletTransactionsRepository,
                 usersRepository,
+                racesRepository,
+                raceResultsRepository,
+                notificationsRepository,
                 authService,
                 betOptionService,
-                betMapper
+                betMapper,
+                raceResultMapper,
+                notificationMapper,
+                betValidator
         );
     }
 

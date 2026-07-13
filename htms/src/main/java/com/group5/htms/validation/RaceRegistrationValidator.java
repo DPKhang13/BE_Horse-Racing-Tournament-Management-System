@@ -29,6 +29,12 @@ public class RaceRegistrationValidator {
         }
     }
 
+    public void ensureHorseRankGroupMatchesRace(Horses horse, Races race) {
+        if (horse == null || race == null || !Objects.equals(horse.getRankGroup(), race.getRankGroup())) {
+            throw new BadRequestException("Horse rank group does not match race rank group");
+        }
+    }
+
     public void ensureOwnerCanManageRegistration(RaceRegistrations registration, Integer ownerId) {
         if (registration == null || registration.getOwner() == null
                 || !Objects.equals(registration.getOwner().getId(), ownerId)) {
