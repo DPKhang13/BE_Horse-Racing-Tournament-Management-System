@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
@@ -29,6 +30,7 @@ public class HorseCreateRequest {
     @DecimalMin(value = "0.0", inclusive = false, message = "Weight must be greater than 0")
     private BigDecimal weightKg;
 
+    @Pattern(regexp = "[AaBbCcDd]", message = "Rank group must be one of: A, B, C, D")
     private String rankGroup;
 
     private String avatarUrl;

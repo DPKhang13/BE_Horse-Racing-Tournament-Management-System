@@ -99,7 +99,9 @@ public class Horses {
         if (totalRaces == null) {
             totalRaces = 0;
         }
-        rankGroup = RankGroupUtil.fromRankingPoints(rankingPoints);
+        if (rankGroup == null || rankGroup.isBlank()) {
+            rankGroup = RankGroupUtil.fromRankingPoints(rankingPoints);
+        }
         if (status == null || status.isBlank()) {
             status = HorseStatus.ACTIVE.getValue();
         }

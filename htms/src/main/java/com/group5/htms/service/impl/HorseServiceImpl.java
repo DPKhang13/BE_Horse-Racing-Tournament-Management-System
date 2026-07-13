@@ -1,9 +1,11 @@
 package com.group5.htms.service.impl;
 
 import com.group5.htms.exception.ResourceNotFoundException;
+import com.group5.htms.exception.BadRequestException;
 import com.group5.htms.enums.HorseStatus;
 import com.group5.htms.enums.RoleType;
 import com.group5.htms.dto.horse.request.HorseCreateRequest;
+import com.group5.htms.dto.horse.request.HorseStatusUpdateRequest;
 import com.group5.htms.dto.horse.request.HorseUpdateRequest;
 import com.group5.htms.dto.horse.response.HorseCountResponse;
 import com.group5.htms.dto.horse.response.HorseListResponse;
@@ -75,6 +77,7 @@ public class HorseServiceImpl implements HorseService {
         request.setOwnerId(ownerId);
         Horses horse = horseMapper.toEntity(request);
         horse.setOwner(owner);
+        horse.setStatus(resolveCreatedHorseStatus());
 
         return horseMapper.toResponse(horsesRepository.save(horse));
     }
@@ -92,6 +95,15 @@ public class HorseServiceImpl implements HorseService {
         Horses horse = findHorseForCurrentOwner(id);
         horseValidator.ensureNoBackendManagedFields(request);
         horseMapper.updateHorse(horse, request);
+
+        return horseMapper.toResponse(horsesRepository.save(horse));
+    }
+
+    @Override
+    @Transactional
+    public HorseResponse updateHorseStatus(Integer id, HorseStatusUpdateRequest request) {
+        Horses horse = findHorse(id);
+        horse.setStatus(normalizeHorseStatus(request.getStatus()));
 
         return horseMapper.toResponse(horsesRepository.save(horse));
     }
@@ -124,6 +136,22 @@ public class HorseServiceImpl implements HorseService {
     private HorseOwnerProfiles findOwnerProfile(Integer ownerId) {
         return horseOwnerProfilesRepository.findById(ownerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Horse owner profile not found"));
+    }
+
+    private String resolveCreatedHorseStatus() {
+        if (authService.currentUserHasRole(RoleType.ADMIN.getValue())) {
+            return HorseStatus.ACTIVE.getValue();
+        }
+
+        return HorseStatus.INACTIVE.getValue();
+    }
+
+    private String normalizeHorseStatus(String status) {
+        if (!HorseStatus.isValid(status)) {
+            throw new BadRequestException("Status must be active, inactive or retired");
+        }
+
+        return status.trim().toLowerCase();
     }
 
 
