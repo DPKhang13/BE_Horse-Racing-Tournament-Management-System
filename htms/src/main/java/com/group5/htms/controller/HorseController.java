@@ -1,6 +1,7 @@
 package com.group5.htms.controller;
 
 import com.group5.htms.dto.horse.request.HorseCreateRequest;
+import com.group5.htms.dto.horse.request.HorseStatusUpdateRequest;
 import com.group5.htms.dto.horse.request.HorseUpdateRequest;
 import com.group5.htms.dto.horse.response.HorseCountResponse;
 import com.group5.htms.dto.horse.response.HorseListResponse;
@@ -16,6 +17,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -78,5 +80,15 @@ public class HorseController {
             @Valid @RequestBody HorseUpdateRequest request
     ) {
         return ResponseEntity.ok(horseService.updateHorse(id, request));
+    }
+
+    @Operation(summary = "Admin update horse status", description = "Admin duyệt hoặc đổi trạng thái ngựa.")
+    @PatchMapping("/admin/{id}/status")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<HorseResponse> updateHorseStatus(
+            @PathVariable Integer id,
+            @Valid @RequestBody HorseStatusUpdateRequest request
+    ) {
+        return ResponseEntity.ok(horseService.updateHorseStatus(id, request));
     }
 }

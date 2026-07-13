@@ -24,7 +24,7 @@ public class HorseMapper {
                 .breed(trim(request.getBreed()))
                 .age(request.getAge())
                 .weightKg(request.getWeightKg())
-                .rankGroup(RankGroupUtil.fromRankingPoints(0))
+                .rankGroup(resolveRankGroup(request.getRankGroup()))
                 .rankingPoints(0)
                 .avatarUrl(trim(request.getAvatarUrl()))
                 .totalWins(0)
@@ -146,6 +146,12 @@ if (hasUpdateValue(request.getAvatarUrl())) {
 
     private String trim(String value) {
         return value == null ? null : value.trim();
+    }
+
+    private String resolveRankGroup(String value) {
+        return value == null || value.isBlank()
+                ? RankGroupUtil.fromRankingPoints(0)
+                : value.trim().toUpperCase();
     }
 
     private boolean hasUpdateValue(String value) {

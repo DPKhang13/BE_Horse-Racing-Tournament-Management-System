@@ -1,6 +1,7 @@
 package com.group5.htms.service;
 
 import com.group5.htms.dto.horse.request.HorseCreateRequest;
+import com.group5.htms.dto.horse.request.HorseStatusUpdateRequest;
 import com.group5.htms.dto.horse.request.HorseUpdateRequest;
 import com.group5.htms.dto.horse.response.HorseCountResponse;
 import com.group5.htms.dto.horse.response.HorseListResponse;
@@ -23,4 +24,6 @@ public interface HorseService {
     HorseResponse createHorseForOwner(Integer ownerId, HorseCreateRequest request);
 
     HorseResponse updateHorse(Integer id, HorseUpdateRequest request);
+
+    HorseResponse updateHorseStatus(Integer id, HorseStatusUpdateRequest request);
 }

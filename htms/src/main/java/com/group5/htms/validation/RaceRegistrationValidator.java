@@ -5,6 +5,7 @@ import com.group5.htms.entity.Horses;
 import com.group5.htms.entity.RaceRegistrations;
 import com.group5.htms.entity.Races;
 import com.group5.htms.entity.Tournaments;
+import com.group5.htms.enums.HorseStatus;
 import com.group5.htms.enums.RaceRegistrationStatus;
 import com.group5.htms.enums.RaceStatus;
 import com.group5.htms.enums.TournamentStatus;
@@ -32,6 +33,12 @@ public class RaceRegistrationValidator {
     public void ensureHorseRankGroupMatchesRace(Horses horse, Races race) {
         if (horse == null || race == null || !Objects.equals(horse.getRankGroup(), race.getRankGroup())) {
             throw new BadRequestException("Horse rank group does not match race rank group");
+        }
+    }
+
+    public void ensureHorseActive(Horses horse) {
+        if (horse == null || !HorseStatus.ACTIVE.getValue().equalsIgnoreCase(horse.getStatus())) {
+            throw new BadRequestException("Horse must be active to register for race");
         }
     }
 

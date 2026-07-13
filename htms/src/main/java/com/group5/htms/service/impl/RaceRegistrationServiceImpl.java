@@ -99,6 +99,7 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
             raceRegistrationValidator.ensureHorseBelongsToOwner(horse, ownerId);
         }
         raceRegistrationValidator.ensureRegistrationOpen(tournament, race);
+        raceRegistrationValidator.ensureHorseActive(horse);
         raceRegistrationValidator.ensureHorseRankGroupMatchesRace(horse, race);
         raceRegistrationValidator.ensureHorseNotRegisteredInTournament(
                 raceRegistrationsRepository.existsByTournaments_IdAndHorses_Id(tournament.getId(), horse.getId())
@@ -141,6 +142,8 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
         if (!authService.currentUserHasRole(RoleType.ADMIN.getValue())) {
             raceRegistrationValidator.ensureHorseBelongsToOwner(horse, ownerId);
         }
+        raceRegistrationValidator.ensureHorseActive(horse);
+        raceRegistrationValidator.ensureHorseRankGroupMatchesRace(horse, race);
         raceRegistrationValidator.ensureHorseNotRegisteredInTournamentForUpdate(
                 raceRegistrationsRepository.existsByTournaments_IdAndHorses_IdAndIdNot(
                         tournament.getId(),
