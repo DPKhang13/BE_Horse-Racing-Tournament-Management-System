@@ -99,6 +99,7 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
             raceRegistrationValidator.ensureHorseBelongsToOwner(horse, ownerId);
         }
         raceRegistrationValidator.ensureRegistrationOpen(tournament, race);
+        raceRegistrationValidator.ensureHorseRankGroupMatchesRace(horse, race);
         raceRegistrationValidator.ensureHorseNotRegisteredInTournament(
                 raceRegistrationsRepository.existsByTournaments_IdAndHorses_Id(tournament.getId(), horse.getId())
         );
@@ -169,6 +170,7 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
     public RaceRegistrationResponse approveRegistration(Integer id, RaceRegistrationApproveRequest request) {
         RaceRegistrations registration = findRegistration(id);
         raceRegistrationValidator.ensureCanApprove(registration);
+        ensureRaceCapacityAvailable(registration.getRaces());
 
         registration.setStatus(RaceRegistrationStatus.APPROVED.getValue());
         registration.setApprovedAt(Instant.now());
@@ -237,6 +239,19 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
         return user;
     }
 
+    private void ensureRaceCapacityAvailable(Races race) {
+        Integer maxHorses = race.getMaxHorses();
+        if (maxHorses == null) {
+            return;
+        }
+
+        long approvedCount = raceRegistrationsRepository.countByRaces_IdAndStatusIgnoreCase(
+                race.getId(),
+                RaceRegistrationStatus.APPROVED.getValue()
+        );
+        if (approvedCount >= maxHorses) {
+            throw new com.group5.htms.exception.BadRequestException("Race maximum horses limit has been reached");
+        }
+    }
+
 }
-
-

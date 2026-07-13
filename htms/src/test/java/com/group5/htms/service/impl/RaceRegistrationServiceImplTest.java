@@ -11,20 +11,18 @@ import com.group5.htms.entity.RaceRegistrations;
 import com.group5.htms.entity.Races;
 import com.group5.htms.entity.TournamentSchedules;
 import com.group5.htms.entity.Tournaments;
-import com.group5.htms.entity.Users;
 import com.group5.htms.enums.RaceRegistrationStatus;
 import com.group5.htms.enums.RaceStatus;
-import com.group5.htms.enums.RoleType;
 import com.group5.htms.enums.TournamentStatus;
 import com.group5.htms.exception.BadRequestException;
 import com.group5.htms.mapper.RaceRegistrationMapper;
 import com.group5.htms.repository.HorseOwnerProfilesRepository;
 import com.group5.htms.repository.HorsesRepository;
-import com.group5.htms.repository.JockeyProfilesRepository;
 import com.group5.htms.repository.RaceRegistrationsRepository;
 import com.group5.htms.repository.RacesRepository;
 import com.group5.htms.repository.TournamentsRepository;
 import com.group5.htms.service.AuthService;
+import com.group5.htms.validation.RaceRegistrationValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -59,27 +57,27 @@ class RaceRegistrationServiceImplTest {
     private HorseOwnerProfilesRepository horseOwnerProfilesRepository;
 
     @Mock
-    private JockeyProfilesRepository jockeyProfilesRepository;
-
-    @Mock
     private AuthService authService;
 
     @Mock
     private RaceRegistrationMapper raceRegistrationMapper;
 
     private RaceRegistrationServiceImpl service;
+    private RaceRegistrationValidator raceRegistrationValidator;
 
     @BeforeEach
     void setUp() {
+        raceRegistrationValidator = new RaceRegistrationValidator();
+
         service = new RaceRegistrationServiceImpl(
                 raceRegistrationsRepository,
                 tournamentsRepository,
                 racesRepository,
                 horsesRepository,
                 horseOwnerProfilesRepository,
-                jockeyProfilesRepository,
                 authService,
-                raceRegistrationMapper
+                raceRegistrationMapper,
+                raceRegistrationValidator
         );
     }
 
@@ -95,15 +93,7 @@ class RaceRegistrationServiceImplTest {
                 .status(RaceRegistrationStatus.PENDING.getValue())
                 .build();
         mockValidCreateReferences();
-        when(raceRegistrationsRepository.existsByTournaments_IdAndHorses_IdAndStatusNotIgnoreCase(
-                1,
-                5,
-                RaceRegistrationStatus.DELETED.getValue()
-        )).thenReturn(false);
-        when(raceRegistrationsRepository.countByRaces_IdAndStatusIgnoreCase(
-                2,
-                RaceRegistrationStatus.APPROVED.getValue()
-        )).thenReturn(0L);
+        when(raceRegistrationsRepository.existsByTournaments_IdAndHorses_Id(1, 5)).thenReturn(false);
         when(raceRegistrationMapper.toEntity(request)).thenReturn(registration);
         when(raceRegistrationsRepository.save(registration)).thenReturn(registration);
         when(raceRegistrationMapper.toResponse(registration)).thenReturn(expectedResponse);
@@ -124,11 +114,7 @@ class RaceRegistrationServiceImplTest {
     void createRegistrationFailsIfHorseAlreadyRegisteredInTournament() {
         RaceRegistrationCreateRequest request = request();
         mockValidCreateReferences();
-        when(raceRegistrationsRepository.existsByTournaments_IdAndHorses_IdAndStatusNotIgnoreCase(
-                1,
-                5,
-                RaceRegistrationStatus.DELETED.getValue()
-        )).thenReturn(true);
+        when(raceRegistrationsRepository.existsByTournaments_IdAndHorses_Id(1, 5)).thenReturn(true);
 
         assertThatThrownBy(() -> service.createRegistration(request))
                 .isInstanceOf(BadRequestException.class)
@@ -288,11 +274,7 @@ class RaceRegistrationServiceImplTest {
     }
 
     private void mockValidCurrentOwner() {
-        Users user = new Users();
-        user.setId(1);
-        user.setRoleType(RoleType.HORSE_OWNER.getValue());
         when(authService.getCurrentUserId()).thenReturn(1);
-        when(authService.getCurrentUser()).thenReturn(user);
     }
 
     private RaceRegistrationCreateRequest request() {
