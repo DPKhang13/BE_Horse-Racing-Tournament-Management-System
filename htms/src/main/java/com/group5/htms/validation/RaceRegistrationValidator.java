@@ -94,6 +94,9 @@ public class RaceRegistrationValidator {
         if (!RaceRegistrationStatus.PENDING.equalsValue(registration.getStatus())) {
             throw new BadRequestException("Only pending registrations can be approved");
         }
+        if (!RaceRegistrationStatus.CONFIRMED.equalsValue(registration.getOwnerConfirmationStatus())) {
+            throw new BadRequestException("Owner must confirm registration before admin approval");
+        }
         ensureRegistrationOpen(registration.getTournaments(), registration.getRaces());
     }
 

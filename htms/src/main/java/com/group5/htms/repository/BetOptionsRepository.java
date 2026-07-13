@@ -23,14 +23,14 @@ public interface BetOptionsRepository extends JpaRepository<BetOptions, Integer>
 
     List<BetOptions> findByRaces_IdOrderByCurrentRateAsc(Integer raceId);
 
-    List<BetOptions> findByRaces_StatusIgnoreCaseOrderByRaces_ScheduledAtAscCurrentRateAsc(
-            String status,
-            Pageable pageable
-    );
+    List<BetOptions> findAllByOrderByRaces_ScheduledAtAscCurrentRateAsc();
 
     Optional<BetOptions> findByRaces_IdAndHorses_Id(Integer raceId, Integer horseId);
 
     boolean existsByRaces_IdAndHorses_Id(Integer raceId, Integer horseId);
 }
+
+
+
 
 

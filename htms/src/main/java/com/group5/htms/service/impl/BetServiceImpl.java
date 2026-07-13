@@ -18,7 +18,6 @@ import com.group5.htms.entity.WalletTransactions;
 import com.group5.htms.entity.Wallets;
 import com.group5.htms.enums.BetStatus;
 import com.group5.htms.enums.RaceResultStatus;
-import com.group5.htms.enums.RaceStatus;
 import com.group5.htms.enums.RoleType;
 import com.group5.htms.enums.WalletTransactionStatus;
 import com.group5.htms.enums.WalletTransactionType;
@@ -86,6 +85,11 @@ public class BetServiceImpl implements BetService {
     @Override
     public BetResponse getBetById(Integer id) {
         return betMapper.toResponse(findBet(id));
+    }
+    @Override
+    @Transactional(readOnly = true)
+    public BetResponse getBetDetail(Integer id) {
+        return betMapper.toResponse(findBetForCurrentSpectator(id));
     }
 
     @Override
@@ -170,7 +174,6 @@ public class BetServiceImpl implements BetService {
 
         return raceMap.values()
                 .stream()
-                .limit(DASHBOARD_LIMIT)
                 .map(PredictionRaceAccumulator::toResponse)
                 .toList();
     }
@@ -242,11 +245,7 @@ public class BetServiceImpl implements BetService {
 
 
     private List<BetOptions> getOpenPredictionOptions() {
-        return betOptionsRepository
-                .findByRaces_StatusIgnoreCaseOrderByRaces_ScheduledAtAscCurrentRateAsc(
-                        RaceStatus.OPEN_FOR_BETTING.getValue(),
-                        PageRequest.of(0, OPEN_PREDICTION_OPTION_LIMIT)
-                );
+        return betOptionsRepository.findAllByOrderByRaces_ScheduledAtAscCurrentRateAsc();
     }
     private SpectatorDashboardResponse.WalletSummary toWalletSummary(Integer userId) {
         return walletsRepository.findByUsersId(userId)
@@ -420,6 +419,13 @@ public class BetServiceImpl implements BetService {
         }
     }
 }
+
+
+
+
+
+
+
 
 
 

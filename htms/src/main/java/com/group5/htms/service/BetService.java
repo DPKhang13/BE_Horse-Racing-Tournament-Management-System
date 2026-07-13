@@ -15,6 +15,8 @@ public interface BetService {
 
     BetResponse getBetById(Integer id);
 
+    BetResponse getBetDetail(Integer id);
+
     BetResponse createBet(BetCreateRequest request);
 
     BetResponse updateBet(Integer id, BetUpdateRequest request);
@@ -25,3 +27,4 @@ public interface BetService {
 
     List<PredictionRaceResponse> getOpenPredictionRaces();
 }
+

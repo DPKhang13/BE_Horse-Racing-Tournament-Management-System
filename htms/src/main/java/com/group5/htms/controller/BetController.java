@@ -56,6 +56,14 @@ public class BetController {
         return ResponseEntity.ok(betService.getBetById(id));
     }
 
+
+    @Operation(summary = "Get my bet detail", description = "Lấy chi tiết phiếu cược theo bet id của user đang đăng nhập.")
+    @GetMapping("/detail/{id}")
+    @PreAuthorize("hasAnyRole('SPECTATOR', 'ADMIN')")
+    public ResponseEntity<BetResponse> getBetDetail(@PathVariable Integer id) {
+        return ResponseEntity.ok(betService.getBetDetail(id));
+    }
+
     @Operation(summary = "Create bet", description = "Tạo bet cho một assignment. Spectator role được lấy từ JWT của user đang đăng nhập.")
     @PostMapping("/create")
     @PreAuthorize("hasAnyRole('SPECTATOR', 'ADMIN')")
@@ -83,3 +91,5 @@ public class BetController {
         return ResponseEntity.ok(betService.checkBet(id, request));
     }
 }
+
+
