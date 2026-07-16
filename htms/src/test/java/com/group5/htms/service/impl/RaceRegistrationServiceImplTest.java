@@ -8,6 +8,7 @@ import com.group5.htms.dto.raceregistration.response.RaceRegistrationListRespons
 import com.group5.htms.dto.raceregistration.response.RaceRegistrationResponse;
 import com.group5.htms.entity.HorseOwnerProfiles;
 import com.group5.htms.entity.Horses;
+import com.group5.htms.entity.JockeyProfiles;
 import com.group5.htms.entity.RaceRegistrations;
 import com.group5.htms.entity.Races;
 import com.group5.htms.entity.TournamentSchedules;
@@ -101,14 +102,15 @@ class RaceRegistrationServiceImplTest {
     }
 
     @Test
-    void getAdminApprovalRegistrationsReturnsPendingRegistrationsOnly() {
+    void getAdminApprovalRegistrationsReturnsApprovalReadyRegistrationsOnly() {
         RaceRegistrations pendingRegistration = registration(RaceRegistrationStatus.PENDING.getValue());
         RaceRegistrationListResponse expectedResponse = RaceRegistrationListResponse.builder()
                 .regId(10)
                 .status(RaceRegistrationStatus.PENDING.getValue())
                 .build();
-        when(raceRegistrationsRepository.findByStatusIgnoreCaseOrderByRegisteredAtDesc(
-                RaceRegistrationStatus.PENDING.getValue()
+        when(raceRegistrationsRepository.findByStatusIgnoreCaseAndOwnerConfirmationStatusIgnoreCaseAndJockeyIsNotNullOrderByRegisteredAtDesc(
+                RaceRegistrationStatus.PENDING.getValue(),
+                RaceRegistrationStatus.CONFIRMED.getValue()
         )).thenReturn(List.of(pendingRegistration));
         when(raceRegistrationMapper.toListResponse(pendingRegistration)).thenReturn(expectedResponse);
 
@@ -206,7 +208,7 @@ class RaceRegistrationServiceImplTest {
 
     @Test
     void approveRegistrationSucceedsIfRegistrationIsPending() {
-        RaceRegistrations registration = registration(RaceRegistrationStatus.PENDING.getValue());
+        RaceRegistrations registration = approvalReadyRegistration();
         RaceRegistrationResponse expectedResponse = RaceRegistrationResponse.builder()
                 .regId(10)
                 .status(RaceRegistrationStatus.APPROVED.getValue())
@@ -229,6 +231,15 @@ class RaceRegistrationServiceImplTest {
     }
 
     @Test
+    void approveRegistrationFailsIfJockeyAssignmentNotOwnerConfirmed() {
+        RaceRegistrations registration = registration(RaceRegistrationStatus.PENDING.getValue());
+        when(raceRegistrationsRepository.findById(10)).thenReturn(Optional.of(registration));
+
+        assertThatThrownBy(() -> service.approveRegistration(10, new RaceRegistrationApproveRequest()))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("Registration must have a confirmed jockey before admin approval");
+    }
+    @Test
     void approveRegistrationFailsIfRegistrationIsNotPending() {
         RaceRegistrations registration = registration(RaceRegistrationStatus.APPROVED.getValue());
         when(raceRegistrationsRepository.findById(10)).thenReturn(Optional.of(registration));
@@ -240,7 +251,7 @@ class RaceRegistrationServiceImplTest {
 
     @Test
     void approveRegistrationFailsIfRaceMaxHorsesReached() {
-        RaceRegistrations registration = registration(RaceRegistrationStatus.PENDING.getValue());
+        RaceRegistrations registration = approvalReadyRegistration();
         when(raceRegistrationsRepository.findById(10)).thenReturn(Optional.of(registration));
         when(raceRegistrationsRepository.countByRaces_IdAndStatusIgnoreCase(
                 2,
@@ -356,6 +367,12 @@ class RaceRegistrationServiceImplTest {
                 .build();
     }
 
+    private RaceRegistrations approvalReadyRegistration() {
+        RaceRegistrations registration = registration(RaceRegistrationStatus.PENDING.getValue());
+        registration.setJockey(JockeyProfiles.builder().id(7).build());
+        registration.setOwnerConfirmationStatus(RaceRegistrationStatus.CONFIRMED.getValue());
+        return registration;
+    }
     private RaceRegistrations registration(String status) {
         return RaceRegistrations.builder()
                 .id(10)

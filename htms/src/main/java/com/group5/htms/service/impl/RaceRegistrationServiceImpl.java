@@ -71,7 +71,10 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
     @Transactional(readOnly = true)
     public List<RaceRegistrationListResponse> getAdminApprovalRegistrations() {
         return raceRegistrationsRepository
-                .findByStatusIgnoreCaseOrderByRegisteredAtDesc(RaceRegistrationStatus.PENDING.getValue())
+                .findByStatusIgnoreCaseAndOwnerConfirmationStatusIgnoreCaseAndJockeyIsNotNullOrderByRegisteredAtDesc(
+                        RaceRegistrationStatus.PENDING.getValue(),
+                        RaceRegistrationStatus.CONFIRMED.getValue()
+                )
                 .stream()
                 .map(raceRegistrationMapper::toListResponse)
                 .toList();

@@ -101,6 +101,12 @@ public class RaceRegistrationValidator {
         if (!RaceRegistrationStatus.PENDING.equalsValue(registration.getStatus())) {
             throw new BadRequestException("Only pending registrations can be approved");
         }
+        if (registration.getJockey() == null) {
+            throw new BadRequestException("Registration must have a confirmed jockey before admin approval");
+        }
+        if (!RaceRegistrationStatus.CONFIRMED.equalsValue(registration.getOwnerConfirmationStatus())) {
+            throw new BadRequestException("Owner must confirm jockey assignment before admin approval");
+        }
     }
 
     public void ensureCanReject(RaceRegistrations registration) {

@@ -44,8 +44,8 @@ public class JockeyAssignmentValidator {
     }
 
     public void ensureRegistrationCanInviteJockey(RaceRegistrations registration) {
-        if (!RaceRegistrationStatus.APPROVED.equalsValue(registration.getStatus())) {
-            throw new BadRequestException("Only approved registrations can invite jockeys");
+        if (!RaceRegistrationStatus.PENDING.equalsValue(registration.getStatus())) {
+            throw new BadRequestException("Only pending registrations can invite jockeys");
         }
     }
 
@@ -136,3 +136,4 @@ public class JockeyAssignmentValidator {
         return responseDeadline != null && !now.isBefore(responseDeadline);
     }
 }
+

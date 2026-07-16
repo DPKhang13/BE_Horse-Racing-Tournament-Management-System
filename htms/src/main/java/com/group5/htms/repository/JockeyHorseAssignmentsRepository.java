@@ -4,6 +4,7 @@ import com.group5.htms.entity.JockeyHorseAssignments;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 
@@ -24,6 +25,8 @@ public interface JockeyHorseAssignmentsRepository extends JpaRepository<JockeyHo
     List<JockeyHorseAssignments> findByReg_Owner_IdAndStatusIgnoreCaseOrderByInvitedAtDesc(Integer ownerId, String status);
 
     List<JockeyHorseAssignments> findByRaces_IdAndStatusIgnoreCase(Integer raceId, String status);
+
+    List<JockeyHorseAssignments> findByStatusIgnoreCaseAndResponseDeadlineLessThanEqual(String status, Instant responseDeadline);
 
     List<JockeyHorseAssignments> findByRaces_IdAndJockey_IdAndStatusIn(
             Integer raceId,
@@ -69,3 +72,4 @@ public interface JockeyHorseAssignmentsRepository extends JpaRepository<JockeyHo
             Integer assignmentId
     );
 }
+

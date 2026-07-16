@@ -33,7 +33,7 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
-    private static final Duration DEFAULT_RESPONSE_DURATION = Duration.ofHours(24);
+    private static final Duration DEFAULT_RESPONSE_DURATION = Duration.ofHours(48);
     private static final Duration REGISTRATION_CLOSE_BUFFER = Duration.ofHours(2);
     private static final List<String> ACTIVE_ASSIGNMENT_STATUSES = List.of(
             JockeyAssignmentStatus.PENDING.getValue(),
@@ -230,14 +230,6 @@ public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
         assignment.setStatus(responseStatus);
         assignment.setRespondedAt(now);
 
-        if (JockeyAssignmentStatus.ACCEPTED.equalsValue(responseStatus)) {
-            assignment.getJockey().setStatus(JockeyStatus.UNAVAILABLE.getValue());
-            RaceRegistrations registration = assignment.getReg();
-            registration.setJockey(assignment.getJockey());
-            registration.setOwnerConfirmationStatus(RaceRegistrationStatus.CONFIRMED.getValue());
-            registration.setOwnerConfirmedAt(now);
-        }
-
         return jockeyAssignmentMapper.toResponse(jockeyHorseAssignmentsRepository.save(assignment));
     }
 
@@ -361,3 +353,4 @@ public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
         return jockeyHorseAssignmentsRepository.findByReg_Owner_IdOrderByInvitedAtDesc(ownerId);
     }
 }
+
