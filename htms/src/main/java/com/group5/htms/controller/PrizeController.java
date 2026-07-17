@@ -2,7 +2,9 @@ package com.group5.htms.controller;
 
 import com.group5.htms.dto.prize.request.PrizeCreateRequest;
 import com.group5.htms.dto.prize.request.PrizeUpdateRequest;
+import com.group5.htms.dto.prize.response.PrizeAwardResponse;
 import com.group5.htms.dto.prize.response.PrizeResponse;
+import com.group5.htms.service.PrizeAwardService;
 import com.group5.htms.service.PrizeService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +21,7 @@ import java.util.List;
 public class PrizeController {
 
     private final PrizeService prizeService;
+    private final PrizeAwardService prizeAwardService;
 
     @PostMapping("/{tournamentId}/create-prizes")
     @PreAuthorize("hasRole('ADMIN')")
@@ -61,6 +64,26 @@ public class PrizeController {
     ) {
         return ResponseEntity.ok(
                 prizeService.updatePrize(tournamentId, prizeId, request)
+        );
+    }
+
+    @PatchMapping("/{tournamentId}/award-prizes")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<PrizeAwardResponse>> awardPrizes(
+            @PathVariable Integer tournamentId
+    ) {
+        return ResponseEntity.ok(
+                prizeAwardService.awardTournamentPrizes(tournamentId)
+        );
+    }
+
+    @GetMapping("/{tournamentId}/prize-awards")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<PrizeAwardResponse>> getPrizeAwards(
+            @PathVariable Integer tournamentId
+    ) {
+        return ResponseEntity.ok(
+                prizeAwardService.getTournamentPrizeAwards(tournamentId)
         );
     }
 }
