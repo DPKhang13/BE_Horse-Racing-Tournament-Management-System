@@ -238,25 +238,49 @@ public class TournamentServiceImpl implements TournamentService {
                 .filter(assignment -> JockeyAssignmentStatus.CONFIRMED.equalsValue(assignment.getStatus()))
                 .map(assignment -> assignment.getReg().getId())
                 .collect(Collectors.toSet());
+        Map<Integer, List<JockeyHorseAssignments>> assignmentsByRegistrationId =
+                groupAssignmentsByRegistrationId(assignments);
 
         List<RaceRegistrations> pendingRegistrations = registrations.stream()
                 .filter(registration -> RaceRegistrationStatus.PENDING.equalsValue(registration.getStatus()))
                 .toList();
+        List<RaceRegistrations> pendingRegistrationsWithActiveInvitation = pendingRegistrations.stream()
+                .filter(registration -> hasActiveJockeyAssignment(registration, assignmentsByRegistrationId))
+                .toList();
+        List<RaceRegistrations> pendingRegistrationsWithoutActiveInvitation = pendingRegistrations.stream()
+                .filter(registration -> !hasActiveJockeyAssignment(registration, assignmentsByRegistrationId))
+                .toList();
+        List<RaceRegistrations> pendingRegistrationsToReject = closeRequest.isAutoRejectPending()
+                ? pendingRegistrations
+                : pendingRegistrationsWithoutActiveInvitation;
         List<RaceRegistrations> approvedUnconfirmedRegistrations = registrations.stream()
                 .filter(registration -> RaceRegistrationStatus.APPROVED.equalsValue(registration.getStatus()))
                 .filter(registration -> !confirmedRegistrationIds.contains(registration.getId()))
                 .toList();
 
-        if (!pendingRegistrations.isEmpty() && !closeRequest.isAutoRejectPending()) {
-            throw new BadRequestException("There are still pending registrations");
+        validateOpenRacesHaveEligibleRegistrations(
+                registrationOpenRaces,
+                registrations,
+                confirmedRegistrationIds,
+                assignmentsByRegistrationId
+        );
+
+        if (!pendingRegistrationsWithActiveInvitation.isEmpty() && !closeRequest.isAutoRejectPending()) {
+            throw new BadRequestException(
+                    "There are pending registrations that still have active jockey invitations. Enable auto reject pending registrations before closing, or resolve these registrations first: "
+                            + formatRegistrationDetails(pendingRegistrationsWithActiveInvitation, assignmentsByRegistrationId)
+            );
         }
 
         if (!approvedUnconfirmedRegistrations.isEmpty() && !closeRequest.isAutoCancelUnconfirmed()) {
-            throw new BadRequestException("There are approved registrations without confirmed jockey assignments");
+            throw new BadRequestException(
+                    "There are approved registrations without confirmed jockey assignments: "
+                            + formatRegistrationDetails(approvedUnconfirmedRegistrations, assignmentsByRegistrationId)
+            );
         }
 
         Instant now = Instant.now();
-        pendingRegistrations.forEach(registration ->
+        pendingRegistrationsToReject.forEach(registration ->
                 registration.setStatus(RaceRegistrationStatus.REJECTED.getValue())
         );
 
@@ -275,19 +299,17 @@ public class TournamentServiceImpl implements TournamentService {
                     });
         }
 
-        Map<Integer, Boolean> raceHasConfirmedAssignment = assignments.stream()
-                .filter(assignment -> JockeyAssignmentStatus.CONFIRMED.equalsValue(assignment.getStatus()))
-                .collect(Collectors.toMap(
-                        assignment -> assignment.getRaces().getId(),
-                        assignment -> true,
-                        (left, right) -> true
-                ));
+        Set<Integer> readyRaceIds = registrations.stream()
+                .filter(registration -> RaceRegistrationStatus.APPROVED.equalsValue(registration.getStatus()))
+                .filter(registration -> confirmedRegistrationIds.contains(registration.getId()))
+                .map(registration -> registration.getRaces().getId())
+                .collect(Collectors.toSet());
 
         int readyRaceCount = 0;
         int closedRaceCount = 0;
 
         for (Races race : registrationOpenRaces) {
-            if (Boolean.TRUE.equals(raceHasConfirmedAssignment.get(race.getId()))) {
+            if (readyRaceIds.contains(race.getId())) {
                 race.setStatus(RaceStatus.READY.getValue());
                 readyRaceCount++;
             } else {
@@ -307,7 +329,7 @@ public class TournamentServiceImpl implements TournamentService {
                 .tournamentId(savedTournament.getId())
                 .tournamentName(savedTournament.getName())
                 .status(savedTournament.getStatus())
-                .rejectedPendingRegistrations(pendingRegistrations.size())
+                .rejectedPendingRegistrations(pendingRegistrationsToReject.size())
                 .cancelledUnconfirmedRegistrations(
                         closeRequest.isAutoCancelUnconfirmed()
                                 ? approvedUnconfirmedRegistrations.size()
@@ -315,8 +337,167 @@ public class TournamentServiceImpl implements TournamentService {
                 )
                 .closedRaceCount(closedRaceCount)
                 .readyRaceCount(readyRaceCount)
-                .message("Registration closed successfully")
+                .message("Registration closed successfully. Every registration-open race has at least one approved horse with a confirmed jockey assignment")
                 .build();
+    }
+
+    private void validateOpenRacesHaveEligibleRegistrations(
+            List<Races> registrationOpenRaces,
+            List<RaceRegistrations> registrations,
+            Set<Integer> confirmedRegistrationIds,
+            Map<Integer, List<JockeyHorseAssignments>> assignmentsByRegistrationId
+    ) {
+        if (registrationOpenRaces.isEmpty()) {
+            throw new BadRequestException("No registration-open races found for this tournament");
+        }
+
+        Map<Integer, List<RaceRegistrations>> registrationsByRaceId = registrations.stream()
+                .filter(this::isActiveRegistration)
+                .collect(Collectors.groupingBy(registration -> registration.getRaces().getId()));
+
+        for (Races race : registrationOpenRaces) {
+            List<RaceRegistrations> raceRegistrations = registrationsByRaceId.getOrDefault(race.getId(), List.of());
+
+            if (raceRegistrations.isEmpty()) {
+                throw new BadRequestException(
+                        "Race " + race.getId() + " - " + race.getName()
+                                + " has no horse registrations; cannot close tournament registration"
+                );
+            }
+
+            long eligibleHorseCount = raceRegistrations.stream()
+                    .filter(registration -> RaceRegistrationStatus.APPROVED.equalsValue(registration.getStatus()))
+                    .filter(registration -> confirmedRegistrationIds.contains(registration.getId()))
+                    .count();
+
+            if (eligibleHorseCount <= 0) {
+                List<RaceRegistrations> notEligibleRegistrations = raceRegistrations.stream()
+                        .filter(registration -> !isEligibleRegistration(registration, confirmedRegistrationIds))
+                        .toList();
+
+                throw new BadRequestException(
+                        "Race " + race.getId() + " - " + race.getName()
+                                + " has no approved horses with confirmed jockey assignments; cannot close tournament registration"
+                                + formatNotEligibleRegistrationSuffix(
+                                notEligibleRegistrations,
+                                assignmentsByRegistrationId
+                        )
+                );
+            }
+        }
+    }
+
+    private boolean isEligibleRegistration(
+            RaceRegistrations registration,
+            Set<Integer> confirmedRegistrationIds
+    ) {
+        return RaceRegistrationStatus.APPROVED.equalsValue(registration.getStatus())
+                && confirmedRegistrationIds.contains(registration.getId());
+    }
+
+    private boolean isActiveRegistration(RaceRegistrations registration) {
+        return registration != null
+                && !RaceRegistrationStatus.REJECTED.equalsValue(registration.getStatus())
+                && !RaceRegistrationStatus.CANCELLED.equalsValue(registration.getStatus());
+    }
+
+    private boolean hasActiveJockeyAssignment(
+            RaceRegistrations registration,
+            Map<Integer, List<JockeyHorseAssignments>> assignmentsByRegistrationId
+    ) {
+        return assignmentsByRegistrationId.getOrDefault(registration.getId(), List.of())
+                .stream()
+                .anyMatch(assignment -> JockeyAssignmentStatus.PENDING.equalsValue(assignment.getStatus())
+                        || JockeyAssignmentStatus.ACCEPTED.equalsValue(assignment.getStatus())
+                        || JockeyAssignmentStatus.CONFIRMED.equalsValue(assignment.getStatus()));
+    }
+
+    private Map<Integer, List<JockeyHorseAssignments>> groupAssignmentsByRegistrationId(
+            List<JockeyHorseAssignments> assignments
+    ) {
+        return assignments.stream()
+                .collect(Collectors.groupingBy(assignment -> assignment.getReg().getId()));
+    }
+
+    private String formatNotEligibleRegistrationSuffix(
+            List<RaceRegistrations> registrations,
+            Map<Integer, List<JockeyHorseAssignments>> assignmentsByRegistrationId
+    ) {
+        if (registrations.isEmpty()) {
+            return "";
+        }
+
+        return ". Not eligible registration(s): "
+                + formatRegistrationDetails(registrations, assignmentsByRegistrationId);
+    }
+
+    private String formatRegistrationDetails(
+            List<RaceRegistrations> registrations,
+            Map<Integer, List<JockeyHorseAssignments>> assignmentsByRegistrationId
+    ) {
+        return registrations.stream()
+                .map(registration -> formatRegistrationDetail(registration, assignmentsByRegistrationId))
+                .collect(Collectors.joining("; "));
+    }
+
+    private String formatRegistrationDetail(
+            RaceRegistrations registration,
+            Map<Integer, List<JockeyHorseAssignments>> assignmentsByRegistrationId
+    ) {
+        List<JockeyHorseAssignments> assignments = assignmentsByRegistrationId.getOrDefault(
+                registration.getId(),
+                List.of()
+        );
+
+        return "Registration #" + registration.getId()
+                + " for horse " + safeHorseName(registration)
+                + " by " + safeOwnerName(registration)
+                + " in " + safeRaceName(registration)
+                + " is not eligible because the registration is " + registration.getStatus()
+                + " and owner confirmation is " + registration.getOwnerConfirmationStatus()
+                + ". " + formatAssignmentDetails(assignments);
+    }
+
+    private String formatAssignmentDetails(List<JockeyHorseAssignments> assignments) {
+        if (assignments.isEmpty()) {
+            return "No jockey invitation has been confirmed";
+        }
+
+        return assignments.stream()
+                .map(assignment -> "Invitation #" + assignment.getId()
+                        + " to " + safeJockeyName(assignment)
+                        + " is " + assignment.getStatus())
+                .collect(Collectors.joining("; "));
+    }
+
+    private String safeHorseName(RaceRegistrations registration) {
+        return registration.getHorses() == null ? "unknown" : registration.getHorses().getName();
+    }
+
+    private String safeOwnerName(RaceRegistrations registration) {
+        if (registration.getOwner() == null) {
+            return "unknown";
+        }
+        if (registration.getOwner().getStableName() != null
+                && !registration.getOwner().getStableName().isBlank()) {
+            return registration.getOwner().getStableName();
+        }
+        return registration.getOwner().getUsers() == null
+                ? "ownerId=" + registration.getOwner().getId()
+                : registration.getOwner().getUsers().getFullName();
+    }
+
+    private String safeRaceName(RaceRegistrations registration) {
+        return registration.getRaces() == null ? "unknown" : registration.getRaces().getName();
+    }
+
+    private String safeJockeyName(JockeyHorseAssignments assignment) {
+        if (assignment.getJockey() == null) {
+            return "unknown";
+        }
+        return assignment.getJockey().getUsers() == null
+                ? "jockeyId=" + assignment.getJockey().getId()
+                : assignment.getJockey().getUsers().getFullName();
     }
 
     @Override
