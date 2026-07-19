@@ -31,6 +31,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.MathContext;
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -192,6 +193,10 @@ public class PrizeAwardServiceImpl implements PrizeAwardService {
                 .comparingInt(StandingEntry::getTotalPoints).reversed()
                 .thenComparing(Comparator.comparingInt(StandingEntry::getWinCount).reversed())
                 .thenComparingInt(StandingEntry::getBestFinishPosition)
+                .thenComparing(
+                        StandingEntry::getBestPaceSecondsPerMeter,
+                        Comparator.nullsLast(Comparator.naturalOrder())
+                )
                 .thenComparingInt(entry -> entry.getHorse().getId());
     }
 
@@ -286,6 +291,7 @@ public class PrizeAwardServiceImpl implements PrizeAwardService {
         private int totalPoints;
         private int winCount;
         private int bestFinishPosition = Integer.MAX_VALUE;
+        private BigDecimal bestPaceSecondsPerMeter;
         private RaceResults bestResult;
 
         private StandingEntry(Horses horse, HorseOwnerProfiles owner) {
@@ -302,6 +308,13 @@ public class PrizeAwardServiceImpl implements PrizeAwardService {
                 this.winCount++;
             }
             this.bestFinishPosition = Math.min(this.bestFinishPosition, finishPosition);
+
+            BigDecimal resultPace = paceSecondsPerMeter(result);
+            if (resultPace != null
+                    && (this.bestPaceSecondsPerMeter == null
+                    || resultPace.compareTo(this.bestPaceSecondsPerMeter) < 0)) {
+                this.bestPaceSecondsPerMeter = resultPace;
+            }
 
             if (this.bestResult == null || isBetterBestResult(result, this.bestResult)) {
                 this.bestResult = result;
@@ -321,7 +334,34 @@ public class PrizeAwardServiceImpl implements PrizeAwardService {
                 return candidateFinish < currentFinish;
             }
 
+            BigDecimal candidatePace = paceSecondsPerMeter(candidate);
+            BigDecimal currentPace = paceSecondsPerMeter(currentBest);
+            if (candidatePace != null && currentPace != null
+                    && candidatePace.compareTo(currentPace) != 0) {
+                return candidatePace.compareTo(currentPace) < 0;
+            }
+            if (candidatePace != null) {
+                return true;
+            }
+            if (currentPace != null) {
+                return false;
+            }
+
             return candidate.getId() < currentBest.getId();
+        }
+
+        private static BigDecimal paceSecondsPerMeter(RaceResults result) {
+            if (result == null
+                    || result.getFinishTimeSec() == null
+                    || result.getRaces() == null
+                    || result.getRaces().getDistanceM() == null
+                    || result.getRaces().getDistanceM() <= 0
+                    || !Double.isFinite(result.getRaces().getDistanceM())) {
+                return null;
+            }
+
+            return result.getFinishTimeSec()
+                    .divide(BigDecimal.valueOf(result.getRaces().getDistanceM()), MathContext.DECIMAL64);
         }
 
         private Horses getHorse() {
@@ -342,6 +382,10 @@ public class PrizeAwardServiceImpl implements PrizeAwardService {
 
         private int getBestFinishPosition() {
             return bestFinishPosition;
+        }
+
+        private BigDecimal getBestPaceSecondsPerMeter() {
+            return bestPaceSecondsPerMeter;
         }
 
         private RaceResults getBestResult() {
