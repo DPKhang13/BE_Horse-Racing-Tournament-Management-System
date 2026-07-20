@@ -94,6 +94,13 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public RaceRegistrationResponse getMyRegistrationById(Integer id) {
+        Integer ownerId = authService.getCurrentUserId();
+        return raceRegistrationMapper.toResponse(findRegistrationForCurrentOwner(id, ownerId));
+    }
+
+    @Override
     @Transactional
     public RaceRegistrationResponse createRegistration(RaceRegistrationCreateRequest request) {
         Integer ownerId = authService.getCurrentUserId();
@@ -212,7 +219,10 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
     @Override
     @Transactional
     public RaceRegistrationResponse cancelRegistration(Integer id, RaceRegistrationCancelRequest request) {
-        RaceRegistrations registration = findRegistration(id);
+        Integer ownerId = authService.getCurrentUserId();
+        RaceRegistrations registration = authService.currentUserHasRole(RoleType.ADMIN.getValue())
+                ? findRegistration(id)
+                : findRegistrationForCurrentOwner(id, ownerId);
         raceRegistrationValidator.ensureCanCancel(registration);
 
         registration.setStatus(RaceRegistrationStatus.CANCELLED.getValue());
@@ -322,4 +332,3 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
     }
 
 }
-

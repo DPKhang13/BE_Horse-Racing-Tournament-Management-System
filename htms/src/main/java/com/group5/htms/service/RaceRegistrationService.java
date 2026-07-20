@@ -20,6 +20,8 @@ public interface RaceRegistrationService {
 
     RaceRegistrationResponse getRegistrationById(Integer id);
 
+    RaceRegistrationResponse getMyRegistrationById(Integer id);
+
     RaceRegistrationResponse createRegistration(RaceRegistrationCreateRequest request);
 
     RaceRegistrationResponse updateRegistration(Integer id, RaceRegistrationUpdateRequest request);
@@ -32,4 +34,3 @@ public interface RaceRegistrationService {
 
     RaceRegistrationResponse cancelRegistration(Integer id, RaceRegistrationCancelRequest request);
 }
-
