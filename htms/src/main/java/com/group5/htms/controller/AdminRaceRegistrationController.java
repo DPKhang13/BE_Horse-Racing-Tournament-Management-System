@@ -1,6 +1,7 @@
 package com.group5.htms.controller;
 
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationApproveRequest;
+import com.group5.htms.dto.raceregistration.request.RaceRegistrationCancelRequest;
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationRejectRequest;
 import com.group5.htms.dto.raceregistration.response.RaceRegistrationListResponse;
 import com.group5.htms.dto.raceregistration.response.RaceRegistrationResponse;
@@ -56,6 +57,17 @@ public class AdminRaceRegistrationController {
                 )
         );
     }
+
+    @PatchMapping("/{registrationId}/cancel")
+    public ResponseEntity<RaceRegistrationResponse> cancelRegistration(
+            @PathVariable Integer registrationId,
+            @Valid @RequestBody(required = false) RaceRegistrationCancelRequest request
+    ) {
+        return ResponseEntity.ok(
+                raceRegistrationService.cancelRegistration(
+                        registrationId,
+                        request == null ? new RaceRegistrationCancelRequest() : request
+                )
+        );
+    }
 }
-
-

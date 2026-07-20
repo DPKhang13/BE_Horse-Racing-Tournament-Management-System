@@ -40,6 +40,12 @@ public class RaceResultController {
         return ResponseEntity.ok(raceResultService.getResultById(id));
     }
 
+    @Operation(summary = "Get all race results by race", description = "Lấy kết quả đua của các jockey và ngựa trong một race, response dạng list giống /api/race-results/get-all.")
+    @GetMapping("/race/{raceId}/get-all")
+    public ResponseEntity<List<RaceResultListResponse>> getResultsByRace(@PathVariable Integer raceId) {
+        return ResponseEntity.ok(raceResultService.getResultsByRace(raceId));
+    }
+
     @Operation(summary = "Create race result", description = "Tạo mới kết quả race cho một jockey assignment.")
     @PostMapping("/create")
     @PreAuthorize("hasAnyRole('ADMIN', 'RACE_REFEREE')")

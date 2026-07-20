@@ -26,6 +26,12 @@ public interface JockeyHorseAssignmentsRepository extends JpaRepository<JockeyHo
 
     List<JockeyHorseAssignments> findByRaces_IdAndStatusIgnoreCase(Integer raceId, String status);
 
+    List<JockeyHorseAssignments> findByRaces_IdAndStatusIgnoreCaseAndReg_StatusIgnoreCaseOrderByReg_GateNumberAsc(
+            Integer raceId,
+            String status,
+            String registrationStatus
+    );
+
     List<JockeyHorseAssignments> findByStatusIgnoreCaseAndResponseDeadlineLessThanEqual(String status, Instant responseDeadline);
 
     List<JockeyHorseAssignments> findByRaces_IdAndJockey_IdAndStatusIn(

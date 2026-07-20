@@ -94,6 +94,16 @@ public class BetServiceImpl implements BetService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<BetListResponse> getMyBets() {
+        Integer userId = authService.getCurrentUserId();
+        return betsRepository.findByUsers_IdOrderByPlacedAtDesc(userId)
+                .stream()
+                .map(betMapper::toListResponse)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public SpectatorDashboardResponse getSpectatorDashboard() {
         Integer userId = authService.getCurrentUserId();
         Instant now = Instant.now();
@@ -294,7 +304,7 @@ public class BetServiceImpl implements BetService {
                 .horseAvatarUrl(option.getHorses().getAvatarUrl())
                 .jockeyId(option.getAssignment().getJockey().getId())
                 .jockeyFullName(option.getAssignment().getJockey().getUsers().getFullName())
-                .gateNumber(option.getAssignment().getGateNumber())
+                .gateNumber(option.getAssignment().getGateNumber() == null ? option.getAssignment().getReg().getGateNumber() : option.getAssignment().getGateNumber())
                 .currentRate(option.getCurrentRate())
                 .totalBetPoints(option.getTotalBetPoints())
                 .totalBetCount(option.getTotalBetCount())

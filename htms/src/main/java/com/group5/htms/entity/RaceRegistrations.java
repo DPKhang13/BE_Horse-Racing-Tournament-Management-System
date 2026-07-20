@@ -66,6 +66,9 @@ public class RaceRegistrations {
     @JoinColumn(name = "jockey_id")
     private JockeyProfiles jockey;
 
+    @Column(name = "gate_number")
+    private Integer gateNumber;
+
     @Size(max = 20)
     @NotNull
     @ColumnDefault("'pending'")

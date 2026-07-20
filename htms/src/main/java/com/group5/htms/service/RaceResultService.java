@@ -17,6 +17,8 @@ public interface RaceResultService {
 
     List<RaceResultResponse> getResultById(Integer id);
 
+    List<RaceResultListResponse> getResultsByRace(Integer raceId);
+
     RaceResultResponse createResult(RaceResultCreateRequest request);
 
     RaceResultResponse updateResult(Integer id, RaceResultUpdateRequest request);

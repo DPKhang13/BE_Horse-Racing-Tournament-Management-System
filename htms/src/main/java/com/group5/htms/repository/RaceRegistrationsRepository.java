@@ -25,6 +25,17 @@ public interface RaceRegistrationsRepository extends JpaRepository<RaceRegistrat
 
     long countByRaces_IdAndStatusIgnoreCase(Integer raceId, String status);
 
+    List<RaceRegistrations> findByRaces_IdAndStatusNotInOrderByGateNumberAsc(Integer raceId, List<String> statuses);
+
+    boolean existsByRaces_IdAndGateNumberAndStatusNotIn(Integer raceId, Integer gateNumber, List<String> statuses);
+
+    boolean existsByRaces_IdAndGateNumberAndStatusNotInAndIdNot(
+            Integer raceId,
+            Integer gateNumber,
+            List<String> statuses,
+            Integer registrationId
+    );
+
     boolean existsByTournaments_IdAndHorses_Id(Integer tournamentId, Integer horseId);
 
     boolean existsByTournaments_IdAndHorses_IdAndStatusNotIgnoreCase(

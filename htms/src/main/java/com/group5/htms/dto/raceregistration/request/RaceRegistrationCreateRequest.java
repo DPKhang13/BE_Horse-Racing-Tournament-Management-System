@@ -17,6 +17,9 @@ public class RaceRegistrationCreateRequest {
     @NotNull(message = "Horse id is required")
     private Integer horseId;
 
+    @NotNull(message = "Gate number is required")
+    private Integer gateNumber;
+
     @Schema(hidden = true)
     private Integer ownerId;
 }

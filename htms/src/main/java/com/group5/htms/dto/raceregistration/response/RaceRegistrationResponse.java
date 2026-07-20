@@ -15,6 +15,7 @@ public class RaceRegistrationResponse {
     private Integer horseId;
     private Integer ownerId;
     private Integer jockeyId;
+    private Integer gateNumber;
     private String status;
     private String ownerConfirmationStatus;
     private Instant ownerConfirmedAt;

@@ -1,5 +1,7 @@
 package com.group5.htms.controller;
 
+import com.group5.htms.dto.jockeyassignment.response.JockeyAssignmentListResponse;
+import com.group5.htms.dto.race.response.RaceGateAvailabilityResponse;
 import com.group5.htms.dto.race.response.RaceListResponse;
 import com.group5.htms.dto.race.response.ScheduledRaceCountResponse;
 import com.group5.htms.service.RaceService;
@@ -41,5 +43,25 @@ public class RaceController {
             @RequestParam(required = false) String status
     ) {
         return ResponseEntity.ok(raceService.getRacesByTournament(tournamentId, status));
+    }
+
+    @Operation(
+            summary = "Get approved race participants",
+            description = "Lấy danh sách ngựa tham gia race cùng jockey thi đấu; chỉ lấy registration đã admin approve và assignment đã confirmed."
+    )
+    @GetMapping("/races/{raceId}/participants")
+    @PreAuthorize("hasAnyRole('SPECTATOR', 'ADMIN', 'HORSE_OWNER', 'RACE_REFEREE')")
+    public ResponseEntity<List<JockeyAssignmentListResponse>> getApprovedParticipantsByRace(@PathVariable Integer raceId) {
+        return ResponseEntity.ok(raceService.getApprovedParticipantsByRace(raceId));
+    }
+
+    @Operation(
+            summary = "Get available race gates",
+            description = "Lấy danh sách số cổng còn trống của race. Gate count = max(8, race.maxHorses); pending/approved/confirmed registrations giữ cổng, rejected/cancelled sẽ trả cổng."
+    )
+    @GetMapping("/races/{raceId}/available-gates")
+    @PreAuthorize("hasAnyRole('HORSE_OWNER', 'ADMIN', 'SPECTATOR')")
+    public ResponseEntity<RaceGateAvailabilityResponse> getAvailableGates(@PathVariable Integer raceId) {
+        return ResponseEntity.ok(raceService.getAvailableGates(raceId));
     }
 }
