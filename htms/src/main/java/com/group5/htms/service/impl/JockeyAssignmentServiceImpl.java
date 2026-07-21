@@ -40,6 +40,11 @@ public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
             JockeyAssignmentStatus.ACCEPTED.getValue(),
             JockeyAssignmentStatus.CONFIRMED.getValue()
     );
+    private static final List<String> TERMINAL_ASSIGNMENT_STATUSES = List.of(
+            JockeyAssignmentStatus.REJECTED.getValue(),
+            JockeyAssignmentStatus.CANCELLED.getValue(),
+            JockeyAssignmentStatus.EXPIRED.getValue()
+    );
 
     private final JockeyHorseAssignmentsRepository jockeyHorseAssignmentsRepository;
     private final RaceRegistrationsRepository raceRegistrationsRepository;
@@ -138,6 +143,7 @@ public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
                     "Gate number is already used in this race"
             );
         }
+        clearOldTerminalInvitationDeadlines(registration, race, jockey);
 
         JockeyHorseAssignments assignment = jockeyAssignmentMapper.toEntity(request);
         assignment.setReg(registration);
@@ -230,6 +236,9 @@ public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
         String responseStatus = jockeyAssignmentValidator.normalizeResponseStatus(request.getStatus());
         assignment.setStatus(responseStatus);
         assignment.setRespondedAt(now);
+        if (JockeyAssignmentStatus.REJECTED.equalsValue(responseStatus)) {
+            assignment.setResponseDeadline(null);
+        }
 
         return jockeyAssignmentMapper.toResponse(jockeyHorseAssignmentsRepository.save(assignment));
     }
@@ -242,6 +251,7 @@ public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
 
         assignment.setStatus(JockeyAssignmentStatus.CANCELLED.getValue());
         assignment.setCancelledAt(Instant.now());
+        assignment.setResponseDeadline(null);
 
         return jockeyAssignmentMapper.toResponse(jockeyHorseAssignmentsRepository.save(assignment));
     }
@@ -328,12 +338,34 @@ public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
                     .getRegistrationCloseAt()
                     .minus(REGISTRATION_CLOSE_BUFFER);
 
-            if (closeBufferDeadline.isBefore(deadline)) {
+            if (closeBufferDeadline.isAfter(now) && closeBufferDeadline.isBefore(deadline)) {
                 deadline = closeBufferDeadline;
             }
         }
 
         return deadline;
+    }
+
+    private void clearOldTerminalInvitationDeadlines(
+            RaceRegistrations registration,
+            Races race,
+            JockeyProfiles jockey
+    ) {
+        List<JockeyHorseAssignments> oldTerminalInvitations =
+                jockeyHorseAssignmentsRepository.findByReg_IdAndRaces_IdAndJockey_IdAndStatusIn(
+                        registration.getId(),
+                        race.getId(),
+                        jockey.getId(),
+                        TERMINAL_ASSIGNMENT_STATUSES
+                );
+
+        oldTerminalInvitations.stream()
+                .filter(assignment -> assignment.getResponseDeadline() != null)
+                .forEach(assignment -> assignment.setResponseDeadline(null));
+
+        if (!oldTerminalInvitations.isEmpty()) {
+            jockeyHorseAssignmentsRepository.saveAll(oldTerminalInvitations);
+        }
     }
 
     private List<JockeyHorseAssignments> findAssignmentsByJockey(Integer jockeyId, String status) {
