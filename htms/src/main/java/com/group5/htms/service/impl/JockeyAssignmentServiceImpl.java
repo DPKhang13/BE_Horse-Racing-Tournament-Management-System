@@ -145,6 +145,8 @@ public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
         }
         clearOldTerminalInvitationDeadlines(registration, race, jockey);
 
+        clearOldTerminalInvitationDeadlines(registration, race, jockey);
+
         JockeyHorseAssignments assignment = jockeyAssignmentMapper.toEntity(request);
         assignment.setReg(registration);
         assignment.setRaces(race);
@@ -250,6 +252,7 @@ public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
         jockeyAssignmentValidator.ensurePending(assignment, "Only pending invitations can be cancelled");
 
         assignment.setStatus(JockeyAssignmentStatus.CANCELLED.getValue());
+        assignment.setResponseDeadline(null);
         assignment.setCancelledAt(Instant.now());
         assignment.setResponseDeadline(null);
 
@@ -351,20 +354,20 @@ public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
             Races race,
             JockeyProfiles jockey
     ) {
-        List<JockeyHorseAssignments> oldTerminalInvitations =
-                jockeyHorseAssignmentsRepository.findByReg_IdAndRaces_IdAndJockey_IdAndStatusIn(
+        List<JockeyHorseAssignments> oldTerminalAssignments = jockeyHorseAssignmentsRepository
+                .findByReg_IdAndRaces_IdAndJockey_IdAndStatusIn(
                         registration.getId(),
                         race.getId(),
                         jockey.getId(),
                         TERMINAL_ASSIGNMENT_STATUSES
                 );
 
-        oldTerminalInvitations.stream()
+        oldTerminalAssignments.stream()
                 .filter(assignment -> assignment.getResponseDeadline() != null)
                 .forEach(assignment -> assignment.setResponseDeadline(null));
 
-        if (!oldTerminalInvitations.isEmpty()) {
-            jockeyHorseAssignmentsRepository.saveAll(oldTerminalInvitations);
+        if (!oldTerminalAssignments.isEmpty()) {
+            jockeyHorseAssignmentsRepository.saveAll(oldTerminalAssignments);
         }
     }
 

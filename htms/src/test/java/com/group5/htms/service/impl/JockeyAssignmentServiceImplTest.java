@@ -98,8 +98,7 @@ class JockeyAssignmentServiceImplTest {
         when(authService.getCurrentUserId()).thenReturn(1);
         when(jockeyHorseAssignmentsRepository.findByReg_IdAndStatusIn(10, activeStatuses())).thenReturn(List.of());
         when(jockeyHorseAssignmentsRepository.findByRaces_IdAndJockey_IdAndStatusIn(2, 7, activeStatuses())).thenReturn(List.of());
-        when(jockeyHorseAssignmentsRepository.findByReg_IdAndRaces_IdAndJockey_IdAndStatusIn(10, 2, 7, terminalStatuses()))
-                .thenReturn(List.of());
+        when(jockeyHorseAssignmentsRepository.findByReg_IdAndRaces_IdAndJockey_IdAndStatusIn(10, 2, 7, terminalStatuses())).thenReturn(List.of());
         when(jockeyAssignmentMapper.toEntity(request)).thenReturn(assignment);
         when(jockeyHorseAssignmentsRepository.save(assignment)).thenReturn(assignment);
         when(jockeyAssignmentMapper.toResponse(assignment)).thenReturn(expectedResponse);
@@ -117,14 +116,19 @@ class JockeyAssignmentServiceImplTest {
     }
 
     @Test
-    void createInvitationIgnoresPastRegistrationCloseBufferForNewDeadline() {
+    void createInvitationClearsRejectedOldDeadlineAndCreatesNewPendingInvitationForSameJockey() {
         RaceRegistrations registration = pendingRegistration();
-        registration.getTournaments().setRegistrationCloseAt(Instant.now().minus(Duration.ofHours(1)));
         Races race = registration.getRaces();
         JockeyProfiles jockey = jockey();
         JockeyInvitationCreateRequest request = createRequest();
-        JockeyHorseAssignments assignment = new JockeyHorseAssignments();
-        Instant before = Instant.now();
+        JockeyHorseAssignments oldRejected = assignment(registration, jockey, JockeyAssignmentStatus.REJECTED.getValue());
+        oldRejected.setId(40);
+        oldRejected.setResponseDeadline(Instant.now().plus(Duration.ofHours(12)));
+        JockeyHorseAssignments newAssignment = new JockeyHorseAssignments();
+        JockeyAssignmentResponse expectedResponse = JockeyAssignmentResponse.builder()
+                .assignmentId(51)
+                .status(JockeyAssignmentStatus.PENDING.getValue())
+                .build();
 
         when(raceRegistrationsRepository.findById(10)).thenReturn(Optional.of(registration));
         when(racesRepository.findById(2)).thenReturn(Optional.of(race));
@@ -134,17 +138,20 @@ class JockeyAssignmentServiceImplTest {
         when(jockeyHorseAssignmentsRepository.findByReg_IdAndStatusIn(10, activeStatuses())).thenReturn(List.of());
         when(jockeyHorseAssignmentsRepository.findByRaces_IdAndJockey_IdAndStatusIn(2, 7, activeStatuses())).thenReturn(List.of());
         when(jockeyHorseAssignmentsRepository.findByReg_IdAndRaces_IdAndJockey_IdAndStatusIn(10, 2, 7, terminalStatuses()))
-                .thenReturn(List.of());
-        when(jockeyAssignmentMapper.toEntity(request)).thenReturn(assignment);
-        when(jockeyHorseAssignmentsRepository.save(assignment)).thenReturn(assignment);
-        when(jockeyAssignmentMapper.toResponse(assignment)).thenReturn(JockeyAssignmentResponse.builder().build());
+                .thenReturn(List.of(oldRejected));
+        when(jockeyAssignmentMapper.toEntity(request)).thenReturn(newAssignment);
+        when(jockeyHorseAssignmentsRepository.save(newAssignment)).thenReturn(newAssignment);
+        when(jockeyAssignmentMapper.toResponse(newAssignment)).thenReturn(expectedResponse);
 
-        service.createInvitation(request);
+        JockeyAssignmentResponse response = service.createInvitation(request);
 
-        Instant after = Instant.now();
-        assertThat(assignment.getStatus()).isEqualTo(JockeyAssignmentStatus.PENDING.getValue());
-        assertThat(assignment.getResponseDeadline())
-                .isBetween(before.plus(Duration.ofHours(48)), after.plus(Duration.ofHours(48)));
+        ArgumentCaptor<JockeyHorseAssignments> captor = ArgumentCaptor.forClass(JockeyHorseAssignments.class);
+        verify(jockeyHorseAssignmentsRepository).saveAll(List.of(oldRejected));
+        verify(jockeyHorseAssignmentsRepository).save(captor.capture());
+        assertThat(response).isSameAs(expectedResponse);
+        assertThat(oldRejected.getResponseDeadline()).isNull();
+        assertThat(captor.getValue().getStatus()).isEqualTo(JockeyAssignmentStatus.PENDING.getValue());
+        assertThat(captor.getValue().getResponseDeadline()).isNotNull();
     }
 
     @Test
@@ -180,15 +187,21 @@ class JockeyAssignmentServiceImplTest {
         JockeyProfiles jockey = jockey();
         JockeyHorseAssignments assignment = assignment(registration, jockey, JockeyAssignmentStatus.PENDING.getValue());
         JockeyInvitationResponseRequest request = responseRequest(JockeyAssignmentStatus.REJECTED.getValue());
+        JockeyAssignmentResponse expectedResponse = JockeyAssignmentResponse.builder()
+                .assignmentId(50)
+                .status(JockeyAssignmentStatus.REJECTED.getValue())
+                .build();
 
         when(jockeyHorseAssignmentsRepository.findById(50)).thenReturn(Optional.of(assignment));
         when(authService.getCurrentUserId()).thenReturn(7);
         when(jockeyHorseAssignmentsRepository.save(assignment)).thenReturn(assignment);
-        when(jockeyAssignmentMapper.toResponse(assignment)).thenReturn(JockeyAssignmentResponse.builder().build());
+        when(jockeyAssignmentMapper.toResponse(assignment)).thenReturn(expectedResponse);
 
-        service.respondInvitation(50, request);
+        JockeyAssignmentResponse response = service.respondInvitation(50, request);
 
+        assertThat(response).isSameAs(expectedResponse);
         assertThat(assignment.getStatus()).isEqualTo(JockeyAssignmentStatus.REJECTED.getValue());
+        assertThat(assignment.getRespondedAt()).isNotNull();
         assertThat(assignment.getResponseDeadline()).isNull();
     }
 
