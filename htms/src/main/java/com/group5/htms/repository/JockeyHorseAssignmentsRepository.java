@@ -40,6 +40,13 @@ public interface JockeyHorseAssignmentsRepository extends JpaRepository<JockeyHo
             Collection<String> statuses
     );
 
+    List<JockeyHorseAssignments> findByReg_IdAndRaces_IdAndJockey_IdAndStatusIn(
+            Integer registrationId,
+            Integer raceId,
+            Integer jockeyId,
+            Collection<String> statuses
+    );
+
     List<JockeyHorseAssignments> findByRaces_IdAndGateNumberAndStatusIn(
             Integer raceId,
             Integer gateNumber,
