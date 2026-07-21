@@ -13,6 +13,7 @@ public class RaceRegistrationUpdateRequest {
     private Integer tournamentId;
     private Integer raceId;
     private Integer horseId;
+    private Integer gateNumber;
     @Schema(hidden = true)
     private Integer ownerId;
     private Integer jockeyId;

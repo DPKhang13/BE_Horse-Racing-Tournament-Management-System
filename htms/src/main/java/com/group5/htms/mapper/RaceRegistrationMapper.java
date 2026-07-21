@@ -24,6 +24,7 @@ public class RaceRegistrationMapper {
                 .races(toRace(request.getRaceId()))
                 .horses(toHorse(request.getHorseId()))
                 .owner(toOwner(request.getOwnerId()))
+                .gateNumber(request.getGateNumber())
                 .status(RaceRegistrationStatus.PENDING.getValue())
                 .ownerConfirmationStatus(RaceRegistrationStatus.PENDING.getValue())
                 .registeredAt(Instant.now())
@@ -40,6 +41,9 @@ public class RaceRegistrationMapper {
         if (request.getHorseId() != null) {
             registration.setHorses(toHorse(request.getHorseId()));
         }
+        if (request.getGateNumber() != null) {
+            registration.setGateNumber(request.getGateNumber());
+        }
 
     }
 
@@ -55,6 +59,7 @@ public class RaceRegistrationMapper {
                 .horseId(registration.getHorses().getId())
                 .ownerId(registration.getOwner().getId())
                 .jockeyId(registration.getJockey() == null ? null : registration.getJockey().getId())
+                .gateNumber(registration.getGateNumber())
                 .status(registration.getStatus())
                 .ownerConfirmationStatus(registration.getOwnerConfirmationStatus())
                 .ownerConfirmedAt(registration.getOwnerConfirmedAt())
@@ -85,6 +90,7 @@ public class RaceRegistrationMapper {
                 .horseId(registration.getHorses().getId())
                 .ownerId(registration.getOwner().getId())
                 .jockeyId(jockey == null ? null : jockey.getId())
+                .gateNumber(registration.getGateNumber())
                 .status(registration.getStatus())
                 .ownerConfirmationStatus(registration.getOwnerConfirmationStatus())
                 .registeredAt(registration.getRegisteredAt())

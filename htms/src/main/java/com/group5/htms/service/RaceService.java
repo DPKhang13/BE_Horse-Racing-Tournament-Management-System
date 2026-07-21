@@ -3,6 +3,8 @@ package com.group5.htms.service;
 import com.group5.htms.dto.race.request.RaceCreateRequest;
 import com.group5.htms.dto.race.request.RaceStartRequest;
 import com.group5.htms.dto.race.request.RaceUpdateRequest;
+import com.group5.htms.dto.jockeyassignment.response.JockeyAssignmentListResponse;
+import com.group5.htms.dto.race.response.RaceGateAvailabilityResponse;
 import com.group5.htms.dto.race.response.RaceListResponse;
 import com.group5.htms.dto.race.response.RaceResponse;
 import com.group5.htms.dto.race.response.RaceStartResponse;
@@ -43,4 +45,8 @@ public interface RaceService {
     void cancelRace(Integer raceId);
 
     List<RaceListResponse> getRacesByTournament(Integer tournamentId, String status);
+
+    List<JockeyAssignmentListResponse> getApprovedParticipantsByRace(Integer raceId);
+
+    RaceGateAvailabilityResponse getAvailableGates(Integer raceId);
 }

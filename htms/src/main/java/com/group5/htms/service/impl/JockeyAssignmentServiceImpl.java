@@ -98,6 +98,7 @@ public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
         RaceRegistrations registration = findRegistration(request.getRegistrationId());
         Races race = findRace(request.getRaceId());
         JockeyProfiles jockey = findJockey(request.getJockeyId());
+        Integer gateNumber = registration.getGateNumber();
 
         if (!authService.currentUserHasRole(RoleType.ADMIN.getValue())) {
             jockeyAssignmentValidator.ensureOwnerCanManageRegistration(registration, authService.getCurrentUserId());
@@ -129,10 +130,10 @@ public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
                 "Jockey is already assigned to this race"
         );
 
-        if (request.getGateNumber() != null) {
+        if (gateNumber != null) {
             List<JockeyHorseAssignments> gateAssignments = jockeyHorseAssignmentsRepository.findByRaces_IdAndGateNumberAndStatusIn(
                     race.getId(),
-                    request.getGateNumber(),
+                    gateNumber,
                     ACTIVE_ASSIGNMENT_STATUSES
             );
             expirePendingAssignmentsIfNeeded(gateAssignments, now);
@@ -142,6 +143,7 @@ public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
                     "Gate number is already used in this race"
             );
         }
+        clearOldTerminalInvitationDeadlines(registration, race, jockey);
 
         clearOldTerminalInvitationDeadlines(registration, race, jockey);
 
@@ -149,6 +151,7 @@ public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
         assignment.setReg(registration);
         assignment.setRaces(race);
         assignment.setJockey(jockey);
+        assignment.setGateNumber(gateNumber);
         assignment.setStatus(JockeyAssignmentStatus.PENDING.getValue());
         assignment.setInvitedAt(now);
         assignment.setResponseDeadline(calculateResponseDeadline(registration, now));
@@ -177,6 +180,7 @@ public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
         JockeyProfiles jockey = request.getJockeyId() == null
                 ? assignment.getJockey()
                 : findJockey(request.getJockeyId());
+        Integer updateGateNumber = registration.getGateNumber();
 
         if (!authService.currentUserHasRole(RoleType.ADMIN.getValue())) {
             jockeyAssignmentValidator.ensureOwnerCanManageRegistration(registration, authService.getCurrentUserId());
@@ -199,10 +203,10 @@ public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
                 "Jockey is already assigned to this race"
         );
 
-        if (request.getGateNumber() != null) {
+        if (updateGateNumber != null) {
             List<JockeyHorseAssignments> gateAssignments = jockeyHorseAssignmentsRepository.findByRaces_IdAndGateNumberAndStatusIn(
                     race.getId(),
-                    request.getGateNumber(),
+                    updateGateNumber,
                     ACTIVE_ASSIGNMENT_STATUSES
             );
             expirePendingAssignmentsIfNeeded(gateAssignments, now);
@@ -217,9 +221,7 @@ public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
         assignment.setReg(registration);
         assignment.setRaces(race);
         assignment.setJockey(jockey);
-        if (request.getGateNumber() != null) {
-            assignment.setGateNumber(request.getGateNumber());
-        }
+        assignment.setGateNumber(updateGateNumber);
 
         return jockeyAssignmentMapper.toResponse(jockeyHorseAssignmentsRepository.save(assignment));
     }
@@ -252,6 +254,7 @@ public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
         assignment.setStatus(JockeyAssignmentStatus.CANCELLED.getValue());
         assignment.setResponseDeadline(null);
         assignment.setCancelledAt(Instant.now());
+        assignment.setResponseDeadline(null);
 
         return jockeyAssignmentMapper.toResponse(jockeyHorseAssignmentsRepository.save(assignment));
     }
@@ -338,7 +341,7 @@ public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
                     .getRegistrationCloseAt()
                     .minus(REGISTRATION_CLOSE_BUFFER);
 
-            if (closeBufferDeadline.isBefore(deadline)) {
+            if (closeBufferDeadline.isAfter(now) && closeBufferDeadline.isBefore(deadline)) {
                 deadline = closeBufferDeadline;
             }
         }
@@ -386,4 +389,3 @@ public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
         return jockeyHorseAssignmentsRepository.findByReg_Owner_IdOrderByInvitedAtDesc(ownerId);
     }
 }
-

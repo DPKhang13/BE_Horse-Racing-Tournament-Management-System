@@ -71,7 +71,7 @@ public class RaceRoundMapper {
                 .horseAvatarUrl(round.getHorses().getAvatarUrl())
                 .ownerFullName(assignment.getReg().getOwner().getUsers().getFullName())
                 .jockeyFullName(assignment.getJockey().getUsers().getFullName())
-                .gateNumber(assignment.getGateNumber())
+                .gateNumber(assignment.getGateNumber() == null ? assignment.getReg().getGateNumber() : assignment.getGateNumber())
                 .build();
     }
 

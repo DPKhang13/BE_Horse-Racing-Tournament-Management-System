@@ -25,7 +25,7 @@ public class BetOptionMapper {
                 .horseId(option.getHorses().getId())
                 .horseName(option.getHorses().getName())
                 .horseAvatarUrl(option.getHorses().getAvatarUrl())
-                .gateNumber(assignment.getGateNumber())
+                .gateNumber(assignment.getGateNumber() == null ? assignment.getReg().getGateNumber() : assignment.getGateNumber())
                 .jockeyId(jockey.getId())
                 .jockeyName(jockeyUser == null ? null : jockeyUser.getFullName())
                 .jockeyFullName(jockeyUser == null ? null : jockeyUser.getFullName())

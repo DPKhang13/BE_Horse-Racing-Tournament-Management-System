@@ -17,6 +17,8 @@ public interface BetService {
 
     BetResponse getBetDetail(Integer id);
 
+    List<BetListResponse> getMyBets();
+
     BetResponse createBet(BetCreateRequest request);
 
     BetResponse updateBet(Integer id, BetUpdateRequest request);

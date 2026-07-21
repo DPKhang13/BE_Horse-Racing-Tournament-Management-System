@@ -115,6 +115,13 @@ public class RaceRegistrationValidator {
         }
     }
 
+    public void ensureCanCancel(RaceRegistrations registration) {
+        if (RaceRegistrationStatus.REJECTED.equalsValue(registration.getStatus())
+                || RaceRegistrationStatus.CANCELLED.equalsValue(registration.getStatus())) {
+            throw new BadRequestException("Registration is already closed");
+        }
+    }
+
     private boolean hasText(String value) {
         return value != null && !value.isBlank();
     }

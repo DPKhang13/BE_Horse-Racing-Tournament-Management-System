@@ -1,5 +1,7 @@
 package com.group5.htms.service.impl;
 
+import com.group5.htms.dto.jockeyassignment.response.JockeyAssignmentListResponse;
+import com.group5.htms.dto.race.response.RaceGateAvailabilityResponse;
 import com.group5.htms.dto.race.request.RaceCreateRequest;
 import com.group5.htms.dto.race.request.RaceStartRequest;
 import com.group5.htms.dto.race.request.RaceUpdateRequest;
@@ -10,6 +12,7 @@ import com.group5.htms.dto.race.response.ScheduledRaceCountResponse;
 import com.group5.htms.dto.schedule.request.TournamentScheduleCreateRequest;
 import com.group5.htms.dto.schedule.request.TournamentScheduleUpdateRequest;
 import com.group5.htms.dto.schedule.response.TournamentScheduleResponse;
+import com.group5.htms.entity.RaceRegistrations;
 import com.group5.htms.entity.Races;
 import com.group5.htms.entity.TournamentSchedules;
 import com.group5.htms.entity.Tournaments;
@@ -19,6 +22,7 @@ import com.group5.htms.enums.RaceStatus;
 import com.group5.htms.enums.JockeyAssignmentStatus;
 import com.group5.htms.exception.BadRequestException;
 import com.group5.htms.exception.ResourceNotFoundException;
+import com.group5.htms.mapper.JockeyAssignmentMapper;
 import com.group5.htms.mapper.RaceMapper;
 import com.group5.htms.mapper.TournamentScheduleMapper;
 import com.group5.htms.repository.JockeyHorseAssignmentsRepository;
@@ -37,10 +41,18 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Set;
+import java.util.stream.IntStream;
 
 @Service
 @RequiredArgsConstructor
 public class RaceServiceImpl implements RaceService {
+    private static final int MIN_GATE_COUNT = 8;
+    private static final List<String> RELEASED_REGISTRATION_STATUSES = List.of(
+            RaceRegistrationStatus.REJECTED.getValue(),
+            RaceRegistrationStatus.CANCELLED.getValue()
+    );
+
 
     private final RacesRepository racesRepository;
     private final TournamentsRepository tournamentsRepository;
@@ -50,6 +62,7 @@ public class RaceServiceImpl implements RaceService {
     private final RaceRefereeAssignmentsRepository raceRefereeAssignmentsRepository;
     private final RacePointRulesRepository racePointRulesRepository;
     private final RaceResultsRepository raceResultsRepository;
+    private final JockeyAssignmentMapper jockeyAssignmentMapper;
     private final RaceMapper raceMapper;
     private final TournamentScheduleMapper tournamentScheduleMapper;
     private final BetOptionService betOptionService;
@@ -260,6 +273,48 @@ public class RaceServiceImpl implements RaceService {
                 .toList();
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<JockeyAssignmentListResponse> getApprovedParticipantsByRace(Integer raceId) {
+        Races race = getRaceEntity(raceId);
+        return jockeyHorseAssignmentsRepository
+                .findByRaces_IdAndStatusIgnoreCaseAndReg_StatusIgnoreCaseOrderByReg_GateNumberAsc(
+                        race.getId(),
+                        JockeyAssignmentStatus.CONFIRMED.getValue(),
+                        RaceRegistrationStatus.APPROVED.getValue()
+                )
+                .stream()
+                .map(jockeyAssignmentMapper::toListResponse)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public RaceGateAvailabilityResponse getAvailableGates(Integer raceId) {
+        Races race = getRaceEntity(raceId);
+        int gateCount = gateCount(race);
+        Set<Integer> occupiedGates = raceRegistrationsRepository
+                .findByRaces_IdAndStatusNotInOrderByGateNumberAsc(race.getId(), RELEASED_REGISTRATION_STATUSES)
+                .stream()
+                .map(RaceRegistrations::getGateNumber)
+                .filter(gate -> gate != null && gate >= 1 && gate <= gateCount)
+                .collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new));
+
+        List<Integer> availableGates = IntStream.rangeClosed(1, gateCount)
+                .filter(gate -> !occupiedGates.contains(gate))
+                .boxed()
+                .toList();
+
+        return RaceGateAvailabilityResponse.builder()
+                .raceId(race.getId())
+                .raceName(race.getName())
+                .maxHorses(race.getMaxHorses())
+                .gateCount(gateCount)
+                .availableGates(availableGates)
+                .occupiedGates(List.copyOf(occupiedGates))
+                .build();
+    }
+
     private RaceListResponse toResponseWithCounts(Races race) {
         Integer raceId = race.getId();
 
@@ -287,6 +342,11 @@ public class RaceServiceImpl implements RaceService {
                 raceRefereeAssignmentsRepository.countByRaces_Id(raceId),
                 racePointRulesRepository.findByRace_IdOrderByFinishPositionAsc(raceId)
         );
+    }
+
+    private int gateCount(Races race) {
+        Integer maxHorses = race == null ? null : race.getMaxHorses();
+        return Math.max(MIN_GATE_COUNT, maxHorses == null ? MIN_GATE_COUNT : maxHorses);
     }
 
     private TournamentSchedules getScheduleEntity(Integer scheduleId) {

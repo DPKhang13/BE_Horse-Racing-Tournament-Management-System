@@ -107,7 +107,7 @@ public class RaceResultMapper {
                 .ownerStableName(result.getOwner().getStableName())
                 .jockeyId(assignment.getJockey().getId())
                 .jockeyFullName(assignment.getJockey().getUsers().getFullName())
-                .gateNumber(assignment.getGateNumber())
+                .gateNumber(assignment.getGateNumber() == null ? assignment.getReg().getGateNumber() : assignment.getGateNumber())
                 .reportVerdict(result.getReport() == null ? null : result.getReport().getVerdict())
                 .build();
     }
@@ -138,7 +138,7 @@ public class RaceResultMapper {
                 .ownerStableName(result.getOwner().getStableName())
                 .jockeyId(assignment.getJockey().getId())
                 .jockeyFullName(assignment.getJockey().getUsers().getFullName())
-                .gateNumber(assignment.getGateNumber())
+                .gateNumber(assignment.getGateNumber() == null ? assignment.getReg().getGateNumber() : assignment.getGateNumber())
                 .build();
     }
 

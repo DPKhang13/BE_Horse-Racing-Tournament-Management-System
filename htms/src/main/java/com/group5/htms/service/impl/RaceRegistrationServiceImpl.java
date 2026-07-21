@@ -2,6 +2,7 @@ package com.group5.htms.service.impl;
 
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationApprovalRequest;
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationApproveRequest;
+import com.group5.htms.dto.raceregistration.request.RaceRegistrationCancelRequest;
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationCreateRequest;
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationRejectRequest;
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationUpdateRequest;
@@ -15,6 +16,7 @@ import com.group5.htms.entity.Tournaments;
 import com.group5.htms.entity.Users;
 import com.group5.htms.enums.RaceRegistrationStatus;
 import com.group5.htms.enums.RoleType;
+import com.group5.htms.exception.BadRequestException;
 import com.group5.htms.exception.ResourceNotFoundException;
 import com.group5.htms.mapper.RaceRegistrationMapper;
 import com.group5.htms.repository.HorseOwnerProfilesRepository;
@@ -35,6 +37,12 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class RaceRegistrationServiceImpl implements RaceRegistrationService {
+    private static final int MIN_GATE_COUNT = 8;
+    private static final List<String> RELEASED_REGISTRATION_STATUSES = List.of(
+            RaceRegistrationStatus.REJECTED.getValue(),
+            RaceRegistrationStatus.CANCELLED.getValue()
+    );
+
 
     private final RaceRegistrationsRepository raceRegistrationsRepository;
     private final TournamentsRepository tournamentsRepository;
@@ -86,6 +94,13 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public RaceRegistrationResponse getMyRegistrationById(Integer id) {
+        Integer ownerId = authService.getCurrentUserId();
+        return raceRegistrationMapper.toResponse(findRegistrationForCurrentOwner(id, ownerId));
+    }
+
+    @Override
     @Transactional
     public RaceRegistrationResponse createRegistration(RaceRegistrationCreateRequest request) {
         Integer ownerId = authService.getCurrentUserId();
@@ -106,11 +121,13 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
         raceRegistrationValidator.ensureHorseNotRegisteredInTournament(
                 raceRegistrationsRepository.existsByTournaments_IdAndHorses_Id(tournament.getId(), horse.getId())
         );
+        validateGateForCreate(race, request.getGateNumber());
 
         RaceRegistrations registration = raceRegistrationMapper.toEntity(request);
         registration.setTournaments(tournament);
         registration.setRaces(race);
         registration.setHorses(horse);
+        registration.setGateNumber(request.getGateNumber());
         registration.setOwner(owner);
         registration.setJockey(null);
         registration.setStatus(RaceRegistrationStatus.PENDING.getValue());
@@ -139,6 +156,7 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
         Horses horse = request.getHorseId() == null
                 ? registration.getHorses()
                 : findHorse(request.getHorseId());
+        Integer gateNumber = request.getGateNumber() == null ? registration.getGateNumber() : request.getGateNumber();
 
         raceRegistrationValidator.ensureRaceBelongsToTournament(race, tournament.getId());
         if (!authService.currentUserHasRole(RoleType.ADMIN.getValue())) {
@@ -153,10 +171,12 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
                         registration.getId()
                 )
         );
+        validateGateForUpdate(registration, race, gateNumber);
 
         registration.setTournaments(tournament);
         registration.setRaces(race);
         registration.setHorses(horse);
+        registration.setGateNumber(gateNumber);
 
         return raceRegistrationMapper.toResponse(raceRegistrationsRepository.save(registration));
     }
@@ -196,6 +216,58 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
         return raceRegistrationMapper.toResponse(raceRegistrationsRepository.save(registration));
     }
 
+    @Override
+    @Transactional
+    public RaceRegistrationResponse cancelRegistration(Integer id, RaceRegistrationCancelRequest request) {
+        Integer ownerId = authService.getCurrentUserId();
+        RaceRegistrations registration = authService.currentUserHasRole(RoleType.ADMIN.getValue())
+                ? findRegistration(id)
+                : findRegistrationForCurrentOwner(id, ownerId);
+        raceRegistrationValidator.ensureCanCancel(registration);
+
+        registration.setStatus(RaceRegistrationStatus.CANCELLED.getValue());
+
+        return raceRegistrationMapper.toResponse(raceRegistrationsRepository.save(registration));
+    }
+
+
+    private void validateGateForCreate(Races race, Integer gateNumber) {
+        ensureGateInRange(race, gateNumber);
+        if (raceRegistrationsRepository.existsByRaces_IdAndGateNumberAndStatusNotIn(
+                race.getId(),
+                gateNumber,
+                RELEASED_REGISTRATION_STATUSES
+        )) {
+            throw new BadRequestException("Gate number is already registered for this race");
+        }
+    }
+
+    private void validateGateForUpdate(RaceRegistrations registration, Races race, Integer gateNumber) {
+        ensureGateInRange(race, gateNumber);
+        if (raceRegistrationsRepository.existsByRaces_IdAndGateNumberAndStatusNotInAndIdNot(
+                race.getId(),
+                gateNumber,
+                RELEASED_REGISTRATION_STATUSES,
+                registration.getId()
+        )) {
+            throw new BadRequestException("Gate number is already registered for this race");
+        }
+    }
+
+    private void ensureGateInRange(Races race, Integer gateNumber) {
+        if (gateNumber == null) {
+            throw new BadRequestException("Gate number is required");
+        }
+        int gateCount = gateCount(race);
+        if (gateNumber < 1 || gateNumber > gateCount) {
+            throw new BadRequestException("Gate number must be between 1 and " + gateCount);
+        }
+    }
+
+    private int gateCount(Races race) {
+        Integer maxHorses = race == null ? null : race.getMaxHorses();
+        return Math.max(MIN_GATE_COUNT, maxHorses == null ? MIN_GATE_COUNT : maxHorses);
+    }
 
     private Integer resolveOwnerId(Integer requestedOwnerId) {
         if (authService.currentUserHasRole(RoleType.ADMIN.getValue()) && requestedOwnerId != null) {
@@ -260,4 +332,3 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
     }
 
 }
-

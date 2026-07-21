@@ -115,6 +115,17 @@ public class RaceResultServiceImpl implements RaceResultService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<RaceResultListResponse> getResultsByRace(Integer raceId) {
+        Races race = getRace(raceId);
+        return raceResultsRepository.findByRaces_IdOrderByFinishPositionAsc(race.getId())
+                .stream()
+                .sorted(resultComparator())
+                .map(raceResultMapper::toListResponse)
+                .toList();
+    }
+
+    @Override
     @Transactional
     public RaceResultResponse createResult(RaceResultCreateRequest request) {
         raceResultValidator.ensureNoManagedCreateFields(request);

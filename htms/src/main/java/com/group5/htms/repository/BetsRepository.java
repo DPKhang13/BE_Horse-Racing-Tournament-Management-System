@@ -11,6 +11,7 @@ import java.util.List;
 public interface BetsRepository extends JpaRepository<Bets, Integer> {
     List<Bets> findByOption_Races_IdAndStatusIgnoreCase(Integer raceId, String status);
     List<Bets> findByUsers_IdAndStatusIgnoreCaseOrderByPlacedAtDesc(Integer userId, String status, Pageable pageable);
+    List<Bets> findByUsers_IdOrderByPlacedAtDesc(Integer userId);
 
     long countByUsers_IdAndStatusIgnoreCase(Integer userId, String status);
 }

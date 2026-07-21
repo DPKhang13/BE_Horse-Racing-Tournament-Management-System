@@ -54,7 +54,8 @@ public class SecurityConfig {
                                 "/api/notifications/get-all",
                                 "/api/race-registrations/get-all",
                                 "/api/race-rounds/get-all",
-                                "/api/race-results/get-all"
+                                "/api/race-results/get-all",
+                                "/api/race-results/race/*/get-all"
                         ).permitAll()
 
                         // Public APIs

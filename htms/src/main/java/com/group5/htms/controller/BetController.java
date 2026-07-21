@@ -58,10 +58,17 @@ public class BetController {
 
 
     @Operation(summary = "Get my bet detail", description = "Lấy chi tiết phiếu cược theo bet id của user đang đăng nhập.")
-    @GetMapping("/detail/{id}")
+    @GetMapping({"/detail/{id}", "/my/{id}"})
     @PreAuthorize("hasAnyRole('SPECTATOR', 'ADMIN')")
     public ResponseEntity<BetResponse> getBetDetail(@PathVariable Integer id) {
         return ResponseEntity.ok(betService.getBetDetail(id));
+    }
+
+    @Operation(summary = "Get my bets", description = "Lấy tất cả phiếu cược của spectator đang đăng nhập, bao gồm mọi trạng thái: pending, won, lost, cancelled...")
+    @GetMapping("/my")
+    @PreAuthorize("hasAnyRole('SPECTATOR', 'ADMIN')")
+    public ResponseEntity<List<BetListResponse>> getMyBets() {
+        return ResponseEntity.ok(betService.getMyBets());
     }
 
     @Operation(summary = "Create bet", description = "Tạo bet cho một assignment. Spectator role được lấy từ JWT của user đang đăng nhập.")
