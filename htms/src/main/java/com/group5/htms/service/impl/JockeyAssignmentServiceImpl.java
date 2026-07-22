@@ -147,6 +147,8 @@ public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
 
         clearOldTerminalInvitationDeadlines(registration, race, jockey);
 
+        clearOldTerminalInvitationDeadlines(registration, race, jockey);
+
         JockeyHorseAssignments assignment = jockeyAssignmentMapper.toEntity(request);
         assignment.setReg(registration);
         assignment.setRaces(race);

@@ -132,6 +132,8 @@ public class RaceResultMapper {
                 .raceName(race.getName())
                 .raceNumber(race.getRaceNumber())
                 .scheduledAt(race.getScheduledAt())
+                .location(race.getSchedule().getTournaments().getLocation())
+                .distance(race.getDistanceM())
                 .horseName(result.getHorses().getName())
                 .horseAvatarUrl(result.getHorses().getAvatarUrl())
                 .ownerFullName(result.getOwner().getUsers().getFullName())
@@ -189,4 +191,3 @@ public class RaceResultMapper {
         return value == null ? Instant.now() : value;
     }
 }
-
