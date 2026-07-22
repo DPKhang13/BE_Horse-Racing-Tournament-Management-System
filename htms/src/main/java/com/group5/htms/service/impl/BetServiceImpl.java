@@ -106,8 +106,6 @@ public class BetServiceImpl implements BetService {
     @Transactional(readOnly = true)
     public SpectatorDashboardResponse getSpectatorDashboard() {
         Integer userId = authService.getCurrentUserId();
-        Instant now = Instant.now();
-
         List<BetListResponse> activeBets = betsRepository
                 .findByUsers_IdAndStatusIgnoreCaseOrderByPlacedAtDesc(
                         userId,
@@ -119,7 +117,7 @@ public class BetServiceImpl implements BetService {
                 .toList();
 
         List<SpectatorDashboardResponse.UpcomingRaceItem> upcomingRaces = racesRepository
-                .findByScheduledAtAfterOrderByScheduledAtAsc(now, PageRequest.of(0, DASHBOARD_LIMIT))
+                .findAllByOrderByScheduledAtAsc()
                 .stream()
                 .map(this::toUpcomingRaceItem)
                 .toList();
@@ -150,7 +148,7 @@ public class BetServiceImpl implements BetService {
                                         + betsRepository.countByUsers_IdAndStatusIgnoreCase(userId, BetStatus.LOST.getValue())
                         )
                         .unreadNotificationCount(notificationsRepository.countByUsers_IdAndIsReadFalse(userId))
-                        .upcomingRaceCount(racesRepository.countByScheduledAtAfter(now))
+                        .upcomingRaceCount(racesRepository.count())
                         .openPredictionRaceCount(openPredictionRaces.size())
                         .build())
                 .upcomingRaces(upcomingRaces)
@@ -429,17 +427,3 @@ public class BetServiceImpl implements BetService {
         }
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
