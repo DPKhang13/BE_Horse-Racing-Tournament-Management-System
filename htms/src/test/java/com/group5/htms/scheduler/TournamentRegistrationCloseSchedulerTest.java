@@ -63,6 +63,7 @@ class TournamentRegistrationCloseSchedulerTest {
         verify(tournamentService).closeRegistration(eq(1), captor.capture());
         assertThat(captor.getValue().isAutoRejectPending()).isTrue();
         assertThat(captor.getValue().isAutoCancelUnconfirmed()).isTrue();
+        assertThat(captor.getValue().isAllowCloseWithoutEligibleRaces()).isTrue();
     }
 
     @Test
@@ -95,7 +96,9 @@ class TournamentRegistrationCloseSchedulerTest {
 
         scheduler().closeAutoClosableRegistrationWindows();
 
-        verify(tournamentService).closeRegistration(eq(1), any(CloseRegistrationRequest.class));
+        ArgumentCaptor<CloseRegistrationRequest> captor = ArgumentCaptor.forClass(CloseRegistrationRequest.class);
+        verify(tournamentService).closeRegistration(eq(1), captor.capture());
+        assertThat(captor.getValue().isAllowCloseWithoutEligibleRaces()).isFalse();
     }
 
     @Test

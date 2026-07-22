@@ -10,7 +10,11 @@ import com.group5.htms.dto.raceresult.response.RacePublishResponse;
 import com.group5.htms.dto.raceresult.response.RaceResultDraftResponse;
 import com.group5.htms.dto.raceresult.response.RaceResultListResponse;
 import com.group5.htms.dto.raceresult.response.RaceResultResponse;
+import com.group5.htms.dto.raceresult.response.TournamentRaceResultGroupResponse;
+import com.group5.htms.dto.raceresult.response.TournamentResultResponse;
+import com.group5.htms.dto.raceresult.response.TournamentStandingResponse;
 import com.group5.htms.entity.Bets;
+import com.group5.htms.entity.HorseOwnerProfiles;
 import com.group5.htms.entity.Horses;
 import com.group5.htms.entity.JockeyHorseAssignments;
 import com.group5.htms.entity.JockeyProfiles;
@@ -22,6 +26,7 @@ import com.group5.htms.entity.RaceRounds;
 import com.group5.htms.entity.Races;
 import com.group5.htms.entity.RefereeProfiles;
 import com.group5.htms.entity.RefereeReports;
+import com.group5.htms.entity.Tournaments;
 import com.group5.htms.entity.Users;
 import com.group5.htms.entity.WalletTransactions;
 import com.group5.htms.entity.Wallets;
@@ -45,6 +50,7 @@ import com.group5.htms.repository.RaceRoundsRepository;
 import com.group5.htms.repository.RacesRepository;
 import com.group5.htms.repository.RefereeProfilesRepository;
 import com.group5.htms.repository.RefereeReportsRepository;
+import com.group5.htms.repository.TournamentsRepository;
 import com.group5.htms.repository.UsersRepository;
 import com.group5.htms.repository.WalletTransactionsRepository;
 import com.group5.htms.repository.WalletsRepository;
@@ -59,6 +65,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.MathContext;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -67,6 +74,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -83,6 +91,7 @@ public class RaceResultServiceImpl implements RaceResultService {
     private final JockeyHorseAssignmentsRepository jockeyHorseAssignmentsRepository;
     private final RacePointRulesRepository racePointRulesRepository;
     private final RefereeReportsRepository refereeReportsRepository;
+    private final TournamentsRepository tournamentsRepository;
     private final RacesRepository racesRepository;
     private final RaceRefereeAssignmentsRepository raceRefereeAssignmentsRepository;
     private final RefereeProfilesRepository refereeProfilesRepository;
@@ -397,6 +406,45 @@ public class RaceResultServiceImpl implements RaceResultService {
                 .toList();
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public TournamentResultResponse getPublicTournamentResults(Integer tournamentId) {
+        Tournaments tournament = getTournament(tournamentId);
+        List<RaceResults> results = raceResultsRepository
+                .findByTournamentIdAndStatusOrderByRaceAndFinishPosition(
+                        tournament.getId(),
+                        RaceResultStatus.PUBLISHED.getValue()
+                );
+
+        if (results.isEmpty()) {
+            throw new ResourceNotFoundException("Published results are not available for this tournament");
+        }
+
+        return buildTournamentResultResponse(tournament, results);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public TournamentResultResponse getAdminTournamentResults(Integer tournamentId, String status) {
+        Tournaments tournament = getTournament(tournamentId);
+        List<RaceResults> results;
+
+        if (status != null && !status.isBlank()) {
+            String normalizedStatus = status.trim().toLowerCase();
+            if (!RaceResultStatus.isValid(normalizedStatus)) {
+                throw new BadRequestException("Invalid race result status");
+            }
+            results = raceResultsRepository.findByTournamentIdAndStatusOrderByRaceAndFinishPosition(
+                    tournament.getId(),
+                    normalizedStatus
+            );
+        } else {
+            results = raceResultsRepository.findByTournamentIdOrderByRaceAndFinishPosition(tournament.getId());
+        }
+
+        return buildTournamentResultResponse(tournament, results);
+    }
+
     private List<RaceResults> saveDraftResults(Races race, RefereeProfiles referee, RaceResultDraftRequest request) {
         RefereeReports report = request.getReportId() == null ? null : getReportForDraft(request.getReportId(), race.getId(), referee.getId());
         List<JockeyHorseAssignments> confirmedAssignments = confirmedAssignments(race.getId());
@@ -658,6 +706,14 @@ public class RaceResultServiceImpl implements RaceResultService {
                 .orElseThrow(() -> new ResourceNotFoundException("Race not found"));
     }
 
+    private Tournaments getTournament(Integer tournamentId) {
+        if (tournamentId == null) {
+            throw new BadRequestException("Tournament id is required");
+        }
+        return tournamentsRepository.findById(tournamentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Tournament not found"));
+    }
+
     private RefereeProfiles getCurrentReferee() {
         Users user = authService.getCurrentUser();
         raceResultValidator.ensureCurrentUserIsRaceReferee(user);
@@ -699,6 +755,110 @@ public class RaceResultServiceImpl implements RaceResultService {
         );
     }
 
+    private TournamentResultResponse buildTournamentResultResponse(Tournaments tournament, List<RaceResults> results) {
+        Map<Integer, List<RaceResults>> resultsByRaceId = results.stream()
+                .collect(Collectors.groupingBy(
+                        result -> result.getRaces().getId(),
+                        LinkedHashMap::new,
+                        Collectors.toList()
+                ));
+
+        List<TournamentRaceResultGroupResponse> raceGroups = resultsByRaceId.values()
+                .stream()
+                .map(this::toTournamentRaceResultGroup)
+                .toList();
+
+        return TournamentResultResponse.builder()
+                .tournamentId(tournament.getId())
+                .tournamentName(tournament.getName())
+                .status(tournament.getStatus())
+                .location(tournament.getLocation())
+                .startDate(tournament.getStartDate())
+                .endDate(tournament.getEndDate())
+                .races(raceGroups)
+                .standings(buildTournamentStandings(results))
+                .build();
+    }
+
+    private TournamentRaceResultGroupResponse toTournamentRaceResultGroup(List<RaceResults> raceResults) {
+        Races race = raceResults.get(0).getRaces();
+
+        return TournamentRaceResultGroupResponse.builder()
+                .raceId(race.getId())
+                .raceName(race.getName())
+                .raceNumber(race.getRaceNumber())
+                .raceStatus(race.getStatus())
+                .scheduledAt(race.getScheduledAt())
+                .distanceM(race.getDistanceM())
+                .trackType(race.getTrackType())
+                .results(raceResults.stream()
+                        .sorted(resultComparator())
+                        .map(raceResultMapper::toResponse)
+                        .toList())
+                .build();
+    }
+
+    private List<TournamentStandingResponse> buildTournamentStandings(List<RaceResults> results) {
+        Map<Integer, StandingEntry> entriesByHorseId = new HashMap<>();
+
+        results.stream()
+                .filter(result -> RaceResultStatus.PUBLISHED.equalsValue(result.getStatus()))
+                .filter(result -> !Boolean.TRUE.equals(result.getIsDisqualified()))
+                .filter(result -> result.getFinishPosition() != null)
+                .filter(result -> result.getHorses() != null)
+                .filter(result -> result.getOwner() != null)
+                .forEach(result -> entriesByHorseId
+                        .computeIfAbsent(
+                                result.getHorses().getId(),
+                                ignored -> new StandingEntry(result.getHorses(), result.getOwner())
+                        )
+                        .addResult(result));
+
+        List<StandingEntry> standingEntries = entriesByHorseId.values()
+                .stream()
+                .sorted(standingComparator())
+                .toList();
+
+        List<TournamentStandingResponse> standings = new ArrayList<>();
+        for (int index = 0; index < standingEntries.size(); index++) {
+            standings.add(toStandingResponse(standingEntries.get(index), index + 1));
+        }
+
+        return standings;
+    }
+
+    private TournamentStandingResponse toStandingResponse(StandingEntry entry, int rank) {
+        Horses horse = entry.getHorse();
+        HorseOwnerProfiles owner = entry.getOwner();
+        Users ownerUser = owner.getUsers();
+
+        return TournamentStandingResponse.builder()
+                .rank(rank)
+                .horseId(horse.getId())
+                .horseName(horse.getName())
+                .horseAvatarUrl(horse.getAvatarUrl())
+                .ownerId(owner.getId())
+                .ownerFullName(ownerUser == null ? null : ownerUser.getFullName())
+                .ownerStableName(owner.getStableName())
+                .totalPoints(entry.getTotalPoints())
+                .winCount(entry.getWinCount())
+                .bestFinishPosition(entry.getBestFinishPosition())
+                .bestPaceSecondsPerMeter(entry.getBestPaceSecondsPerMeter())
+                .build();
+    }
+
+    private Comparator<StandingEntry> standingComparator() {
+        return Comparator
+                .comparingInt(StandingEntry::getTotalPoints).reversed()
+                .thenComparing(Comparator.comparingInt(StandingEntry::getWinCount).reversed())
+                .thenComparingInt(StandingEntry::getBestFinishPosition)
+                .thenComparing(
+                        StandingEntry::getBestPaceSecondsPerMeter,
+                        Comparator.nullsLast(Comparator.naturalOrder())
+                )
+                .thenComparingInt(entry -> entry.getHorse().getId());
+    }
+
     private RefereeReports getReportForDraft(Integer reportId, Integer raceId, Integer refereeId) {
         RefereeReports report = refereeReportsRepository.findById(reportId)
                 .orElseThrow(() -> new ResourceNotFoundException("Referee report not found"));
@@ -733,6 +893,76 @@ public class RaceResultServiceImpl implements RaceResultService {
         private AssignmentLapSummary(JockeyHorseAssignments assignment, Integer finalRound) {
             this.assignment = assignment;
             this.finalRound = finalRound;
+        }
+    }
+
+    private static class StandingEntry {
+        private final Horses horse;
+        private final HorseOwnerProfiles owner;
+        private int totalPoints;
+        private int winCount;
+        private int bestFinishPosition = Integer.MAX_VALUE;
+        private BigDecimal bestPaceSecondsPerMeter;
+
+        private StandingEntry(Horses horse, HorseOwnerProfiles owner) {
+            this.horse = horse;
+            this.owner = owner;
+        }
+
+        private void addResult(RaceResults result) {
+            int pointsAwarded = result.getPointsAwarded() == null ? 0 : result.getPointsAwarded();
+            int finishPosition = result.getFinishPosition();
+
+            this.totalPoints += pointsAwarded;
+            if (finishPosition == 1) {
+                this.winCount++;
+            }
+            this.bestFinishPosition = Math.min(this.bestFinishPosition, finishPosition);
+
+            BigDecimal resultPace = paceSecondsPerMeter(result);
+            if (resultPace != null
+                    && (this.bestPaceSecondsPerMeter == null
+                    || resultPace.compareTo(this.bestPaceSecondsPerMeter) < 0)) {
+                this.bestPaceSecondsPerMeter = resultPace;
+            }
+        }
+
+        private static BigDecimal paceSecondsPerMeter(RaceResults result) {
+            if (result == null
+                    || result.getFinishTimeSec() == null
+                    || result.getRaces() == null
+                    || result.getRaces().getDistanceM() == null
+                    || result.getRaces().getDistanceM() <= 0
+                    || !Double.isFinite(result.getRaces().getDistanceM())) {
+                return null;
+            }
+
+            return result.getFinishTimeSec()
+                    .divide(BigDecimal.valueOf(result.getRaces().getDistanceM()), MathContext.DECIMAL64);
+        }
+
+        private Horses getHorse() {
+            return horse;
+        }
+
+        private HorseOwnerProfiles getOwner() {
+            return owner;
+        }
+
+        private int getTotalPoints() {
+            return totalPoints;
+        }
+
+        private int getWinCount() {
+            return winCount;
+        }
+
+        private int getBestFinishPosition() {
+            return bestFinishPosition;
+        }
+
+        private BigDecimal getBestPaceSecondsPerMeter() {
+            return bestPaceSecondsPerMeter;
         }
     }
 

@@ -17,6 +17,7 @@ import com.group5.htms.entity.Races;
 import com.group5.htms.entity.Tournaments;
 import com.group5.htms.entity.Users;
 import com.group5.htms.enums.JockeyAssignmentStatus;
+import com.group5.htms.enums.JockeyStatus;
 import com.group5.htms.enums.RaceRegistrationStatus;
 import com.group5.htms.enums.RaceStatus;
 import com.group5.htms.enums.TournamentStatus;
@@ -48,6 +49,11 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class TournamentServiceImpl implements TournamentService {
+    private static final List<String> ACTIVE_ASSIGNMENT_STATUSES = List.of(
+            JockeyAssignmentStatus.PENDING.getValue(),
+            JockeyAssignmentStatus.ACCEPTED.getValue(),
+            JockeyAssignmentStatus.CONFIRMED.getValue()
+    );
 
     private final TournamentsRepository tournamentsRepository;
     private final UsersRepository usersRepository;
@@ -262,7 +268,8 @@ public class TournamentServiceImpl implements TournamentService {
                 registrationOpenRaces,
                 registrations,
                 confirmedRegistrationIds,
-                assignmentsByRegistrationId
+                assignmentsByRegistrationId,
+                closeRequest.isAllowCloseWithoutEligibleRaces()
         );
 
         if (!pendingRegistrationsWithActiveInvitation.isEmpty() && !closeRequest.isAutoRejectPending()) {
@@ -280,23 +287,22 @@ public class TournamentServiceImpl implements TournamentService {
         }
 
         Instant now = Instant.now();
-        pendingRegistrationsToReject.forEach(registration ->
-                registration.setStatus(RaceRegistrationStatus.REJECTED.getValue())
-        );
+        pendingRegistrationsToReject.forEach(registration -> {
+            registration.setStatus(RaceRegistrationStatus.REJECTED.getValue());
+            registration.setOwnerConfirmationStatus(RaceRegistrationStatus.REJECTED.getValue());
+            registration.setJockey(null);
+            registration.setOwnerConfirmedAt(null);
+        });
+        cancelActiveAssignmentsForRegistrations(assignments, pendingRegistrationsToReject, now);
 
         if (closeRequest.isAutoCancelUnconfirmed()) {
-            approvedUnconfirmedRegistrations.forEach(registration ->
-                    registration.setStatus(RaceRegistrationStatus.CANCELLED.getValue())
-            );
-            assignments.stream()
-                    .filter(assignment -> approvedUnconfirmedRegistrations.stream()
-                            .anyMatch(registration -> registration.getId().equals(assignment.getReg().getId())))
-                    .filter(assignment -> JockeyAssignmentStatus.PENDING.equalsValue(assignment.getStatus())
-                            || JockeyAssignmentStatus.ACCEPTED.equalsValue(assignment.getStatus()))
-                    .forEach(assignment -> {
-                        assignment.setStatus(JockeyAssignmentStatus.CANCELLED.getValue());
-                        assignment.setCancelledAt(now);
-                    });
+            approvedUnconfirmedRegistrations.forEach(registration -> {
+                registration.setStatus(RaceRegistrationStatus.CANCELLED.getValue());
+                registration.setOwnerConfirmationStatus(RaceRegistrationStatus.CANCELLED.getValue());
+                registration.setJockey(null);
+                registration.setOwnerConfirmedAt(null);
+            });
+            cancelActiveAssignmentsForRegistrations(assignments, approvedUnconfirmedRegistrations, now);
         }
 
         Set<Integer> readyRaceIds = registrations.stream()
@@ -337,7 +343,9 @@ public class TournamentServiceImpl implements TournamentService {
                 )
                 .closedRaceCount(closedRaceCount)
                 .readyRaceCount(readyRaceCount)
-                .message("Registration closed successfully. Every registration-open race has at least one approved horse with a confirmed jockey assignment")
+                .message(closeRequest.isAllowCloseWithoutEligibleRaces()
+                        ? "Registration closed successfully. Races without eligible horses were closed without being marked ready"
+                        : "Registration closed successfully. Every registration-open race has at least one approved horse with a confirmed jockey assignment")
                 .build();
     }
 
@@ -345,9 +353,10 @@ public class TournamentServiceImpl implements TournamentService {
             List<Races> registrationOpenRaces,
             List<RaceRegistrations> registrations,
             Set<Integer> confirmedRegistrationIds,
-            Map<Integer, List<JockeyHorseAssignments>> assignmentsByRegistrationId
+            Map<Integer, List<JockeyHorseAssignments>> assignmentsByRegistrationId,
+            boolean allowCloseWithoutEligibleRaces
     ) {
-        if (registrationOpenRaces.isEmpty()) {
+        if (registrationOpenRaces.isEmpty() && !allowCloseWithoutEligibleRaces) {
             throw new BadRequestException("No registration-open races found for this tournament");
         }
 
@@ -359,6 +368,9 @@ public class TournamentServiceImpl implements TournamentService {
             List<RaceRegistrations> raceRegistrations = registrationsByRaceId.getOrDefault(race.getId(), List.of());
 
             if (raceRegistrations.isEmpty()) {
+                if (allowCloseWithoutEligibleRaces) {
+                    continue;
+                }
                 throw new BadRequestException(
                         "Race " + race.getId() + " - " + race.getName()
                                 + " has no horse registrations; cannot close tournament registration"
@@ -371,6 +383,9 @@ public class TournamentServiceImpl implements TournamentService {
                     .count();
 
             if (eligibleHorseCount <= 0) {
+                if (allowCloseWithoutEligibleRaces) {
+                    continue;
+                }
                 List<RaceRegistrations> notEligibleRegistrations = raceRegistrations.stream()
                         .filter(registration -> !isEligibleRegistration(registration, confirmedRegistrationIds))
                         .toList();
@@ -410,6 +425,35 @@ public class TournamentServiceImpl implements TournamentService {
                 .anyMatch(assignment -> JockeyAssignmentStatus.PENDING.equalsValue(assignment.getStatus())
                         || JockeyAssignmentStatus.ACCEPTED.equalsValue(assignment.getStatus())
                         || JockeyAssignmentStatus.CONFIRMED.equalsValue(assignment.getStatus()));
+    }
+
+    private void cancelActiveAssignmentsForRegistrations(
+            List<JockeyHorseAssignments> assignments,
+            List<RaceRegistrations> registrations,
+            Instant now
+    ) {
+        Set<Integer> registrationIds = registrations.stream()
+                .map(RaceRegistrations::getId)
+                .collect(Collectors.toSet());
+
+        if (registrationIds.isEmpty()) {
+            return;
+        }
+
+        assignments.stream()
+                .filter(assignment -> assignment.getReg() != null)
+                .filter(assignment -> registrationIds.contains(assignment.getReg().getId()))
+                .filter(assignment -> ACTIVE_ASSIGNMENT_STATUSES.stream()
+                        .anyMatch(status -> status.equalsIgnoreCase(assignment.getStatus())))
+                .forEach(assignment -> {
+                    boolean wasConfirmed = JockeyAssignmentStatus.CONFIRMED.equalsValue(assignment.getStatus());
+                    assignment.setStatus(JockeyAssignmentStatus.CANCELLED.getValue());
+                    assignment.setCancelledAt(now);
+                    assignment.setResponseDeadline(null);
+                    if (wasConfirmed && assignment.getJockey() != null) {
+                        assignment.getJockey().setStatus(JockeyStatus.AVAILABLE.getValue());
+                    }
+                });
     }
 
     private Map<Integer, List<JockeyHorseAssignments>> groupAssignmentsByRegistrationId(

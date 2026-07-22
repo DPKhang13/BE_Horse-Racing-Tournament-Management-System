@@ -9,6 +9,7 @@ import com.group5.htms.dto.raceresult.response.RaceResultListResponse;
 import com.group5.htms.dto.raceresult.response.RacePublishResponse;
 import com.group5.htms.dto.raceresult.response.RaceResultDraftResponse;
 import com.group5.htms.dto.raceresult.response.RaceResultResponse;
+import com.group5.htms.dto.raceresult.response.TournamentResultResponse;
 
 import java.util.List;
 
@@ -42,5 +43,9 @@ public interface RaceResultService {
     RacePublishResponse publishRaceResults(Integer raceId);
 
     List<RaceResultResponse> getPublicResults(Integer raceId);
+
+    TournamentResultResponse getPublicTournamentResults(Integer tournamentId);
+
+    TournamentResultResponse getAdminTournamentResults(Integer tournamentId, String status);
 }
 

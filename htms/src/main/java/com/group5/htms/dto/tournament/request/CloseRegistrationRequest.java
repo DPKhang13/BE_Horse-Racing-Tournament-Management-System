@@ -8,6 +8,7 @@ import lombok.Setter;
 public class CloseRegistrationRequest {
     private Boolean autoRejectPending = true;
     private Boolean autoCancelUnconfirmed = false;
+    private Boolean allowCloseWithoutEligibleRaces = false;
 
     public boolean isAutoRejectPending() {
         return autoRejectPending == null || autoRejectPending;
@@ -15,5 +16,9 @@ public class CloseRegistrationRequest {
 
     public boolean isAutoCancelUnconfirmed() {
         return Boolean.TRUE.equals(autoCancelUnconfirmed);
+    }
+
+    public boolean isAllowCloseWithoutEligibleRaces() {
+        return Boolean.TRUE.equals(allowCloseWithoutEligibleRaces);
     }
 }

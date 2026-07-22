@@ -38,4 +38,32 @@ public interface RaceResultsRepository extends JpaRepository<RaceResults, Intege
             @Param("tournamentId") Integer tournamentId,
             @Param("status") String status
     );
+
+    @Query("""
+            SELECT rr
+            FROM RaceResults rr
+            JOIN rr.races r
+            JOIN r.schedule s
+            JOIN s.tournaments t
+            WHERE t.id = :tournamentId
+            ORDER BY r.scheduledAt ASC, r.raceNumber ASC, rr.finishPosition ASC, rr.id ASC
+            """)
+    List<RaceResults> findByTournamentIdOrderByRaceAndFinishPosition(
+            @Param("tournamentId") Integer tournamentId
+    );
+
+    @Query("""
+            SELECT rr
+            FROM RaceResults rr
+            JOIN rr.races r
+            JOIN r.schedule s
+            JOIN s.tournaments t
+            WHERE t.id = :tournamentId
+              AND LOWER(rr.status) = LOWER(:status)
+            ORDER BY r.scheduledAt ASC, r.raceNumber ASC, rr.finishPosition ASC, rr.id ASC
+            """)
+    List<RaceResults> findByTournamentIdAndStatusOrderByRaceAndFinishPosition(
+            @Param("tournamentId") Integer tournamentId,
+            @Param("status") String status
+    );
 }
