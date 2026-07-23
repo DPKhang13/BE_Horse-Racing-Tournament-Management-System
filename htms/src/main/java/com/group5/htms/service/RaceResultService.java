@@ -9,6 +9,7 @@ import com.group5.htms.dto.raceresult.response.RaceResultListResponse;
 import com.group5.htms.dto.raceresult.response.RacePublishResponse;
 import com.group5.htms.dto.raceresult.response.RaceResultDraftResponse;
 import com.group5.htms.dto.raceresult.response.RaceResultResponse;
+import com.group5.htms.dto.raceresult.response.TournamentResultHistoryResponse;
 import com.group5.htms.dto.raceresult.response.TournamentResultResponse;
 
 import java.util.List;
@@ -32,6 +33,8 @@ public interface RaceResultService {
 
     RaceResultDraftResponse replaceDraft(Integer raceId, RaceResultDraftRequest request);
 
+    RaceResultDraftResponse replaceDraftByAdmin(Integer raceId, RaceResultDraftRequest request);
+
     RaceResultDraftResponse getDraft(Integer raceId);
 
     List<RaceResultResponse> getAdminResults(Integer raceId);
@@ -47,5 +50,7 @@ public interface RaceResultService {
     TournamentResultResponse getPublicTournamentResults(Integer tournamentId);
 
     TournamentResultResponse getAdminTournamentResults(Integer tournamentId, String status);
+
+    List<TournamentResultHistoryResponse> getAdminTournamentResultHistory(String status, String resultStatus);
 }
 

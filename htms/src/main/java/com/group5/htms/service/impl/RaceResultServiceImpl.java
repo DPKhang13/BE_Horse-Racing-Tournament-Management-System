@@ -11,6 +11,7 @@ import com.group5.htms.dto.raceresult.response.RaceResultDraftResponse;
 import com.group5.htms.dto.raceresult.response.RaceResultListResponse;
 import com.group5.htms.dto.raceresult.response.RaceResultResponse;
 import com.group5.htms.dto.raceresult.response.TournamentRaceResultGroupResponse;
+import com.group5.htms.dto.raceresult.response.TournamentResultHistoryResponse;
 import com.group5.htms.dto.raceresult.response.TournamentResultResponse;
 import com.group5.htms.dto.raceresult.response.TournamentStandingResponse;
 import com.group5.htms.entity.Bets;
@@ -34,6 +35,7 @@ import com.group5.htms.enums.BetStatus;
 import com.group5.htms.enums.JockeyAssignmentStatus;
 import com.group5.htms.enums.RaceResultStatus;
 import com.group5.htms.enums.RaceStatus;
+import com.group5.htms.enums.TournamentStatus;
 import com.group5.htms.enums.WalletStatus;
 import com.group5.htms.enums.WalletTransactionStatus;
 import com.group5.htms.enums.WalletTransactionType;
@@ -259,6 +261,33 @@ public class RaceResultServiceImpl implements RaceResultService {
     }
 
     @Override
+    @Transactional
+    public RaceResultDraftResponse replaceDraftByAdmin(Integer raceId, RaceResultDraftRequest request) {
+        Races race = getRace(raceId);
+        raceResultValidator.ensureRaceInProgressForResults(race);
+        raceResultValidator.validateDraftRequest(request);
+        raceResultValidator.ensureNoPublishedResults(race.getId());
+
+        List<RaceResults> existingResults = activeResults(race.getId());
+        if (existingResults.isEmpty()) {
+            throw new ResourceNotFoundException("Race result draft not found");
+        }
+        if (existingResults.stream().anyMatch(result -> RaceResultStatus.CONFIRMED.equalsValue(result.getStatus()))) {
+            throw new BadRequestException("Only draft results can be edited");
+        }
+        if (existingResults.stream().anyMatch(result -> !RaceResultStatus.DRAFT.equalsValue(result.getStatus()))) {
+            throw new BadRequestException("Only draft results can be edited");
+        }
+
+        RefereeReports report = resolveAdminDraftReport(request, existingResults, race.getId());
+        raceResultsRepository.deleteAll(existingResults);
+        raceResultsRepository.flush();
+
+        List<RaceResults> savedResults = saveDraftResultsForAdmin(race, report, request);
+        return toAdminDraftResponse(race, report, savedResults);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public RaceResultDraftResponse getDraft(Integer raceId) {
         Races race = getRace(raceId);
@@ -445,6 +474,53 @@ public class RaceResultServiceImpl implements RaceResultService {
         return buildTournamentResultResponse(tournament, results);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<TournamentResultHistoryResponse> getAdminTournamentResultHistory(String status, String resultStatus) {
+        String tournamentStatusFilter = clean(status);
+        if (tournamentStatusFilter != null) {
+            tournamentStatusFilter = tournamentStatusFilter.toLowerCase();
+            if (!TournamentStatus.isValid(tournamentStatusFilter)) {
+                throw new BadRequestException("Invalid tournament status");
+            }
+        }
+
+        String resultStatusFilter = clean(resultStatus);
+        if (resultStatusFilter != null) {
+            resultStatusFilter = resultStatusFilter.toLowerCase();
+            if (!RaceResultStatus.isValid(resultStatusFilter)) {
+                throw new BadRequestException("Invalid race result status");
+            }
+        }
+
+        Map<Integer, List<RaceResults>> resultsByTournamentId = raceResultsRepository.findAll()
+                .stream()
+                .filter(result -> result.getRaces() != null
+                        && result.getRaces().getSchedule() != null
+                        && result.getRaces().getSchedule().getTournaments() != null)
+                .collect(Collectors.groupingBy(result -> result.getRaces().getSchedule().getTournaments().getId()));
+
+        String finalTournamentStatusFilter = tournamentStatusFilter;
+        String finalResultStatusFilter = resultStatusFilter;
+        return tournamentsRepository.findAllById(resultsByTournamentId.keySet())
+                .stream()
+                .filter(tournament -> finalTournamentStatusFilter == null
+                        || finalTournamentStatusFilter.equalsIgnoreCase(tournament.getStatus()))
+                .filter(tournament -> finalResultStatusFilter == null
+                        || resultsByTournamentId.getOrDefault(tournament.getId(), List.of())
+                        .stream()
+                        .anyMatch(result -> finalResultStatusFilter.equalsIgnoreCase(result.getStatus())))
+                .map(tournament -> toTournamentResultHistoryResponse(
+                        tournament,
+                        resultsByTournamentId.getOrDefault(tournament.getId(), List.of())
+                ))
+                .sorted(Comparator
+                        .comparing(TournamentResultHistoryResponse::getLatestPublishedAt, Comparator.nullsLast(Comparator.reverseOrder()))
+                        .thenComparing(TournamentResultHistoryResponse::getEndDate, Comparator.nullsLast(Comparator.reverseOrder()))
+                        .thenComparing(TournamentResultHistoryResponse::getTournamentId, Comparator.reverseOrder()))
+                .toList();
+    }
+
     private List<RaceResults> saveDraftResults(Races race, RefereeProfiles referee, RaceResultDraftRequest request) {
         RefereeReports report = request.getReportId() == null ? null : getReportForDraft(request.getReportId(), race.getId(), referee.getId());
         List<JockeyHorseAssignments> confirmedAssignments = confirmedAssignments(race.getId());
@@ -466,6 +542,44 @@ public class RaceResultServiceImpl implements RaceResultService {
         }
 
         return raceResultsRepository.saveAll(results);
+    }
+
+    private List<RaceResults> saveDraftResultsForAdmin(Races race, RefereeReports report, RaceResultDraftRequest request) {
+        List<JockeyHorseAssignments> confirmedAssignments = confirmedAssignments(race.getId());
+        raceResultValidator.validateDraftItems(request.getResults(), confirmedAssignments);
+
+        Map<Integer, JockeyHorseAssignments> assignmentsById = new HashMap<>();
+        confirmedAssignments.forEach(assignment -> assignmentsById.put(assignment.getId(), assignment));
+
+        List<RaceResults> results = new ArrayList<>();
+        for (RaceResultDraftItemRequest item : request.getResults()) {
+            JockeyHorseAssignments assignment = assignmentsById.get(item.getAssignmentId());
+            RaceResults result = newResultFromAssignment(assignment, report);
+            result.setFinishPosition(Boolean.TRUE.equals(item.getIsDisqualified()) ? null : item.getFinishPosition());
+            result.setFinishTimeSec(item.getFinishTimeSec());
+            result.setIsDisqualified(Boolean.TRUE.equals(item.getIsDisqualified()));
+            result.setDisqualifyReason(clean(item.getDisqualifyReason()));
+            result.setPointsAwarded(0);
+            results.add(result);
+        }
+
+        return raceResultsRepository.saveAll(results);
+    }
+
+    private RefereeReports resolveAdminDraftReport(
+            RaceResultDraftRequest request,
+            List<RaceResults> existingResults,
+            Integer raceId
+    ) {
+        if (request.getReportId() != null) {
+            return getReportForAdminDraft(request.getReportId(), raceId);
+        }
+
+        return existingResults.stream()
+                .map(RaceResults::getReport)
+                .filter(Objects::nonNull)
+                .findFirst()
+                .orElse(null);
     }
 
     private void calculatePoints(Integer raceId, List<RaceResults> results) {
@@ -670,6 +784,21 @@ public class RaceResultServiceImpl implements RaceResultService {
                 .build();
     }
 
+    private RaceResultDraftResponse toAdminDraftResponse(
+            Races race,
+            RefereeReports report,
+            List<RaceResults> results
+    ) {
+        return RaceResultDraftResponse.builder()
+                .raceId(race.getId())
+                .raceName(race.getName())
+                .status(results.isEmpty() ? null : results.get(0).getStatus())
+                .reportId(report == null ? null : report.getId())
+                .submittedByRefereeId(report == null || report.getReferee() == null ? null : report.getReferee().getId())
+                .results(results.stream().sorted(resultComparator()).map(raceResultMapper::toResponse).toList())
+                .build();
+    }
+
     private RaceResults findResult(Integer id) {
         return raceResultsRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Race result not found"));
@@ -798,6 +927,50 @@ public class RaceResultServiceImpl implements RaceResultService {
                 .build();
     }
 
+    private TournamentResultHistoryResponse toTournamentResultHistoryResponse(
+            Tournaments tournament,
+            List<RaceResults> results
+    ) {
+        long totalRaces = racesRepository.findBySchedule_Tournaments_IdOrderByScheduledAtAsc(tournament.getId()).size();
+        long racesWithResults = results.stream()
+                .map(RaceResults::getRaces)
+                .filter(Objects::nonNull)
+                .map(Races::getId)
+                .distinct()
+                .count();
+
+        return TournamentResultHistoryResponse.builder()
+                .tournamentId(tournament.getId())
+                .tournamentName(tournament.getName())
+                .status(tournament.getStatus())
+                .location(tournament.getLocation())
+                .startDate(tournament.getStartDate())
+                .endDate(tournament.getEndDate())
+                .totalRaces(totalRaces)
+                .racesWithResults(racesWithResults)
+                .draftResultCount(countResultsByStatus(results, RaceResultStatus.DRAFT))
+                .confirmedResultCount(countResultsByStatus(results, RaceResultStatus.CONFIRMED))
+                .publishedResultCount(countResultsByStatus(results, RaceResultStatus.PUBLISHED))
+                .cancelledResultCount(countResultsByStatus(results, RaceResultStatus.CANCELLED))
+                .latestPublishedAt(latestPublishedAt(results))
+                .build();
+    }
+
+    private long countResultsByStatus(List<RaceResults> results, RaceResultStatus status) {
+        return results.stream()
+                .filter(result -> status.equalsValue(result.getStatus()))
+                .count();
+    }
+
+    private Instant latestPublishedAt(List<RaceResults> results) {
+        return results.stream()
+                .filter(result -> RaceResultStatus.PUBLISHED.equalsValue(result.getStatus()))
+                .map(RaceResults::getPublishedAt)
+                .filter(Objects::nonNull)
+                .max(Comparator.naturalOrder())
+                .orElse(null);
+    }
+
     private List<TournamentStandingResponse> buildTournamentStandings(List<RaceResults> results) {
         Map<Integer, StandingEntry> entriesByHorseId = new HashMap<>();
 
@@ -863,6 +1036,15 @@ public class RaceResultServiceImpl implements RaceResultService {
         RefereeReports report = refereeReportsRepository.findById(reportId)
                 .orElseThrow(() -> new ResourceNotFoundException("Referee report not found"));
         raceResultValidator.ensureReportBelongsToRaceAndReferee(report, raceId, refereeId);
+        return report;
+    }
+
+    private RefereeReports getReportForAdminDraft(Integer reportId, Integer raceId) {
+        RefereeReports report = refereeReportsRepository.findById(reportId)
+                .orElseThrow(() -> new ResourceNotFoundException("Referee report not found"));
+        if (report.getRaces() == null || !Objects.equals(report.getRaces().getId(), raceId)) {
+            throw new BadRequestException("Report does not belong to this race");
+        }
         return report;
     }
 
