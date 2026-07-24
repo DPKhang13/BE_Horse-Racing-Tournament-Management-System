@@ -85,15 +85,15 @@ public class RaceRegistrationValidator {
         }
     }
 
-    public void ensureHorseNotRegisteredInTournament(boolean exists) {
+    public void ensureHorseNotRegisteredInRace(boolean exists) {
         if (exists) {
-            throw new BadRequestException("Horse can only register once in the same tournament");
+            throw new BadRequestException("Horse is already registered in this race");
         }
     }
 
-    public void ensureHorseNotRegisteredInTournamentForUpdate(boolean exists) {
+    public void ensureHorseHasNoScheduleConflict(boolean exists) {
         if (exists) {
-            throw new BadRequestException("Horse is already registered in this tournament");
+            throw new BadRequestException("Horse is already registered in another race at the same time");
         }
     }
 
