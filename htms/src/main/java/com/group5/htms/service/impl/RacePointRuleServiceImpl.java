@@ -50,6 +50,7 @@ public class RacePointRuleServiceImpl implements RacePointRuleService {
         racePointRuleValidator.validateRequest(request);
 
         racePointRulesRepository.deleteByRace_Id(race.getId());
+        racePointRulesRepository.flush();
         savePointRules(race, request);
         return toResponseList(race.getId());
     }
