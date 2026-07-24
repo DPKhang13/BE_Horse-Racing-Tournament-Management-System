@@ -68,6 +68,7 @@ public class RaceServiceImpl implements RaceService {
     private final TournamentScheduleMapper tournamentScheduleMapper;
     private final BetOptionService betOptionService;
     private final RaceValidator raceValidator;
+    private final RaceParticipationCancellationService raceParticipationCancellationService;
 
     @Override
     @Transactional(readOnly = true)
@@ -268,6 +269,7 @@ public class RaceServiceImpl implements RaceService {
         }
 
         race.setStatus(RaceStatus.CANCELLED.getValue());
+        raceParticipationCancellationService.cancelRaceParticipants(race.getId());
         racesRepository.save(race);
     }
 

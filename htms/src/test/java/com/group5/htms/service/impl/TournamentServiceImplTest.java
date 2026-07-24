@@ -64,6 +64,9 @@ class TournamentServiceImplTest {
     @Mock
     private TournamentMapper tournamentMapper;
 
+    @Mock
+    private RaceParticipationCancellationService raceParticipationCancellationService;
+
     private TournamentServiceImpl service;
 
     @BeforeEach
@@ -76,7 +79,8 @@ class TournamentServiceImplTest {
                 prizeRepository,
                 raceRegistrationsRepository,
                 jockeyHorseAssignmentsRepository,
-                tournamentMapper
+                tournamentMapper,
+                raceParticipationCancellationService
         );
     }
 
@@ -87,6 +91,19 @@ class TournamentServiceImplTest {
         assertThatThrownBy(() -> service.openRegistration(TOURNAMENT_ID, validRequest()))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessage("Tournament not found");
+    }
+
+    @Test
+    void cancelTournamentCancelsParticipants() {
+        Tournaments tournament = tournament(TournamentStatus.UPCOMING.getValue());
+        when(tournamentsRepository.findById(TOURNAMENT_ID)).thenReturn(Optional.of(tournament));
+        when(tournamentsRepository.save(tournament)).thenReturn(tournament);
+
+        service.cancelTournament(TOURNAMENT_ID);
+
+        assertThat(tournament.getStatus()).isEqualTo(TournamentStatus.CANCELLED.getValue());
+        verify(raceParticipationCancellationService).cancelTournamentParticipants(TOURNAMENT_ID);
+        verify(tournamentsRepository).save(tournament);
     }
 
     @Test

@@ -62,6 +62,7 @@ public class TournamentServiceImpl implements TournamentService {
     private final RaceRegistrationsRepository raceRegistrationsRepository;
     private final JockeyHorseAssignmentsRepository jockeyHorseAssignmentsRepository;
     private final TournamentMapper tournamentMapper;
+    private final RaceParticipationCancellationService raceParticipationCancellationService;
 
     @Override
     @Transactional(readOnly = true)
@@ -155,6 +156,7 @@ public class TournamentServiceImpl implements TournamentService {
         }
 
         tournament.setStatus(TournamentStatus.CANCELLED.getValue());
+        raceParticipationCancellationService.cancelTournamentParticipants(tournament.getId());
 
         Tournaments savedTournament = tournamentsRepository.save(tournament);
 
