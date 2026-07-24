@@ -46,6 +46,16 @@ public class RaceResultController {
         return ResponseEntity.ok(raceResultService.getResultsByRace(raceId));
     }
 
+    @Operation(
+            summary = "Recalculate race ranking from laps",
+            description = "Recalculate provisional ranking, total lap time and points from saved race rounds."
+    )
+    @PostMapping("/race/{raceId}/recalculate-from-rounds")
+    @PreAuthorize("hasAnyRole('ADMIN', 'RACE_REFEREE')")
+    public ResponseEntity<List<RaceResultListResponse>> recalculateFromRounds(@PathVariable Integer raceId) {
+        return ResponseEntity.ok(raceResultService.calculateResultsFromRounds(raceId));
+    }
+
     @Operation(summary = "Create race result", description = "Tạo mới kết quả race cho một jockey assignment.")
     @PostMapping("/create")
     @PreAuthorize("hasAnyRole('ADMIN', 'RACE_REFEREE')")

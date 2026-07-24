@@ -13,6 +13,7 @@ public class RefereeReportResponse {
     private String raceName;
     private Integer refereeId;
     private String refereeFullName;
+    private String refereeRole;
     private String reportType;
     private String inspectionNotes;
     private String violationNotes;

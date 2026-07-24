@@ -21,6 +21,7 @@ public class JockeyAssignmentListResponse {
     private Instant cancelledAt;
     private Instant expiredAt;
     private String raceName;
+    private String tournamentName;
     private Integer raceNumber;
     private Instant scheduledAt;
     private Integer horseId;

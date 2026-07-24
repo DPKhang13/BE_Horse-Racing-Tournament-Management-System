@@ -23,6 +23,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -92,10 +94,11 @@ public class RefereeReportServiceImpl implements RefereeReportService {
         RefereeProfiles referee = getCurrentReferee();
         Races race = getRace(raceId);
         ensureAssignedReferee(race.getId(), referee.getId());
+        Map<Integer, String> refereeRolesByRefereeId = refereeRolesByRefereeId(race.getId());
 
         return refereeReportsRepository.findByRaces_IdOrderBySubmittedAtDesc(race.getId())
                 .stream()
-                .map(this::toResponse)
+                .map(report -> toResponse(report, refereeRolesByRefereeId))
                 .toList();
     }
 
@@ -126,6 +129,7 @@ public class RefereeReportServiceImpl implements RefereeReportService {
         return RefereeAssignedRaceResponse.builder()
                 .raceId(race.getId())
                 .raceName(race.getName())
+                .tournamentName(tournamentName(race))
                 .status(race.getStatus())
                 .scheduledAt(race.getScheduledAt())
                 .predictionClosesAt(race.getPredictionClosesAt())
@@ -136,12 +140,21 @@ public class RefereeReportServiceImpl implements RefereeReportService {
     }
 
     private RefereeReportResponse toResponse(RefereeReports report) {
+        return toResponse(report, refereeRole(report.getRaces().getId(), report.getReferee().getId()));
+    }
+
+    private RefereeReportResponse toResponse(RefereeReports report, Map<Integer, String> refereeRolesByRefereeId) {
+        return toResponse(report, refereeRolesByRefereeId.get(report.getReferee().getId()));
+    }
+
+    private RefereeReportResponse toResponse(RefereeReports report, String refereeRole) {
         return RefereeReportResponse.builder()
                 .reportId(report.getId())
                 .raceId(report.getRaces().getId())
                 .raceName(report.getRaces().getName())
                 .refereeId(report.getReferee().getId())
                 .refereeFullName(report.getReferee().getUsers().getFullName())
+                .refereeRole(refereeRole)
                 .reportType(report.getReportType())
                 .inspectionNotes(report.getInspectionNotes())
                 .violationNotes(report.getViolationNotes())
@@ -149,6 +162,30 @@ public class RefereeReportServiceImpl implements RefereeReportService {
                 .verdict(report.getVerdict())
                 .submittedAt(report.getSubmittedAt())
                 .build();
+    }
+
+    private Map<Integer, String> refereeRolesByRefereeId(Integer raceId) {
+        return raceRefereeAssignmentsRepository.findByRaces_IdOrderByIdAsc(raceId)
+                .stream()
+                .filter(assignment -> assignment.getReferee() != null)
+                .collect(Collectors.toMap(
+                        assignment -> assignment.getReferee().getId(),
+                        RaceRefereeAssignments::getRefereeRole,
+                        (first, ignored) -> first
+                ));
+    }
+
+    private String refereeRole(Integer raceId, Integer refereeId) {
+        return raceRefereeAssignmentsRepository.findByRaces_IdAndReferee_Id(raceId, refereeId)
+                .map(RaceRefereeAssignments::getRefereeRole)
+                .orElse(null);
+    }
+
+    private String tournamentName(Races race) {
+        if (race == null || race.getSchedule() == null || race.getSchedule().getTournaments() == null) {
+            return null;
+        }
+        return race.getSchedule().getTournaments().getName();
     }
 
     private String cleanOrDefault(String value, String defaultValue) {

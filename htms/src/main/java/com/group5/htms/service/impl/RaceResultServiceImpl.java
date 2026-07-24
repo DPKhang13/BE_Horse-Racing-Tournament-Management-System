@@ -169,6 +169,14 @@ public class RaceResultServiceImpl implements RaceResultService {
     @Override
     @Transactional
     public List<RaceResultListResponse> calculateResultsFromRounds(Integer raceId) {
+        Races race = getRace(raceId);
+        if (raceResultsRepository.existsByRaces_IdAndStatusIgnoreCase(race.getId(), RaceResultStatus.PUBLISHED.getValue())) {
+            throw new BadRequestException("Race results are already published");
+        }
+        if (raceResultsRepository.existsByRaces_IdAndStatusIgnoreCase(race.getId(), RaceResultStatus.CONFIRMED.getValue())) {
+            throw new BadRequestException("Confirmed race results cannot be recalculated from laps");
+        }
+
         List<RaceRounds> rounds = raceRoundsRepository.findByRaces_IdOrderByAssignment_IdAscRoundNumberAsc(raceId);
         if (rounds.isEmpty()) {
             throw new BadRequestException("Race has no rounds to calculate results");
@@ -183,14 +191,15 @@ public class RaceResultServiceImpl implements RaceResultService {
             Integer assignmentId = round.getAssignment().getId();
             AssignmentLapSummary summary = summariesByAssignment.computeIfAbsent(
                     assignmentId,
-                    ignored -> new AssignmentLapSummary(round.getAssignment(), round.getRoundNumber())
+                    ignored -> new AssignmentLapSummary(round.getAssignment())
             );
             summary.totalTimeSec = summary.totalTimeSec.add(round.getLapTimeSec());
-            summary.finalRound = Math.max(summary.finalRound, round.getRoundNumber());
+            summary.completedLaps++;
+            summary.updateLatestRound(round);
         }
 
         List<AssignmentLapSummary> rankedSummaries = new ArrayList<>(summariesByAssignment.values());
-        rankedSummaries.sort(Comparator.comparing(summary -> summary.totalTimeSec));
+        rankedSummaries.sort(lapSummaryComparator());
 
         List<RaceResults> savedResults = new ArrayList<>();
         int finishPosition = 1;
@@ -199,12 +208,16 @@ public class RaceResultServiceImpl implements RaceResultService {
                     .findByRaces_IdAndAssignment_Id(raceId, summary.assignment.getId())
                     .orElseGet(() -> newResultFromAssignment(summary.assignment, null));
 
-            result.setFinalRound(summary.finalRound);
-            result.setFinishPosition(finishPosition);
+            result.setFinalRound(summary.latestRoundNumber);
             result.setFinishTimeSec(summary.totalTimeSec);
-            result.setIsDisqualified(false);
-            result.setDisqualifyReason(null);
-            result.setPointsAwarded(0);
+            if (Boolean.TRUE.equals(result.getIsDisqualified())) {
+                result.setFinishPosition(null);
+                result.setPointsAwarded(0);
+            } else {
+                result.setFinishPosition(finishPosition);
+                result.setPointsAwarded(provisionalPoints(race.getId(), finishPosition));
+                finishPosition++;
+            }
             if (result.getStatus() == null || result.getStatus().isBlank()) {
                 result.setStatus(RaceResultStatus.DRAFT.getValue());
             }
@@ -213,7 +226,6 @@ public class RaceResultServiceImpl implements RaceResultService {
             }
 
             savedResults.add(raceResultsRepository.save(result));
-            finishPosition++;
         }
 
         return savedResults.stream()
@@ -595,6 +607,26 @@ public class RaceResultServiceImpl implements RaceResultService {
                     .orElseThrow(() -> new BadRequestException("Missing point rule for finish position"));
             result.setPointsAwarded(points == null ? 0 : points);
         }
+    }
+
+    private int provisionalPoints(Integer raceId, Integer finishPosition) {
+        if (finishPosition == null) {
+            return 0;
+        }
+        return racePointRulesRepository.findByRace_IdAndFinishPosition(raceId, finishPosition)
+                .map(RacePointRules::getPoints)
+                .orElse(0);
+    }
+
+    private Comparator<AssignmentLapSummary> lapSummaryComparator() {
+        return Comparator
+                .comparingInt(AssignmentLapSummary::getCompletedLaps).reversed()
+                .thenComparing(
+                        AssignmentLapSummary::getLatestPosition,
+                        Comparator.nullsLast(Integer::compareTo)
+                )
+                .thenComparing(AssignmentLapSummary::getTotalTimeSec)
+                .thenComparingInt(summary -> summary.assignment.getId());
     }
 
     private void applyRanking(RaceResults result) {
@@ -1070,11 +1102,31 @@ public class RaceResultServiceImpl implements RaceResultService {
     private static class AssignmentLapSummary {
         private final JockeyHorseAssignments assignment;
         private BigDecimal totalTimeSec = BigDecimal.ZERO;
-        private Integer finalRound;
+        private int completedLaps;
+        private Integer latestRoundNumber;
+        private Integer latestPosition;
 
-        private AssignmentLapSummary(JockeyHorseAssignments assignment, Integer finalRound) {
+        private AssignmentLapSummary(JockeyHorseAssignments assignment) {
             this.assignment = assignment;
-            this.finalRound = finalRound;
+        }
+
+        private void updateLatestRound(RaceRounds round) {
+            if (latestRoundNumber == null || round.getRoundNumber() > latestRoundNumber) {
+                latestRoundNumber = round.getRoundNumber();
+                latestPosition = round.getPosition();
+            }
+        }
+
+        private int getCompletedLaps() {
+            return completedLaps;
+        }
+
+        private Integer getLatestPosition() {
+            return latestPosition;
+        }
+
+        private BigDecimal getTotalTimeSec() {
+            return totalTimeSec;
         }
     }
 

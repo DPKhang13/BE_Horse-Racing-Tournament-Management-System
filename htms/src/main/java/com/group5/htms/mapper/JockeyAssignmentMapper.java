@@ -70,6 +70,7 @@ public class JockeyAssignmentMapper {
                 .cancelledAt(assignment.getCancelledAt())
                 .expiredAt(assignment.getExpiredAt())
                 .raceName(assignment.getRaces().getName())
+                .tournamentName(tournamentName(assignment.getRaces()))
                 .raceNumber(assignment.getRaces().getRaceNumber())
                 .scheduledAt(assignment.getRaces().getScheduledAt())
                 .horseId(registration.getHorses().getId())
@@ -101,6 +102,7 @@ public class JockeyAssignmentMapper {
                 .cancelledAt(assignment.getCancelledAt())
                 .expiredAt(assignment.getExpiredAt())
                 .raceName(assignment.getRaces().getName())
+                .tournamentName(tournamentName(assignment.getRaces()))
                 .raceNumber(assignment.getRaces().getRaceNumber())
                 .scheduledAt(assignment.getRaces().getScheduledAt())
                 .horseId(registration.getHorses().getId())
@@ -130,6 +132,13 @@ public class JockeyAssignmentMapper {
         JockeyProfiles jockey = new JockeyProfiles();
         jockey.setId(id);
         return jockey;
+    }
+
+    private String tournamentName(Races race) {
+        if (race == null || race.getSchedule() == null || race.getSchedule().getTournaments() == null) {
+            return null;
+        }
+        return race.getSchedule().getTournaments().getName();
     }
 
     private String defaultText(String value, String defaultValue) {

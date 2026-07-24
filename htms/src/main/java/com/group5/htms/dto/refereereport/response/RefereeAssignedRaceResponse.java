@@ -10,6 +10,7 @@ import java.time.Instant;
 public class RefereeAssignedRaceResponse {
     private Integer raceId;
     private String raceName;
+    private String tournamentName;
     private String status;
     private Instant scheduledAt;
     private Instant predictionClosesAt;

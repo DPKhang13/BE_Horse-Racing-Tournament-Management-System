@@ -5,9 +5,12 @@ import com.group5.htms.dto.raceround.request.RaceRoundUpdateRequest;
 import com.group5.htms.dto.raceround.response.RaceRoundResponse;
 import com.group5.htms.entity.JockeyHorseAssignments;
 import com.group5.htms.entity.RaceRounds;
+import com.group5.htms.enums.RaceResultStatus;
+import com.group5.htms.exception.BadRequestException;
 import com.group5.htms.exception.ResourceNotFoundException;
 import com.group5.htms.mapper.RaceRoundMapper;
 import com.group5.htms.repository.JockeyHorseAssignmentsRepository;
+import com.group5.htms.repository.RaceResultsRepository;
 import com.group5.htms.repository.RaceRoundsRepository;
 import com.group5.htms.service.RaceRoundService;
 import com.group5.htms.validation.RaceRoundValidator;
@@ -21,6 +24,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class RaceRoundServiceImpl implements RaceRoundService {
     private final RaceRoundsRepository raceRoundsRepository;
+    private final RaceResultsRepository raceResultsRepository;
     private final JockeyHorseAssignmentsRepository jockeyHorseAssignmentsRepository;
     private final RaceRoundMapper raceRoundMapper;
     private final RaceRoundValidator raceRoundValidator;
@@ -56,6 +60,7 @@ public class RaceRoundServiceImpl implements RaceRoundService {
     @Transactional
     public RaceRoundResponse createRound(RaceRoundCreateRequest request) {
         JockeyHorseAssignments assignment = getAssignment(request.getAssignmentId());
+        ensureRaceResultsEditable(assignment.getRaces().getId());
         raceRoundValidator.ensureRoundNumberWithinLapCount(request.getRoundNumber(), assignment);
         checkRoundUniqueness(null, assignment.getRaces().getId(), assignment.getId(), request.getRoundNumber(), request.getPosition());
 
@@ -67,9 +72,13 @@ public class RaceRoundServiceImpl implements RaceRoundService {
     @Transactional
     public RaceRoundResponse updateRound(Integer id, RaceRoundUpdateRequest request) {
         RaceRounds round = findRound(id);
+        ensureRaceResultsEditable(round.getRaces().getId());
         JockeyHorseAssignments assignment = request.getAssignmentId() == null
                 ? getAssignment(round.getAssignment().getId())
                 : getAssignment(request.getAssignmentId());
+        if (!assignment.getRaces().getId().equals(round.getRaces().getId())) {
+            ensureRaceResultsEditable(assignment.getRaces().getId());
+        }
 
         Integer roundNumber = request.getRoundNumber() == null ? round.getRoundNumber() : request.getRoundNumber();
         Integer position = request.getPosition() == null ? round.getPosition() : request.getPosition();
@@ -101,5 +110,12 @@ public class RaceRoundServiceImpl implements RaceRoundService {
                 ? raceRoundsRepository.existsByRaces_IdAndRoundNumberAndPosition(raceId, roundNumber, position)
                 : raceRoundsRepository.existsByRaces_IdAndRoundNumberAndPositionAndIdNot(raceId, roundNumber, position, id);
         raceRoundValidator.ensureUniqueRoundPosition(duplicatePosition);
+    }
+
+    private void ensureRaceResultsEditable(Integer raceId) {
+        if (raceResultsRepository.existsByRaces_IdAndStatusIgnoreCase(raceId, RaceResultStatus.PUBLISHED.getValue())
+                || raceResultsRepository.existsByRaces_IdAndStatusIgnoreCase(raceId, RaceResultStatus.CONFIRMED.getValue())) {
+            throw new BadRequestException("Lap results cannot be changed after race results are confirmed or published");
+        }
     }
 }
