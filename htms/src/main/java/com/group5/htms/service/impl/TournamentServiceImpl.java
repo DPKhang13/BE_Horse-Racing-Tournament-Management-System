@@ -17,7 +17,6 @@ import com.group5.htms.entity.Races;
 import com.group5.htms.entity.Tournaments;
 import com.group5.htms.entity.Users;
 import com.group5.htms.enums.JockeyAssignmentStatus;
-import com.group5.htms.enums.JockeyStatus;
 import com.group5.htms.enums.RaceRegistrationStatus;
 import com.group5.htms.enums.RaceStatus;
 import com.group5.htms.enums.TournamentStatus;
@@ -446,13 +445,9 @@ public class TournamentServiceImpl implements TournamentService {
                 .filter(assignment -> ACTIVE_ASSIGNMENT_STATUSES.stream()
                         .anyMatch(status -> status.equalsIgnoreCase(assignment.getStatus())))
                 .forEach(assignment -> {
-                    boolean wasConfirmed = JockeyAssignmentStatus.CONFIRMED.equalsValue(assignment.getStatus());
                     assignment.setStatus(JockeyAssignmentStatus.CANCELLED.getValue());
                     assignment.setCancelledAt(now);
                     assignment.setResponseDeadline(null);
-                    if (wasConfirmed && assignment.getJockey() != null) {
-                        assignment.getJockey().setStatus(JockeyStatus.AVAILABLE.getValue());
-                    }
                 });
     }
 

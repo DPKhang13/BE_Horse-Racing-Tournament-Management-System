@@ -122,9 +122,11 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
                 raceRegistrationsRepository.existsByRaces_IdAndHorses_Id(race.getId(), horse.getId())
         );
         raceRegistrationValidator.ensureHorseHasNoScheduleConflict(
-                raceRegistrationsRepository.existsByHorses_IdAndRaces_ScheduledAtAndStatusNotIn(
+                raceRegistrationsRepository.existsHorseScheduleConflictInTournament(
+                        tournament.getId(),
                         horse.getId(),
                         race.getScheduledAt(),
+                        race.getId(),
                         RELEASED_REGISTRATION_STATUSES
                 )
         );
@@ -179,11 +181,13 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
                 )
         );
         raceRegistrationValidator.ensureHorseHasNoScheduleConflict(
-                raceRegistrationsRepository.existsByHorses_IdAndRaces_ScheduledAtAndStatusNotInAndIdNot(
+                raceRegistrationsRepository.existsHorseScheduleConflictInTournamentForUpdate(
+                        tournament.getId(),
                         horse.getId(),
                         race.getScheduledAt(),
-                        RELEASED_REGISTRATION_STATUSES,
-                        registration.getId()
+                        race.getId(),
+                        registration.getId(),
+                        RELEASED_REGISTRATION_STATUSES
                 )
         );
         validateGateForUpdate(registration, race, gateNumber);

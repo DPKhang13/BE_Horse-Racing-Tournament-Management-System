@@ -2,6 +2,8 @@ package com.group5.htms.repository;
 
 import com.group5.htms.entity.RaceRegistrations;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
@@ -45,17 +47,40 @@ public interface RaceRegistrationsRepository extends JpaRepository<RaceRegistrat
             Integer registrationId
     );
 
-    boolean existsByHorses_IdAndRaces_ScheduledAtAndStatusNotIn(
-            Integer horseId,
-            Instant scheduledAt,
-            List<String> statuses
+    @Query("""
+            select count(registration) > 0
+            from RaceRegistrations registration
+            where registration.tournaments.id = :tournamentId
+              and registration.horses.id = :horseId
+              and registration.races.scheduledAt = :scheduledAt
+              and registration.races.id <> :raceId
+              and lower(registration.status) not in :releasedStatuses
+            """)
+    boolean existsHorseScheduleConflictInTournament(
+            @Param("tournamentId") Integer tournamentId,
+            @Param("horseId") Integer horseId,
+            @Param("scheduledAt") Instant scheduledAt,
+            @Param("raceId") Integer raceId,
+            @Param("releasedStatuses") List<String> releasedStatuses
     );
 
-    boolean existsByHorses_IdAndRaces_ScheduledAtAndStatusNotInAndIdNot(
-            Integer horseId,
-            Instant scheduledAt,
-            List<String> statuses,
-            Integer registrationId
+    @Query("""
+            select count(registration) > 0
+            from RaceRegistrations registration
+            where registration.tournaments.id = :tournamentId
+              and registration.horses.id = :horseId
+              and registration.races.scheduledAt = :scheduledAt
+              and registration.races.id <> :raceId
+              and registration.id <> :registrationId
+              and lower(registration.status) not in :releasedStatuses
+            """)
+    boolean existsHorseScheduleConflictInTournamentForUpdate(
+            @Param("tournamentId") Integer tournamentId,
+            @Param("horseId") Integer horseId,
+            @Param("scheduledAt") Instant scheduledAt,
+            @Param("raceId") Integer raceId,
+            @Param("registrationId") Integer registrationId,
+            @Param("releasedStatuses") List<String> releasedStatuses
     );
 }
 
