@@ -20,6 +20,15 @@ import org.springframework.web.multipart.MultipartFile;
 public class UploadController {
     private final UploadService uploadService;
 
+    @Operation(summary = "Upload user image without id", description = "Upload ảnh user/avatar lên Cloudinary folder users, không gắn vào user.")
+    @PostMapping(value = "/users", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<UploadImageResponse> uploadUserImage(
+            @RequestPart("file") MultipartFile file
+    ) {
+        return ResponseEntity.ok(uploadService.uploadUserImage(file));
+    }
+
     @Operation(summary = "Upload user image", description = "Upload ảnh user/avatar lên Cloudinary folder users.")
     @PostMapping(value = "/users/{userId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("isAuthenticated()")
@@ -28,6 +37,15 @@ public class UploadController {
             @RequestPart("file") MultipartFile file
     ) {
         return ResponseEntity.ok(uploadService.uploadUserImage(userId, file));
+    }
+
+    @Operation(summary = "Upload horse image without id", description = "Upload ảnh ngựa lên Cloudinary folder horse, không gắn vào horse.")
+    @PostMapping(value = "/horses", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<UploadImageResponse> uploadHorseImage(
+            @RequestPart("file") MultipartFile file
+    ) {
+        return ResponseEntity.ok(uploadService.uploadHorseImage(file));
     }
 
     @Operation(summary = "Upload horse image", description = "Upload ảnh ngựa lên Cloudinary folder horse.")

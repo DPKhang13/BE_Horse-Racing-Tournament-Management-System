@@ -10,7 +10,6 @@ import com.group5.htms.entity.JockeyProfiles;
 import com.group5.htms.entity.RaceRegistrations;
 import com.group5.htms.entity.Races;
 import com.group5.htms.enums.JockeyAssignmentStatus;
-import com.group5.htms.enums.JockeyStatus;
 import com.group5.htms.enums.RaceRegistrationStatus;
 import com.group5.htms.enums.RoleType;
 import com.group5.htms.exception.ResourceNotFoundException;
@@ -129,6 +128,7 @@ public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
                 now,
                 "Jockey is already assigned to this race"
         );
+        ensureJockeyHasNoScheduleConflict(jockey, race, now, null);
 
         if (gateNumber != null) {
             List<JockeyHorseAssignments> gateAssignments = jockeyHorseAssignmentsRepository.findByRaces_IdAndGateNumberAndStatusIn(
@@ -200,6 +200,7 @@ public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
                 now,
                 "Jockey is already assigned to this race"
         );
+        ensureJockeyHasNoScheduleConflict(jockey, race, now, assignment.getId());
 
         if (updateGateNumber != null) {
             List<JockeyHorseAssignments> gateAssignments = jockeyHorseAssignmentsRepository.findByRaces_IdAndGateNumberAndStatusIn(
@@ -265,7 +266,6 @@ public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
         jockeyAssignmentValidator.ensureAccepted(assignment, "Only accepted assignments can be confirmed");
 
         assignment.setStatus(JockeyAssignmentStatus.CONFIRMED.getValue());
-        assignment.getJockey().setStatus(JockeyStatus.UNAVAILABLE.getValue());
         assignment.getReg().setJockey(assignment.getJockey());
         assignment.getReg().setOwnerConfirmationStatus(RaceRegistrationStatus.CONFIRMED.getValue());
         assignment.getReg().setOwnerConfirmedAt(Instant.now());
@@ -329,6 +329,37 @@ public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
             assignment.setExpiredAt(now);
             jockeyHorseAssignmentsRepository.save(assignment);
         }
+    }
+
+    private void ensureJockeyHasNoScheduleConflict(
+            JockeyProfiles jockey,
+            Races race,
+            Instant now,
+            Integer currentAssignmentId
+    ) {
+        List<JockeyHorseAssignments> scheduleAssignments = jockeyHorseAssignmentsRepository
+                .findByJockey_IdAndRaces_ScheduledAtAndStatusIn(
+                        jockey.getId(),
+                        race.getScheduledAt(),
+                        ACTIVE_ASSIGNMENT_STATUSES
+                );
+        expirePendingAssignmentsIfNeeded(scheduleAssignments, now);
+
+        if (currentAssignmentId == null) {
+            jockeyAssignmentValidator.ensureNoActiveAssignment(
+                    scheduleAssignments,
+                    now,
+                    "Jockey already has an active assignment at this time"
+            );
+            return;
+        }
+
+        jockeyAssignmentValidator.ensureNoActiveAssignmentExcept(
+                scheduleAssignments,
+                currentAssignmentId,
+                now,
+                "Jockey already has an active assignment at this time"
+        );
     }
 
     private Instant calculateResponseDeadline(RaceRegistrations registration, Instant now) {
