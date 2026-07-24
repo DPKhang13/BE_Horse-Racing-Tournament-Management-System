@@ -251,7 +251,7 @@ public class PaymentGatewayServiceImpl implements PaymentGatewayService {
         WalletTransactions tx = findTxForUpdate(txnRef);
         String message = processTopUp(tx, PaymentGatewayProvider.ZALOPAY, decimal(dataPayload.get("amount")), true);
         boolean ok = "Payment success".equals(message) || "Payment already confirmed".equals(message);
-        return Map.of("return_code", ok ? 1 : 0, "return_message", message);
+        return Map.of("return_code", ok ? 1 : 0, "return_message", ok ? "success" : message);
     }
 
     private Map<String, Object> queryMomoOrder(String txnRef) {
@@ -302,10 +302,11 @@ public class PaymentGatewayServiceImpl implements PaymentGatewayService {
             confirmedAmount = tx.getCashAmount();
         }
         String message = processTopUp(tx, PaymentGatewayProvider.MOMO, confirmedAmount, paymentSuccess);
+        boolean success = tx != null && WalletTransactionStatus.COMPLETED.getValue().equalsIgnoreCase(tx.getStatus());
         return PaymentGatewayReturnResponse.builder()
                 .gateway(PaymentGatewayProvider.MOMO.getValue())
                 .validSignature(validSignature)
-                .success(paymentSuccess)
+                .success(success)
                 .txnRef(txnRef)
                 .transactionRef(txnRef)
                 .amount(text(confirmationPayload.get("amount")))
@@ -608,4 +609,3 @@ public class PaymentGatewayServiceImpl implements PaymentGatewayService {
         return first == null || first.isBlank() ? second : first;
     }
 }
-

@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import java.math.BigDecimal;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
@@ -84,6 +85,7 @@ public class PaymentController {
     public ResponseEntity<Void> handleReturn(HttpServletRequest request) {
         VnpayReturnResponse result = paymentService.handleReturn(request.getParameterMap());
         return redirectPaymentResult(
+                "vnpay",
                 result.isSuccess(),
                 result.getTxnRef(),
                 result.getResponseCode(),
@@ -102,6 +104,7 @@ public class PaymentController {
     public ResponseEntity<Void> handleMomoReturn(HttpServletRequest request) {
         PaymentGatewayReturnResponse result = paymentGatewayService.handleMomoReturn(request.getParameterMap());
         return redirectPaymentResult(
+                "momo",
                 result.isSuccess(),
                 result.getTxnRef(),
                 result.getResponseCode(),
@@ -120,6 +123,7 @@ public class PaymentController {
     public ResponseEntity<Void> handleZalopayReturn(HttpServletRequest request) {
         PaymentGatewayReturnResponse result = paymentGatewayService.handleZalopayReturn(request.getParameterMap());
         return redirectPaymentResult(
+                "zalopay",
                 result.isSuccess(),
                 result.getTxnRef(),
                 result.getResponseCode(),
@@ -134,7 +138,12 @@ public class PaymentController {
         return ResponseEntity.ok(paymentGatewayService.handleZalopayCallback(payload));
     }
 
+    private String paymentNumber(BigDecimal value) {
+        return value == null ? null : value.stripTrailingZeros().toPlainString();
+    }
+
     private ResponseEntity<Void> redirectPaymentResult(
+            String provider,
             boolean success,
             String txnRef,
             String responseCode,
@@ -142,14 +151,23 @@ public class PaymentController {
             String message,
             PaymentTransactionResponse transaction
     ) {
-        URI redirectUri = UriComponentsBuilder
+        UriComponentsBuilder builder = UriComponentsBuilder
                 .fromUriString(paymentResultUrl)
+                .queryParam("provider", provider)
                 .queryParam("success", success)
                 .queryParam("txnRef", txnRef)
-                .queryParam("responseCode", responseCode)
+                .queryParam("amount", paymentNumber(transaction == null ? null : transaction.getCashAmount()))
+                .queryParam("pointsAdded", paymentNumber(transaction == null ? null : transaction.getPointsAmount()));
+
+        if ("zalopay".equalsIgnoreCase(provider)) {
+            builder.queryParam("return_code", responseCode);
+        } else {
+            builder.queryParam("responseCode", responseCode);
+        }
+
+        URI redirectUri = builder
                 .queryParam("gatewayTransactionStatus", gatewayTransactionStatus)
                 .queryParam("transactionStatus", transaction == null ? null : transaction.getStatus())
-                .queryParam("pointsAdded", transaction == null ? null : transaction.getPointsAmount())
                 .queryParam("message", message)
                 .build()
                 .toUri();
@@ -159,4 +177,3 @@ public class PaymentController {
                 .build();
     }
 }
-

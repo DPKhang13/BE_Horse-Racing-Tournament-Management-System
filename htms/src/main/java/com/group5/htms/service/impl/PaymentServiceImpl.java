@@ -173,10 +173,12 @@ public class PaymentServiceImpl implements PaymentService {
         String txnRef = VnpayUtil.getFirstValue(parameterMap, "vnp_TxnRef");
         WalletTransactions transaction = findTransactionByTransactionRefForUpdate(txnRef);
         String message = processReturnTopUp(parameterMap, validSignature, success, transaction);
+        boolean processedSuccess = transaction != null
+                && WalletTransactionStatus.COMPLETED.getValue().equalsIgnoreCase(transaction.getStatus());
 
         return VnpayReturnResponse.builder()
                 .validSignature(validSignature)
-                .success(success)
+                .success(processedSuccess)
                 .txnRef(txnRef)
                 .transactionRef(txnRef)
                 .amount(VnpayUtil.getFirstValue(parameterMap, "vnp_Amount"))
@@ -579,5 +581,3 @@ public class PaymentServiceImpl implements PaymentService {
      * Không expose field gatewayRawResponse ra API public.
      */
 }
-
-
