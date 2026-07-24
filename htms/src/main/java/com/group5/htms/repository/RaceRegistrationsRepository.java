@@ -4,6 +4,7 @@ import com.group5.htms.entity.RaceRegistrations;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.time.Instant;
 import java.util.List;
 
 @Repository
@@ -36,17 +37,24 @@ public interface RaceRegistrationsRepository extends JpaRepository<RaceRegistrat
             Integer registrationId
     );
 
-    boolean existsByTournaments_IdAndHorses_Id(Integer tournamentId, Integer horseId);
+    boolean existsByRaces_IdAndHorses_Id(Integer raceId, Integer horseId);
 
-    boolean existsByTournaments_IdAndHorses_IdAndStatusNotIgnoreCase(
-            Integer tournamentId,
+    boolean existsByRaces_IdAndHorses_IdAndIdNot(
+            Integer raceId,
             Integer horseId,
-            String status
+            Integer registrationId
     );
 
-    boolean existsByTournaments_IdAndHorses_IdAndIdNot(
-            Integer tournamentId,
+    boolean existsByHorses_IdAndRaces_ScheduledAtAndStatusNotIn(
             Integer horseId,
+            Instant scheduledAt,
+            List<String> statuses
+    );
+
+    boolean existsByHorses_IdAndRaces_ScheduledAtAndStatusNotInAndIdNot(
+            Integer horseId,
+            Instant scheduledAt,
+            List<String> statuses,
             Integer registrationId
     );
 }

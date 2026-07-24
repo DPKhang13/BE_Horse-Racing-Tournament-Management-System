@@ -32,8 +32,8 @@ import java.time.Instant;
 @Table(
         name = "\"race_registrations\"",
         uniqueConstraints = @UniqueConstraint(
-                name = "uq_reg_tournament_horse",
-                columnNames = {"tournament_id", "horse_id"}
+                name = "uq_reg_race_horse",
+                columnNames = {"race_id", "horse_id"}
         )
 )
 public class RaceRegistrations {

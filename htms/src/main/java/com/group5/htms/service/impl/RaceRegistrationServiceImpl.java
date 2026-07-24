@@ -118,8 +118,15 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
         raceRegistrationValidator.ensureRegistrationOpen(tournament, race);
         raceRegistrationValidator.ensureHorseActive(horse);
         raceRegistrationValidator.ensureHorseRankGroupMatchesRace(horse, race);
-        raceRegistrationValidator.ensureHorseNotRegisteredInTournament(
-                raceRegistrationsRepository.existsByTournaments_IdAndHorses_Id(tournament.getId(), horse.getId())
+        raceRegistrationValidator.ensureHorseNotRegisteredInRace(
+                raceRegistrationsRepository.existsByRaces_IdAndHorses_Id(race.getId(), horse.getId())
+        );
+        raceRegistrationValidator.ensureHorseHasNoScheduleConflict(
+                raceRegistrationsRepository.existsByHorses_IdAndRaces_ScheduledAtAndStatusNotIn(
+                        horse.getId(),
+                        race.getScheduledAt(),
+                        RELEASED_REGISTRATION_STATUSES
+                )
         );
         validateGateForCreate(race, request.getGateNumber());
 
@@ -164,10 +171,18 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
         }
         raceRegistrationValidator.ensureHorseActive(horse);
         raceRegistrationValidator.ensureHorseRankGroupMatchesRace(horse, race);
-        raceRegistrationValidator.ensureHorseNotRegisteredInTournamentForUpdate(
-                raceRegistrationsRepository.existsByTournaments_IdAndHorses_IdAndIdNot(
-                        tournament.getId(),
+        raceRegistrationValidator.ensureHorseNotRegisteredInRace(
+                raceRegistrationsRepository.existsByRaces_IdAndHorses_IdAndIdNot(
+                        race.getId(),
                         horse.getId(),
+                        registration.getId()
+                )
+        );
+        raceRegistrationValidator.ensureHorseHasNoScheduleConflict(
+                raceRegistrationsRepository.existsByHorses_IdAndRaces_ScheduledAtAndStatusNotInAndIdNot(
+                        horse.getId(),
+                        race.getScheduledAt(),
+                        RELEASED_REGISTRATION_STATUSES,
                         registration.getId()
                 )
         );
