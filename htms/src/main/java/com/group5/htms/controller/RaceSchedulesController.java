@@ -4,6 +4,7 @@ import com.group5.htms.dto.race.request.RaceCreateRequest;
 import com.group5.htms.dto.race.request.RaceStartRequest;
 import com.group5.htms.dto.race.request.RaceUpdateRequest;
 import com.group5.htms.dto.race.response.RaceResponse;
+import com.group5.htms.dto.race.response.RaceBettingOpenResponse;
 import com.group5.htms.dto.race.response.RaceStartResponse;
 import com.group5.htms.dto.schedule.request.TournamentScheduleCreateRequest;
 import com.group5.htms.dto.schedule.request.TournamentScheduleUpdateRequest;
@@ -91,6 +92,12 @@ public class RaceSchedulesController {
             @Valid @RequestBody(required = false) RaceStartRequest request
     ) {
         return ResponseEntity.ok(raceService.startRace(raceId, request));
+    }
+
+    @Operation(summary = "Open betting", description = "Admin opens betting for a ready race and generates bet options.")
+    @PatchMapping("/races/{raceId}/open-betting")
+    public ResponseEntity<RaceBettingOpenResponse> openBetting(@PathVariable Integer raceId) {
+        return ResponseEntity.ok(raceService.openBetting(raceId));
     }
 
     @Operation(summary = "Complete race", description = "Admin chuyển race sang trạng thái completed sau khi đã publish kết quả.")

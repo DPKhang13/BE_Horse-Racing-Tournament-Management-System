@@ -5,6 +5,7 @@ import com.group5.htms.dto.race.request.RaceStartRequest;
 import com.group5.htms.dto.race.request.RaceUpdateRequest;
 import com.group5.htms.dto.jockeyassignment.response.JockeyAssignmentListResponse;
 import com.group5.htms.dto.race.response.RaceGateAvailabilityResponse;
+import com.group5.htms.dto.race.response.RaceBettingOpenResponse;
 import com.group5.htms.dto.race.response.RaceListResponse;
 import com.group5.htms.dto.race.response.RaceResponse;
 import com.group5.htms.dto.race.response.RaceStartResponse;
@@ -39,6 +40,8 @@ public interface RaceService {
     RaceResponse updateRace(Integer raceId, RaceUpdateRequest request);
 
     RaceStartResponse startRace(Integer raceId, RaceStartRequest request);
+
+    RaceBettingOpenResponse openBetting(Integer raceId);
 
     RaceResponse completeRace(Integer raceId);
 

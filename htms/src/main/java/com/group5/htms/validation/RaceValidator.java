@@ -71,6 +71,20 @@ public class RaceValidator {
         }
     }
 
+    public void ensureRaceCanOpenBetting(Races race) {
+        if (!RaceStatus.canOpenBetting(race.getStatus())) {
+            throw new BadRequestException("Only ready races can be opened for betting");
+        }
+
+        Instant predictionClosesAt = race.getPredictionClosesAt();
+        if (predictionClosesAt == null) {
+            throw new BadRequestException("Prediction close time is required before opening betting");
+        }
+        if (!Instant.now().isBefore(predictionClosesAt)) {
+            throw new BadRequestException("Prediction close time must be in the future before opening betting");
+        }
+    }
+
     private void ensureBettingCanClose(Races race, RaceStartRequest request) {
         Instant predictionClosesAt = race.getPredictionClosesAt();
         if (predictionClosesAt == null) {

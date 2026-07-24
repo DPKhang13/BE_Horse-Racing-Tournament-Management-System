@@ -131,7 +131,7 @@ class RaceRegistrationServiceImplTest {
                 .status(RaceRegistrationStatus.PENDING.getValue())
                 .build();
         mockValidCreateReferences();
-        when(raceRegistrationsRepository.existsByTournaments_IdAndHorses_Id(1, 5)).thenReturn(false);
+        when(raceRegistrationsRepository.existsByRaces_IdAndHorses_Id(2, 5)).thenReturn(false);
         when(raceRegistrationMapper.toEntity(request)).thenReturn(registration);
         when(raceRegistrationsRepository.save(registration)).thenReturn(registration);
         when(raceRegistrationMapper.toResponse(registration)).thenReturn(expectedResponse);
@@ -149,14 +149,14 @@ class RaceRegistrationServiceImplTest {
     }
 
     @Test
-    void createRegistrationFailsIfHorseAlreadyRegisteredInTournament() {
+    void createRegistrationFailsIfHorseAlreadyRegisteredInRace() {
         RaceRegistrationCreateRequest request = request();
         mockValidCreateReferences();
-        when(raceRegistrationsRepository.existsByTournaments_IdAndHorses_Id(1, 5)).thenReturn(true);
+        when(raceRegistrationsRepository.existsByRaces_IdAndHorses_Id(2, 5)).thenReturn(true);
 
         assertThatThrownBy(() -> service.createRegistration(request))
                 .isInstanceOf(BadRequestException.class)
-                .hasMessage("Horse can only register once in the same tournament");
+                .hasMessage("Horse is already registered in this race");
     }
 
     @Test

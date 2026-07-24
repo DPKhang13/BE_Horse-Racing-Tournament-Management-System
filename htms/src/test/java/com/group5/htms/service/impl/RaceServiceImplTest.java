@@ -2,6 +2,7 @@ package com.group5.htms.service.impl;
 
 import com.group5.htms.dto.race.request.RaceStartRequest;
 import com.group5.htms.dto.race.request.RaceUpdateRequest;
+import com.group5.htms.dto.race.response.RaceBettingOpenResponse;
 import com.group5.htms.dto.race.response.RaceStartResponse;
 import com.group5.htms.entity.Races;
 import com.group5.htms.entity.TournamentSchedules;
@@ -30,6 +31,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -121,6 +123,66 @@ class RaceServiceImplTest {
         assertThatThrownBy(() -> service.startRace(10, null))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessage("Race not found");
+    }
+
+    @Test
+    void openBettingSucceedsForReadyRaceWithFuturePredictionCloseTime() {
+        Races race = race(RaceStatus.READY.getValue());
+        race.setPredictionClosesAt(Instant.now().plusSeconds(600));
+        when(racesRepository.findById(10)).thenReturn(Optional.of(race));
+        when(racesRepository.save(race)).thenReturn(race);
+        when(betOptionService.generateBetOptionsForRace(10)).thenReturn(List.of());
+
+        RaceBettingOpenResponse response = service.openBetting(10);
+
+        assertThat(response.getRaceId()).isEqualTo(10);
+        assertThat(response.getPreviousStatus()).isEqualTo(RaceStatus.READY.getValue());
+        assertThat(response.getStatus()).isEqualTo(RaceStatus.OPEN_FOR_BETTING.getValue());
+        assertThat(response.getBetOptions()).isEmpty();
+        assertThat(response.getMessage()).isEqualTo("Betting opened successfully");
+        verify(racesRepository).save(race);
+        verify(betOptionService).generateBetOptionsForRace(10);
+    }
+
+    @Test
+    void openBettingFailsWhenRaceIsNotReady() {
+        Races race = race(RaceStatus.REGISTRATION_CLOSED.getValue());
+        when(racesRepository.findById(10)).thenReturn(Optional.of(race));
+
+        assertThatThrownBy(() -> service.openBetting(10))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("Only ready races can be opened for betting");
+
+        verify(racesRepository, never()).save(any());
+        verify(betOptionService, never()).generateBetOptionsForRace(any());
+    }
+
+    @Test
+    void openBettingFailsWithoutPredictionCloseTime() {
+        Races race = race(RaceStatus.READY.getValue());
+        race.setPredictionClosesAt(null);
+        when(racesRepository.findById(10)).thenReturn(Optional.of(race));
+
+        assertThatThrownBy(() -> service.openBetting(10))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("Prediction close time is required before opening betting");
+
+        verify(racesRepository, never()).save(any());
+        verify(betOptionService, never()).generateBetOptionsForRace(any());
+    }
+
+    @Test
+    void openBettingFailsWhenPredictionCloseTimeHasPassed() {
+        Races race = race(RaceStatus.READY.getValue());
+        race.setPredictionClosesAt(Instant.now().minusSeconds(60));
+        when(racesRepository.findById(10)).thenReturn(Optional.of(race));
+
+        assertThatThrownBy(() -> service.openBetting(10))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("Prediction close time must be in the future before opening betting");
+
+        verify(racesRepository, never()).save(any());
+        verify(betOptionService, never()).generateBetOptionsForRace(any());
     }
 
     @Test

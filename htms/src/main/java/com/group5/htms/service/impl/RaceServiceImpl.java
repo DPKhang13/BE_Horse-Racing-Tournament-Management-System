@@ -2,6 +2,7 @@ package com.group5.htms.service.impl;
 
 import com.group5.htms.dto.jockeyassignment.response.JockeyAssignmentListResponse;
 import com.group5.htms.dto.race.response.RaceGateAvailabilityResponse;
+import com.group5.htms.dto.race.response.RaceBettingOpenResponse;
 import com.group5.htms.dto.race.request.RaceCreateRequest;
 import com.group5.htms.dto.race.request.RaceStartRequest;
 import com.group5.htms.dto.race.request.RaceUpdateRequest;
@@ -224,6 +225,28 @@ public class RaceServiceImpl implements RaceService {
                 .predictionClosesAt(savedRace.getPredictionClosesAt())
                 .bettingClosed(true)
                 .message("Race started successfully")
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public RaceBettingOpenResponse openBetting(Integer raceId) {
+        Races race = getRaceEntity(raceId);
+        String previousStatus = race.getStatus();
+
+        raceValidator.ensureRaceCanOpenBetting(race);
+        race.setStatus(RaceStatus.OPEN_FOR_BETTING.getValue());
+        Races savedRace = racesRepository.save(race);
+
+        return RaceBettingOpenResponse.builder()
+                .raceId(savedRace.getId())
+                .raceName(savedRace.getName())
+                .previousStatus(previousStatus)
+                .status(savedRace.getStatus())
+                .scheduledAt(savedRace.getScheduledAt())
+                .predictionClosesAt(savedRace.getPredictionClosesAt())
+                .betOptions(betOptionService.generateBetOptionsForRace(savedRace.getId()))
+                .message("Betting opened successfully")
                 .build();
     }
 
