@@ -11,6 +11,7 @@ import com.group5.htms.entity.RaceRegistrations;
 import com.group5.htms.entity.Races;
 import com.group5.htms.enums.JockeyAssignmentStatus;
 import com.group5.htms.enums.RaceRegistrationStatus;
+import com.group5.htms.enums.RaceStatus;
 import com.group5.htms.enums.RoleType;
 import com.group5.htms.exception.ResourceNotFoundException;
 import com.group5.htms.mapper.JockeyAssignmentMapper;
@@ -43,6 +44,10 @@ public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
             JockeyAssignmentStatus.REJECTED.getValue(),
             JockeyAssignmentStatus.CANCELLED.getValue(),
             JockeyAssignmentStatus.EXPIRED.getValue()
+    );
+    private static final List<String> TERMINAL_RACE_STATUSES = List.of(
+            RaceStatus.COMPLETED.getValue(),
+            RaceStatus.CANCELLED.getValue()
     );
 
     private final JockeyHorseAssignmentsRepository jockeyHorseAssignmentsRepository;
@@ -338,10 +343,11 @@ public class JockeyAssignmentServiceImpl implements JockeyAssignmentService {
             Integer currentAssignmentId
     ) {
         List<JockeyHorseAssignments> scheduleAssignments = jockeyHorseAssignmentsRepository
-                .findByJockey_IdAndRaces_ScheduledAtAndStatusIn(
+                .findByJockey_IdAndRaces_ScheduledAtAndStatusInAndRaces_StatusNotIn(
                         jockey.getId(),
                         race.getScheduledAt(),
-                        ACTIVE_ASSIGNMENT_STATUSES
+                        ACTIVE_ASSIGNMENT_STATUSES,
+                        TERMINAL_RACE_STATUSES
                 );
         expirePendingAssignmentsIfNeeded(scheduleAssignments, now);
 

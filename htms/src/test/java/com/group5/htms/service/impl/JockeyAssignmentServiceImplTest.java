@@ -155,6 +155,52 @@ class JockeyAssignmentServiceImplTest {
     }
 
     @Test
+    void createInvitationDoesNotTreatCompletedRaceAsAScheduleConflict() {
+        RaceRegistrations registration = pendingRegistration();
+        Races race = registration.getRaces();
+        JockeyProfiles jockey = jockey();
+        JockeyInvitationCreateRequest request = createRequest();
+        JockeyHorseAssignments assignment = new JockeyHorseAssignments();
+        JockeyAssignmentResponse expectedResponse = JockeyAssignmentResponse.builder()
+                .assignmentId(52)
+                .status(JockeyAssignmentStatus.PENDING.getValue())
+                .build();
+
+        when(raceRegistrationsRepository.findById(10)).thenReturn(Optional.of(registration));
+        when(racesRepository.findById(2)).thenReturn(Optional.of(race));
+        when(jockeyProfilesRepository.findById(7)).thenReturn(Optional.of(jockey));
+        when(authService.currentUserHasRole(RoleType.ADMIN.getValue())).thenReturn(false);
+        when(authService.getCurrentUserId()).thenReturn(1);
+        when(jockeyHorseAssignmentsRepository.findByReg_IdAndStatusIn(10, activeStatuses())).thenReturn(List.of());
+        when(jockeyHorseAssignmentsRepository.findByRaces_IdAndJockey_IdAndStatusIn(2, 7, activeStatuses())).thenReturn(List.of());
+        when(jockeyHorseAssignmentsRepository
+                .findByJockey_IdAndRaces_ScheduledAtAndStatusInAndRaces_StatusNotIn(
+                        7,
+                        race.getScheduledAt(),
+                        activeStatuses(),
+                        terminalRaceStatuses()
+                ))
+                .thenReturn(List.of());
+        when(jockeyHorseAssignmentsRepository.findByReg_IdAndRaces_IdAndJockey_IdAndStatusIn(10, 2, 7, terminalStatuses()))
+                .thenReturn(List.of());
+        when(jockeyAssignmentMapper.toEntity(request)).thenReturn(assignment);
+        when(jockeyHorseAssignmentsRepository.save(assignment)).thenReturn(assignment);
+        when(jockeyAssignmentMapper.toResponse(assignment)).thenReturn(expectedResponse);
+
+        JockeyAssignmentResponse response = service.createInvitation(request);
+
+        assertThat(response).isSameAs(expectedResponse);
+        verify(jockeyHorseAssignmentsRepository)
+                .findByJockey_IdAndRaces_ScheduledAtAndStatusInAndRaces_StatusNotIn(
+                        7,
+                        race.getScheduledAt(),
+                        activeStatuses(),
+                        terminalRaceStatuses()
+                );
+        verify(jockeyHorseAssignmentsRepository).save(assignment);
+    }
+
+    @Test
     void respondInvitationAcceptsWithoutConfirmingRegistration() {
         RaceRegistrations registration = pendingRegistration();
         JockeyProfiles jockey = jockey();
@@ -306,6 +352,13 @@ class JockeyAssignmentServiceImplTest {
                 JockeyAssignmentStatus.REJECTED.getValue(),
                 JockeyAssignmentStatus.CANCELLED.getValue(),
                 JockeyAssignmentStatus.EXPIRED.getValue()
+        );
+    }
+
+    private List<String> terminalRaceStatuses() {
+        return List.of(
+                RaceStatus.COMPLETED.getValue(),
+                RaceStatus.CANCELLED.getValue()
         );
     }
 }
