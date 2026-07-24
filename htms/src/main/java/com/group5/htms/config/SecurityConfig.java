@@ -71,7 +71,11 @@ public class SecurityConfig {
                                 "/api/races/get-scheduled-race-count",
                                 "/api/tournaments/get-global-tournament-count",
                                 "/api/payments/vnpay/handle-payment-return",
-                                "/api/payments/vnpay/handle-payment-ipn"
+                                "/api/payments/vnpay/handle-payment-ipn",
+                                "/api/payments/momo/handle-payment-return",
+                                "/api/payments/momo/handle-payment-ipn",
+                                "/api/payments/zalopay/handle-payment-return",
+                                "/api/payments/zalopay/handle-payment-callback"
                         ).permitAll()
 
                         // Cần accessToken
