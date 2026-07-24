@@ -29,6 +29,11 @@ public class UploadServiceImpl implements UploadService {
     private final HorsesRepository horsesRepository;
 
     @Override
+    public UploadImageResponse uploadUserImage(MultipartFile file) {
+        return uploadImage(file, USERS_FOLDER, null);
+    }
+
+    @Override
     @Transactional
     public UploadImageResponse uploadUserImage(Integer userId, MultipartFile file) {
         Users user = usersRepository.findById(userId)
@@ -39,6 +44,11 @@ public class UploadServiceImpl implements UploadService {
         usersRepository.save(user);
 
         return response;
+    }
+
+    @Override
+    public UploadImageResponse uploadHorseImage(MultipartFile file) {
+        return uploadImage(file, HORSE_FOLDER, null);
     }
 
     @Override
