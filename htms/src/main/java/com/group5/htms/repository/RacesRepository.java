@@ -16,6 +16,8 @@ public interface RacesRepository extends JpaRepository<Races, Integer> {
 
     List<Races> findByScheduledAtAfterOrderByScheduledAtAsc(Instant scheduledAt, Pageable pageable);
 
+    List<Races> findAllByOrderByScheduledAtAsc();
+
     long countByScheduledAtAfter(Instant scheduledAt);
 
     boolean existsByScheduleIdAndRaceNumber(Integer scheduleId, Integer raceNumber);
@@ -32,4 +34,3 @@ public interface RacesRepository extends JpaRepository<Races, Integer> {
 
     List<Races> findByStatusIgnoreCaseOrderByScheduledAtAsc(String status);
 }
-

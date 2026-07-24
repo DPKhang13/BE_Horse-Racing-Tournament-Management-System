@@ -96,12 +96,13 @@ public class TournamentRegistrationCloseScheduler {
     }
 
     private void closeRegistration(Tournaments tournament, Instant now) {
-        String reason = isRegistrationCloseTimeReached(tournament, now)
+        boolean registrationCloseTimeReached = isRegistrationCloseTimeReached(tournament, now);
+        String reason = registrationCloseTimeReached
                 ? "registration close time reached"
                 : "all registration-open races are full";
 
         try {
-            tournamentService.closeRegistration(tournament.getId(), autoCloseRequest());
+            tournamentService.closeRegistration(tournament.getId(), autoCloseRequest(registrationCloseTimeReached));
         } catch (RuntimeException ex) {
             log.warn(
                     "Failed to auto close registration for tournament {} because {}",
@@ -112,10 +113,11 @@ public class TournamentRegistrationCloseScheduler {
         }
     }
 
-    private CloseRegistrationRequest autoCloseRequest() {
+    private CloseRegistrationRequest autoCloseRequest(boolean allowCloseWithoutEligibleRaces) {
         CloseRegistrationRequest request = new CloseRegistrationRequest();
         request.setAutoRejectPending(true);
         request.setAutoCancelUnconfirmed(true);
+        request.setAllowCloseWithoutEligibleRaces(allowCloseWithoutEligibleRaces);
         return request;
     }
 }

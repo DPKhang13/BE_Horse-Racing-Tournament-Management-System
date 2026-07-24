@@ -1,7 +1,9 @@
 package com.group5.htms.controller;
 
 import com.group5.htms.dto.raceresult.request.RaceResultCancelRequest;
+import com.group5.htms.dto.raceresult.request.RaceResultDraftRequest;
 import com.group5.htms.dto.raceresult.response.RacePublishResponse;
+import com.group5.htms.dto.raceresult.response.RaceResultDraftResponse;
 import com.group5.htms.dto.raceresult.response.RaceResultResponse;
 import com.group5.htms.service.RaceResultService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -12,6 +14,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -29,6 +32,15 @@ public class AdminRaceResultController {
     @GetMapping("/get")
     public ResponseEntity<List<RaceResultResponse>> getAdminResults(@PathVariable Integer raceId) {
         return ResponseEntity.ok(raceResultService.getAdminResults(raceId));
+    }
+
+    @Operation(summary = "Admin replace race result draft", description = "Admin sua toan bo draft result truoc khi confirm/publish.")
+    @PutMapping("/draft/update")
+    public ResponseEntity<RaceResultDraftResponse> replaceDraftByAdmin(
+            @PathVariable Integer raceId,
+            @Valid @RequestBody RaceResultDraftRequest request
+    ) {
+        return ResponseEntity.ok(raceResultService.replaceDraftByAdmin(raceId, request));
     }
 
     @Operation(summary = "Admin confirm race results", description = "Admin validate va tinh pointsAwarded cho result.")
