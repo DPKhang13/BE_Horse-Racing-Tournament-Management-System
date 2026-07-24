@@ -35,10 +35,7 @@ public class RefereeAssignmentServiceImpl implements RefereeAssignmentService {
 
     private static final Set<String> ALLOWED_REFEREE_ROLES = Set.of(
             ROLE_CHIEF_REFEREE,
-            ROLE_MAIN_REFEREE,
-            "finish_judge",
-            "track_judge",
-            "weight_judge"
+            ROLE_MAIN_REFEREE
     );
 
     private final RacesRepository racesRepository;
@@ -112,13 +109,13 @@ public class RefereeAssignmentServiceImpl implements RefereeAssignmentService {
     private void validateRaceCanAssignReferee(Races race) {
         String status = race.getStatus();
 
-        if (status == null) {
-            throw new BadRequestException("Referees can only be assigned after registration is closed or race is ready");
-        }
-
-        if (!RaceStatus.REGISTRATION_CLOSED.equalsValue(status)
-                && !RaceStatus.READY.equalsValue(status)) {
-            throw new BadRequestException("Referees can only be assigned after registration is closed or race is ready");
+        if (status == null
+                || (!RaceStatus.REGISTRATION_CLOSED.equalsValue(status)
+                && !RaceStatus.READY.equalsValue(status)
+                && !RaceStatus.OPEN_FOR_BETTING.equalsValue(status))) {
+            throw new BadRequestException(
+                    "Referees can only be assigned when registration is closed, race is ready or betting is open"
+            );
         }
     }
 

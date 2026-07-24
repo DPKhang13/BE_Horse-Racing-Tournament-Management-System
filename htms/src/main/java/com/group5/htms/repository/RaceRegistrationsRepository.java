@@ -15,6 +15,8 @@ public interface RaceRegistrationsRepository extends JpaRepository<RaceRegistrat
 
     List<RaceRegistrations> findByTournaments_Id(Integer tournamentId);
 
+    List<RaceRegistrations> findByRaces_Id(Integer raceId);
+
     List<RaceRegistrations> findByOwner_IdOrderByRegisteredAtDesc(Integer ownerId);
 
     List<RaceRegistrations> findByStatusIgnoreCaseOrderByRegisteredAtDesc(String status);

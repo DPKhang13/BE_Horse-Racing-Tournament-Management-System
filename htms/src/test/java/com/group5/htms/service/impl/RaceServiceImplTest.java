@@ -79,6 +79,9 @@ class RaceServiceImplTest {
     @Mock
     private BetOptionService betOptionService;
 
+    @Mock
+    private RaceParticipationCancellationService raceParticipationCancellationService;
+
     private RaceServiceImpl service;
     private RaceValidator raceValidator;
 
@@ -99,7 +102,8 @@ class RaceServiceImplTest {
                 raceMapper,
                 tournamentScheduleMapper,
                 betOptionService,
-                raceValidator
+                raceValidator,
+                raceParticipationCancellationService
         );
     }
 
@@ -183,6 +187,18 @@ class RaceServiceImplTest {
 
         verify(racesRepository, never()).save(any());
         verify(betOptionService, never()).generateBetOptionsForRace(any());
+    }
+
+    @Test
+    void cancelRaceCancelsParticipants() {
+        Races race = race(RaceStatus.READY.getValue());
+        when(racesRepository.findById(10)).thenReturn(Optional.of(race));
+
+        service.cancelRace(10);
+
+        assertThat(race.getStatus()).isEqualTo(RaceStatus.CANCELLED.getValue());
+        verify(raceParticipationCancellationService).cancelRaceParticipants(10);
+        verify(racesRepository).save(race);
     }
 
     @Test
