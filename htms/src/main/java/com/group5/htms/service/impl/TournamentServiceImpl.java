@@ -756,9 +756,6 @@ public class TournamentServiceImpl implements TournamentService {
 
         validateDateRange(startDate, endDate);
 
-        if (request.getStatus() != null && !request.getStatus().isBlank()) {
-            throw new BadRequestException("Use workflow transition APIs to update status");
-        }
     }
 
     private void validateDateRange(LocalDate startDate, LocalDate endDate) {

@@ -61,9 +61,6 @@ public class TournamentMapper {
             tournament.setPrizePool(request.getPrizePool());
         }
 
-        if (hasText(request.getStatus())) {
-            tournament.setStatus(clean(request.getStatus()).toLowerCase());
-        }
     }
 
     public TournamentResponse toResponse(Tournaments tournament) {
