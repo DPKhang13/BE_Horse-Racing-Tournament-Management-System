@@ -6,6 +6,7 @@ import com.group5.htms.dto.prize.response.PrizeAwardResponse;
 import com.group5.htms.dto.prize.response.PrizeResponse;
 import com.group5.htms.service.PrizeAwardService;
 import com.group5.htms.service.PrizeService;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;

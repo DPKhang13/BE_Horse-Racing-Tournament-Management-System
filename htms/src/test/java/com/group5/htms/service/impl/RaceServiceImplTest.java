@@ -4,6 +4,7 @@ import com.group5.htms.dto.race.request.RaceStartRequest;
 import com.group5.htms.dto.race.request.RaceUpdateRequest;
 import com.group5.htms.dto.race.response.RaceBettingOpenResponse;
 import com.group5.htms.dto.race.response.RaceStartResponse;
+import com.group5.htms.dto.schedule.request.TournamentScheduleUpdateRequest;
 import com.group5.htms.entity.Races;
 import com.group5.htms.entity.TournamentSchedules;
 import com.group5.htms.entity.Tournaments;
@@ -202,6 +203,46 @@ class RaceServiceImplTest {
     }
 
     @Test
+    void updateScheduleAllowsRaceDateChangeWhenAllRacesAreCancelled() {
+        TournamentSchedules schedule = schedule();
+        TournamentScheduleUpdateRequest request = TournamentScheduleUpdateRequest.builder()
+                .raceDate(LocalDate.of(2026, 7, 2))
+                .build();
+
+        when(tournamentSchedulesRepository.findById(2)).thenReturn(Optional.of(schedule));
+        when(tournamentSchedulesRepository.save(schedule)).thenReturn(schedule);
+        when(racesRepository.existsByScheduleIdAndStatusNotIgnoreCase(
+                2,
+                RaceStatus.CANCELLED.getValue()
+        )).thenReturn(false);
+
+        service.updateSchedule(2, request);
+
+        assertThat(schedule.getRaceDate()).isEqualTo(LocalDate.of(2026, 7, 2));
+        verify(tournamentSchedulesRepository).save(schedule);
+    }
+
+    @Test
+    void updateScheduleRejectsRaceDateChangeWhenScheduleHasNonCancelledRace() {
+        TournamentSchedules schedule = schedule();
+        TournamentScheduleUpdateRequest request = TournamentScheduleUpdateRequest.builder()
+                .raceDate(LocalDate.of(2026, 7, 2))
+                .build();
+
+        when(tournamentSchedulesRepository.findById(2)).thenReturn(Optional.of(schedule));
+        when(racesRepository.existsByScheduleIdAndStatusNotIgnoreCase(
+                2,
+                RaceStatus.CANCELLED.getValue()
+        )).thenReturn(true);
+
+        assertThatThrownBy(() -> service.updateSchedule(2, request))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("Cannot change race date after races have been created");
+
+        verify(tournamentSchedulesRepository, never()).save(any());
+    }
+
+    @Test
     void startRaceFailsWhenStatusIsScheduled() {
         assertStartFailsWithStatus(
                 RaceStatus.SCHEDULED.getValue(),
@@ -379,15 +420,7 @@ class RaceServiceImplTest {
     }
 
     private Races race() {
-        Tournaments tournament = Tournaments.builder()
-                .id(1)
-                .status(TournamentStatus.UPCOMING.getValue())
-                .build();
-        TournamentSchedules schedule = TournamentSchedules.builder()
-                .id(2)
-                .tournaments(tournament)
-                .raceDate(LocalDate.of(2026, 7, 1))
-                .build();
+        TournamentSchedules schedule = schedule();
 
         return Races.builder()
                 .id(10)
@@ -397,6 +430,20 @@ class RaceServiceImplTest {
                 .scheduledAt(Instant.parse("2026-07-01T08:00:00Z"))
                 .predictionClosesAt(Instant.parse("2026-07-01T07:00:00Z"))
                 .status(RaceStatus.SCHEDULED.getValue())
+                .build();
+    }
+
+    private TournamentSchedules schedule() {
+        Tournaments tournament = Tournaments.builder()
+                .id(1)
+                .status(TournamentStatus.UPCOMING.getValue())
+                .startDate(LocalDate.of(2026, 7, 1))
+                .endDate(LocalDate.of(2026, 7, 3))
+                .build();
+        return TournamentSchedules.builder()
+                .id(2)
+                .tournaments(tournament)
+                .raceDate(LocalDate.of(2026, 7, 1))
                 .build();
     }
 }

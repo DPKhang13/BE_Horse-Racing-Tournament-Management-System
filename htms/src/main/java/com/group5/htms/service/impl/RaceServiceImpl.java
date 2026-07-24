@@ -422,7 +422,10 @@ public class RaceServiceImpl implements RaceService {
             raceValidator.ensureScheduleDateWithinTournament(tournament, request.getRaceDate());
 
             if (!request.getRaceDate().equals(schedule.getRaceDate())
-                    && racesRepository.countByScheduleId(schedule.getId()) > 0) {
+                    && racesRepository.existsByScheduleIdAndStatusNotIgnoreCase(
+                            schedule.getId(),
+                            RaceStatus.CANCELLED.getValue()
+                    )) {
                 throw new BadRequestException("Cannot change race date after races have been created");
             }
 

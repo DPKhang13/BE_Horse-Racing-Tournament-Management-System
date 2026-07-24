@@ -28,7 +28,7 @@ public interface RacesRepository extends JpaRepository<Races, Integer> {
             Integer raceId
     );
 
-    long countByScheduleId(Integer scheduleId);
+    boolean existsByScheduleIdAndStatusNotIgnoreCase(Integer scheduleId, String status);
 
     long countByStatusIgnoreCase(String status);
 
