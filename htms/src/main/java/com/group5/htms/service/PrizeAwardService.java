@@ -9,4 +9,6 @@ public interface PrizeAwardService {
     List<PrizeAwardResponse> awardTournamentPrizes(Integer tournamentId);
 
     List<PrizeAwardResponse> getTournamentPrizeAwards(Integer tournamentId);
+
+    PrizeAwardResponse markPrizeAwarded(Integer tournamentId, Integer awardId);
 }

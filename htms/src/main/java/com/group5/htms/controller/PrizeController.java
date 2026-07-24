@@ -69,12 +69,23 @@ public class PrizeController {
 
     @PatchMapping("/{tournamentId}/award-prizes")
     @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Announce tournament prize recipients", description = "Xac dinh top 1, 2, 3 va lap danh sach trao thuong ngoai he thong. Khong cong tien vao vi.")
     public ResponseEntity<List<PrizeAwardResponse>> awardPrizes(
             @PathVariable Integer tournamentId
     ) {
         return ResponseEntity.ok(
                 prizeAwardService.awardTournamentPrizes(tournamentId)
         );
+    }
+
+    @PatchMapping("/{tournamentId}/prize-awards/{awardId}/mark-awarded")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Mark an external tournament prize as awarded")
+    public ResponseEntity<PrizeAwardResponse> markPrizeAwarded(
+            @PathVariable Integer tournamentId,
+            @PathVariable Integer awardId
+    ) {
+        return ResponseEntity.ok(prizeAwardService.markPrizeAwarded(tournamentId, awardId));
     }
 
     @GetMapping("/{tournamentId}/prize-awards")

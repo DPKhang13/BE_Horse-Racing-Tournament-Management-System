@@ -7,24 +7,15 @@ import com.group5.htms.entity.PrizeAwards;
 import com.group5.htms.entity.PrizeDistributions;
 import com.group5.htms.entity.RaceResults;
 import com.group5.htms.entity.Tournaments;
-import com.group5.htms.entity.Users;
-import com.group5.htms.entity.WalletTransactions;
-import com.group5.htms.entity.Wallets;
 import com.group5.htms.enums.PrizeAwardStatus;
 import com.group5.htms.enums.RaceResultStatus;
 import com.group5.htms.enums.TournamentStatus;
-import com.group5.htms.enums.WalletStatus;
-import com.group5.htms.enums.WalletTransactionStatus;
-import com.group5.htms.enums.WalletTransactionType;
 import com.group5.htms.exception.BadRequestException;
 import com.group5.htms.mapper.PrizeAwardMapper;
 import com.group5.htms.repository.PrizeAwardsRepository;
 import com.group5.htms.repository.PrizeRepository;
 import com.group5.htms.repository.RaceResultsRepository;
 import com.group5.htms.repository.TournamentsRepository;
-import com.group5.htms.repository.WalletTransactionsRepository;
-import com.group5.htms.repository.WalletsRepository;
-import com.group5.htms.service.AuthService;
 import com.group5.htms.service.PrizeAwardService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -45,16 +36,11 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class PrizeAwardServiceImpl implements PrizeAwardService {
 
-    private static final String REF_TYPE_TOURNAMENT_PRIZE = "tournament_prize";
-
     private final TournamentsRepository tournamentsRepository;
     private final PrizeRepository prizeRepository;
     private final PrizeAwardsRepository prizeAwardsRepository;
     private final RaceResultsRepository raceResultsRepository;
-    private final WalletsRepository walletsRepository;
-    private final WalletTransactionsRepository walletTransactionsRepository;
     private final PrizeAwardMapper prizeAwardMapper;
-    private final AuthService authService;
 
     @Override
     @Transactional
@@ -73,7 +59,6 @@ public class PrizeAwardServiceImpl implements PrizeAwardService {
             throw new BadRequestException("Not enough eligible horses to award top 3 tournament prizes");
         }
 
-        Users admin = authService.getCurrentUser();
         Instant now = Instant.now();
 
         List<PrizeAwards> awards = List.of(
@@ -83,7 +68,6 @@ public class PrizeAwardServiceImpl implements PrizeAwardService {
         );
 
         List<PrizeAwards> savedAwards = prizeAwardsRepository.saveAll(awards);
-        savedAwards.forEach(award -> creditOwnerWallet(award, admin));
 
         return savedAwards.stream()
                 .map(prizeAwardMapper::toResponse)
@@ -99,6 +83,30 @@ public class PrizeAwardServiceImpl implements PrizeAwardService {
                 .stream()
                 .map(prizeAwardMapper::toResponse)
                 .toList();
+    }
+
+    @Override
+    @Transactional
+    public PrizeAwardResponse markPrizeAwarded(Integer tournamentId, Integer awardId) {
+        Tournaments tournament = getTournament(tournamentId);
+        PrizeAwards award = prizeAwardsRepository.findById(awardId)
+                .orElseThrow(() -> new BadRequestException("Prize award not found"));
+
+        if (award.getTournaments() == null
+                || !Objects.equals(award.getTournaments().getId(), tournament.getId())) {
+            throw new BadRequestException("Prize award does not belong to this tournament");
+        }
+        if (PrizeAwardStatus.AWARDED.getValue().equalsIgnoreCase(award.getStatus())) {
+            throw new BadRequestException("Prize award is already marked as awarded");
+        }
+        if (!PrizeAwardStatus.ANNOUNCED.getValue().equalsIgnoreCase(award.getStatus())) {
+            throw new BadRequestException("Only announced prize awards can be marked as awarded");
+        }
+
+        award.setStatus(PrizeAwardStatus.AWARDED.getValue());
+        award.setAwardedAt(Instant.now());
+
+        return prizeAwardMapper.toResponse(prizeAwardsRepository.save(award));
     }
 
     private Tournaments getTournament(Integer tournamentId) {
@@ -118,7 +126,7 @@ public class PrizeAwardServiceImpl implements PrizeAwardService {
 
     private void validateNotAwarded(Integer tournamentId) {
         if (prizeAwardsRepository.existsByTournaments_Id(tournamentId)) {
-            throw new BadRequestException("Tournament prizes have already been awarded");
+            throw new BadRequestException("Tournament prize recipients have already been announced");
         }
     }
 
@@ -218,67 +226,9 @@ public class PrizeAwardServiceImpl implements PrizeAwardService {
                 .owner(entry.getOwner())
                 .finishPosition(tournamentRank)
                 .amount(safeMoney(prize.getAmount()))
-                .status(PrizeAwardStatus.AWARDED.getValue())
+                .status(PrizeAwardStatus.ANNOUNCED.getValue())
                 .awardedAt(now)
                 .build();
-    }
-
-    private void creditOwnerWallet(PrizeAwards award, Users admin) {
-        BigDecimal reward = safeMoney(award.getAmount());
-        if (reward.compareTo(BigDecimal.ZERO) <= 0) {
-            return;
-        }
-
-        if (walletTransactionsRepository.existsByRefTypeAndRefIdAndTxTypeIgnoreCase(
-                REF_TYPE_TOURNAMENT_PRIZE,
-                award.getId(),
-                WalletTransactionType.REWARD.getValue()
-        )) {
-            throw new BadRequestException("Tournament prize has already been credited");
-        }
-
-        Users ownerUser = award.getOwner().getUsers();
-        Wallets wallet = getOrCreateOwnerWallet(ownerUser);
-        Wallets lockedWallet = walletsRepository.findFirstById(wallet.getId())
-                .orElseThrow(() -> new BadRequestException("Wallet not found for horse owner"));
-
-        if (!WalletStatus.ACTIVE.getValue().equalsIgnoreCase(lockedWallet.getStatus())) {
-            throw new BadRequestException("Wallet is not active");
-        }
-
-        BigDecimal pointsBefore = safeMoney(lockedWallet.getPointBalance());
-        BigDecimal pointsAfter = pointsBefore.add(reward);
-        lockedWallet.setPointBalance(pointsAfter);
-
-        WalletTransactions transaction = WalletTransactions.builder()
-                .wallets(lockedWallet)
-                .users(ownerUser)
-                .txType(WalletTransactionType.REWARD.getValue())
-                .cashAmount(BigDecimal.ZERO)
-                .pointsAmount(reward)
-                .exchangeRate(BigDecimal.ONE)
-                .pointsBefore(pointsBefore)
-                .pointsAfter(pointsAfter)
-                .status(WalletTransactionStatus.COMPLETED.getValue())
-                .refType(REF_TYPE_TOURNAMENT_PRIZE)
-                .refId(award.getId())
-                .createdBy(admin)
-                .createdAt(Instant.now())
-                .updatedAt(Instant.now())
-                .build();
-
-        walletsRepository.save(lockedWallet);
-        walletTransactionsRepository.save(transaction);
-    }
-
-    private Wallets getOrCreateOwnerWallet(Users ownerUser) {
-        return walletsRepository.findByUsersId(ownerUser.getId())
-                .orElseGet(() -> walletsRepository.save(Wallets.builder()
-                        .users(ownerUser)
-                        .pointBalance(BigDecimal.ZERO)
-                        .status(WalletStatus.ACTIVE.getValue())
-                        .createdAt(Instant.now())
-                        .build()));
     }
 
     private BigDecimal safeMoney(BigDecimal value) {
