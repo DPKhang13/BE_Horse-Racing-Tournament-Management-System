@@ -144,7 +144,10 @@ public class RaceResultServiceImpl implements RaceResultService {
         RaceResults result = raceResultMapper.toEntity(request, assignment);
         raceResultValidator.validateSingleResult(result);
 
-        return raceResultMapper.toResponse(raceResultsRepository.save(result));
+        RaceResults savedResult = raceResultsRepository.save(result);
+        rerankRaceResults(savedResult.getRaces().getId());
+
+        return raceResultMapper.toResponse(savedResult);
     }
 
     @Override
@@ -157,7 +160,10 @@ public class RaceResultServiceImpl implements RaceResultService {
         raceResultMapper.updateResult(result, request, assignment);
         raceResultValidator.validateSingleResult(result);
 
-        return raceResultMapper.toResponse(raceResultsRepository.save(result));
+        RaceResults savedResult = raceResultsRepository.save(result);
+        rerankRaceResults(savedResult.getRaces().getId());
+
+        return raceResultMapper.toResponse(savedResult);
     }
 
     @Override
@@ -194,15 +200,15 @@ public class RaceResultServiceImpl implements RaceResultService {
                     ignored -> new AssignmentLapSummary(round.getAssignment())
             );
             summary.totalTimeSec = summary.totalTimeSec.add(round.getLapTimeSec());
-            summary.completedLaps++;
             summary.updateLatestRound(round);
         }
 
         List<AssignmentLapSummary> rankedSummaries = new ArrayList<>(summariesByAssignment.values());
-        rankedSummaries.sort(lapSummaryComparator());
+        rankedSummaries.sort(Comparator
+                .comparing(AssignmentLapSummary::getTotalTimeSec)
+                .thenComparingInt(summary -> summary.assignment.getId()));
 
-        List<RaceResults> savedResults = new ArrayList<>();
-        int finishPosition = 1;
+        List<RaceResults> results = new ArrayList<>();
         for (AssignmentLapSummary summary : rankedSummaries) {
             RaceResults result = raceResultsRepository
                     .findByRaces_IdAndAssignment_Id(raceId, summary.assignment.getId())
@@ -210,14 +216,6 @@ public class RaceResultServiceImpl implements RaceResultService {
 
             result.setFinalRound(summary.latestRoundNumber);
             result.setFinishTimeSec(summary.totalTimeSec);
-            if (Boolean.TRUE.equals(result.getIsDisqualified())) {
-                result.setFinishPosition(null);
-                result.setPointsAwarded(0);
-            } else {
-                result.setFinishPosition(finishPosition);
-                result.setPointsAwarded(provisionalPoints(race.getId(), finishPosition));
-                finishPosition++;
-            }
             if (result.getStatus() == null || result.getStatus().isBlank()) {
                 result.setStatus(RaceResultStatus.DRAFT.getValue());
             }
@@ -225,8 +223,12 @@ public class RaceResultServiceImpl implements RaceResultService {
                 result.setRecordedAt(Instant.now());
             }
 
-            savedResults.add(raceResultsRepository.save(result));
+            results.add(result);
         }
+
+        assignFinishPositionsByTime(results);
+        calculatePoints(race.getId(), results);
+        List<RaceResults> savedResults = raceResultsRepository.saveAll(results);
 
         return savedResults.stream()
                 .sorted(resultComparator())
@@ -347,6 +349,7 @@ public class RaceResultServiceImpl implements RaceResultService {
         }
 
         raceResultValidator.validateResultCompleteness(confirmedAssignments(race.getId()), results);
+        assignFinishPositionsByTime(results);
         raceResultValidator.validateResultPositions(results);
         calculatePoints(race.getId(), results);
         raceResultValidator.ensureExactlyOneValidWinner(results, "Race must have exactly one valid winner before confirming");
@@ -397,6 +400,7 @@ public class RaceResultServiceImpl implements RaceResultService {
         }
 
         raceResultValidator.validateResultCompleteness(confirmedAssignments(race.getId()), results);
+        assignFinishPositionsByTime(results);
         raceResultValidator.validateResultPositions(results);
         calculatePoints(race.getId(), results);
         RaceResults winner = raceResultValidator.ensureExactlyOneValidWinner(results, "Race must have exactly one valid winner before publishing");
@@ -545,7 +549,7 @@ public class RaceResultServiceImpl implements RaceResultService {
         for (RaceResultDraftItemRequest item : request.getResults()) {
             JockeyHorseAssignments assignment = assignmentsById.get(item.getAssignmentId());
             RaceResults result = newResultFromAssignment(assignment, report);
-            result.setFinishPosition(Boolean.TRUE.equals(item.getIsDisqualified()) ? null : item.getFinishPosition());
+            result.setFinishPosition(null);
             result.setFinishTimeSec(item.getFinishTimeSec());
             result.setIsDisqualified(Boolean.TRUE.equals(item.getIsDisqualified()));
             result.setDisqualifyReason(clean(item.getDisqualifyReason()));
@@ -553,6 +557,7 @@ public class RaceResultServiceImpl implements RaceResultService {
             results.add(result);
         }
 
+        assignFinishPositionsByTime(results);
         return raceResultsRepository.saveAll(results);
     }
 
@@ -567,7 +572,7 @@ public class RaceResultServiceImpl implements RaceResultService {
         for (RaceResultDraftItemRequest item : request.getResults()) {
             JockeyHorseAssignments assignment = assignmentsById.get(item.getAssignmentId());
             RaceResults result = newResultFromAssignment(assignment, report);
-            result.setFinishPosition(Boolean.TRUE.equals(item.getIsDisqualified()) ? null : item.getFinishPosition());
+            result.setFinishPosition(null);
             result.setFinishTimeSec(item.getFinishTimeSec());
             result.setIsDisqualified(Boolean.TRUE.equals(item.getIsDisqualified()));
             result.setDisqualifyReason(clean(item.getDisqualifyReason()));
@@ -575,6 +580,7 @@ public class RaceResultServiceImpl implements RaceResultService {
             results.add(result);
         }
 
+        assignFinishPositionsByTime(results);
         return raceResultsRepository.saveAll(results);
     }
 
@@ -609,24 +615,38 @@ public class RaceResultServiceImpl implements RaceResultService {
         }
     }
 
-    private int provisionalPoints(Integer raceId, Integer finishPosition) {
-        if (finishPosition == null) {
-            return 0;
-        }
-        return racePointRulesRepository.findByRace_IdAndFinishPosition(raceId, finishPosition)
-                .map(RacePointRules::getPoints)
-                .orElse(0);
+    private void rerankRaceResults(Integer raceId) {
+        List<RaceResults> results = activeResults(raceId);
+        assignFinishPositionsByTime(results);
+        raceResultsRepository.saveAll(results);
     }
 
-    private Comparator<AssignmentLapSummary> lapSummaryComparator() {
-        return Comparator
-                .comparingInt(AssignmentLapSummary::getCompletedLaps).reversed()
-                .thenComparing(
-                        AssignmentLapSummary::getLatestPosition,
-                        Comparator.nullsLast(Integer::compareTo)
-                )
-                .thenComparing(AssignmentLapSummary::getTotalTimeSec)
-                .thenComparingInt(summary -> summary.assignment.getId());
+    private void assignFinishPositionsByTime(List<RaceResults> results) {
+        results.stream()
+                .filter(result -> Boolean.TRUE.equals(result.getIsDisqualified()))
+                .forEach(result -> {
+                    result.setFinishPosition(null);
+                    result.setPointsAwarded(0);
+                });
+
+        boolean hasMissingFinishTime = results.stream()
+                .filter(result -> !Boolean.TRUE.equals(result.getIsDisqualified()))
+                .anyMatch(result -> result.getFinishTimeSec() == null);
+        if (hasMissingFinishTime) {
+            throw new BadRequestException("Finish time is required for non-disqualified result");
+        }
+
+        List<RaceResults> rankedResults = results.stream()
+                .filter(result -> !Boolean.TRUE.equals(result.getIsDisqualified()))
+                .sorted(Comparator
+                        .comparing(RaceResults::getFinishTimeSec)
+                        .thenComparing(result -> result.getAssignment().getId())
+                        .thenComparing(RaceResults::getId, Comparator.nullsLast(Integer::compareTo)))
+                .toList();
+
+        for (int index = 0; index < rankedResults.size(); index++) {
+            rankedResults.get(index).setFinishPosition(index + 1);
+        }
     }
 
     private void applyRanking(RaceResults result) {
@@ -1102,9 +1122,7 @@ public class RaceResultServiceImpl implements RaceResultService {
     private static class AssignmentLapSummary {
         private final JockeyHorseAssignments assignment;
         private BigDecimal totalTimeSec = BigDecimal.ZERO;
-        private int completedLaps;
         private Integer latestRoundNumber;
-        private Integer latestPosition;
 
         private AssignmentLapSummary(JockeyHorseAssignments assignment) {
             this.assignment = assignment;
@@ -1113,16 +1131,7 @@ public class RaceResultServiceImpl implements RaceResultService {
         private void updateLatestRound(RaceRounds round) {
             if (latestRoundNumber == null || round.getRoundNumber() > latestRoundNumber) {
                 latestRoundNumber = round.getRoundNumber();
-                latestPosition = round.getPosition();
             }
-        }
-
-        private int getCompletedLaps() {
-            return completedLaps;
-        }
-
-        private Integer getLatestPosition() {
-            return latestPosition;
         }
 
         private BigDecimal getTotalTimeSec() {

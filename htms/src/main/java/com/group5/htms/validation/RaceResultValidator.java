@@ -58,8 +58,8 @@ public class RaceResultValidator {
             result.setFinishPosition(null);
             return;
         }
-        if (result.getFinishPosition() == null) {
-            throw new BadRequestException("Finish position is required for non-disqualified result");
+        if (result.getFinishTimeSec() == null) {
+            throw new BadRequestException("Finish time is required for non-disqualified result");
         }
         result.setPointsAwarded(0);
         result.setStatus(RaceResultStatus.DRAFT.getValue());
@@ -83,7 +83,6 @@ public class RaceResultValidator {
         }
 
         Set<Integer> assignmentIds = new HashSet<>();
-        Set<Integer> finishPositions = new HashSet<>();
         for (RaceResultDraftItemRequest item : items) {
             if (item == null || item.getAssignmentId() == null) {
                 throw new BadRequestException("Assignment does not belong to this race");
@@ -103,11 +102,8 @@ public class RaceResultValidator {
                 continue;
             }
 
-            if (item.getFinishPosition() == null) {
-                throw new BadRequestException("Finish position is required for non-disqualified result");
-            }
-            if (!finishPositions.add(item.getFinishPosition())) {
-                throw new BadRequestException("Duplicate finish position");
+            if (item.getFinishTimeSec() == null) {
+                throw new BadRequestException("Finish time is required for non-disqualified result");
             }
         }
     }
