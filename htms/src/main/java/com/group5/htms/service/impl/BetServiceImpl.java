@@ -197,7 +197,9 @@ public class BetServiceImpl implements BetService {
         option = findBetOptionForBetting(request.getOptionId());
         betValidator.ensureRaceOpenForBetting(option);
         betValidator.ensurePredictionStillOpen(option);
-
+        betValidator.ensureUserHasNotBetOption(
+                betsRepository.existsByUsers_IdAndOption_Id(userId, option.getId())
+        );
         Wallets wallet = getLockedWallet(userId);
         BigDecimal betPoints = request.getBetPoints();
         BigDecimal pointsBefore = safeMoney(wallet.getPointBalance());

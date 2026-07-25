@@ -14,4 +14,5 @@ public interface BetsRepository extends JpaRepository<Bets, Integer> {
     List<Bets> findByUsers_IdOrderByPlacedAtDesc(Integer userId);
 
     long countByUsers_IdAndStatusIgnoreCase(Integer userId, String status);
+    boolean existsByUsers_IdAndOption_Id(Integer userId, Integer optionId);
 }

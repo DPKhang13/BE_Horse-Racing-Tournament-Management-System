@@ -38,6 +38,11 @@ public class BetValidator {
             throw new BadRequestException("Wallet balance is not enough to place this bet");
         }
     }
+    public void ensureUserHasNotBetOption(boolean exists) {
+        if (exists) {
+            throw new BadRequestException("You can only bet once on this horse");
+        }
+    }
 
     public void ensureNoBackendManagedUpdateFields(BetUpdateRequest request) {
         if (request.getUserId() != null
