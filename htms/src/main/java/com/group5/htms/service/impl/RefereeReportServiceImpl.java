@@ -7,14 +7,11 @@ import com.group5.htms.entity.RaceRefereeAssignments;
 import com.group5.htms.entity.Races;
 import com.group5.htms.entity.RefereeProfiles;
 import com.group5.htms.entity.RefereeReports;
-import com.group5.htms.entity.Users;
 import com.group5.htms.exception.BadRequestException;
 import com.group5.htms.exception.ResourceNotFoundException;
 import com.group5.htms.repository.RaceRefereeAssignmentsRepository;
 import com.group5.htms.repository.RacesRepository;
-import com.group5.htms.repository.RefereeProfilesRepository;
 import com.group5.htms.repository.RefereeReportsRepository;
-import com.group5.htms.service.AuthService;
 import com.group5.htms.service.RefereeReportService;
 import com.group5.htms.validation.RefereeReportValidator;
 import lombok.RequiredArgsConstructor;
@@ -34,21 +31,20 @@ public class RefereeReportServiceImpl implements RefereeReportService {
     private static final String VERDICT_VIOLATION = "violation";
 
     private final RacesRepository racesRepository;
-    private final RefereeProfilesRepository refereeProfilesRepository;
     private final RaceRefereeAssignmentsRepository raceRefereeAssignmentsRepository;
     private final RefereeReportsRepository refereeReportsRepository;
-    private final AuthService authService;
     private final RefereeReportValidator refereeReportValidator;
+    private final RefereeRaceAuthorizationService refereeRaceAuthorizationService;
 
     @Override
     @Transactional
     public RefereeReportResponse submitReport(Integer raceId, RefereeReportCreateRequest request) {
         refereeReportValidator.ensureReportRequestExists(request);
 
-        RefereeProfiles referee = getCurrentReferee();
+        RaceRefereeAssignments assignment = refereeRaceAuthorizationService.requireMainReferee(raceId);
+        RefereeProfiles referee = assignment.getReferee();
         Races race = getRace(raceId);
         refereeReportValidator.ensureRaceInProgressForReport(race);
-        ensureAssignedReferee(race.getId(), referee.getId());
 
         String reportType = cleanOrDefault(request.getReportType(), REPORT_TYPE_FINAL);
         String verdict = cleanOrDefault(request.getVerdict(), VERDICT_CLEAN);
@@ -80,7 +76,7 @@ public class RefereeReportServiceImpl implements RefereeReportService {
     @Override
     @Transactional(readOnly = true)
     public List<RefereeAssignedRaceResponse> getMyAssignedRaces() {
-        RefereeProfiles referee = getCurrentReferee();
+        RefereeProfiles referee = refereeRaceAuthorizationService.getCurrentReferee();
 
         return raceRefereeAssignmentsRepository.findByReferee_IdOrderByAssignedAtDesc(referee.getId())
                 .stream()
@@ -91,23 +87,14 @@ public class RefereeReportServiceImpl implements RefereeReportService {
     @Override
     @Transactional(readOnly = true)
     public List<RefereeReportResponse> getRaceReports(Integer raceId) {
-        RefereeProfiles referee = getCurrentReferee();
         Races race = getRace(raceId);
-        ensureAssignedReferee(race.getId(), referee.getId());
+        refereeRaceAuthorizationService.requireAssignedReferee(race.getId());
         Map<Integer, String> refereeRolesByRefereeId = refereeRolesByRefereeId(race.getId());
 
         return refereeReportsRepository.findByRaces_IdOrderBySubmittedAtDesc(race.getId())
                 .stream()
                 .map(report -> toResponse(report, refereeRolesByRefereeId))
                 .toList();
-    }
-
-    private RefereeProfiles getCurrentReferee() {
-        Users user = authService.getCurrentUser();
-        refereeReportValidator.ensureCurrentUserIsRaceReferee(user);
-
-        return refereeProfilesRepository.findById(user.getId())
-                .orElseThrow(() -> new ResourceNotFoundException("Referee profile not found"));
     }
 
     private Races getRace(Integer raceId) {
@@ -117,11 +104,6 @@ public class RefereeReportServiceImpl implements RefereeReportService {
 
         return racesRepository.findById(raceId)
                 .orElseThrow(() -> new ResourceNotFoundException("Race not found"));
-    }
-
-    private RaceRefereeAssignments ensureAssignedReferee(Integer raceId, Integer refereeId) {
-        return raceRefereeAssignmentsRepository.findByRaces_IdAndReferee_Id(raceId, refereeId)
-                .orElseThrow(() -> new BadRequestException("Only assigned referees can submit reports for this race"));
     }
 
     private RefereeAssignedRaceResponse toAssignedRaceResponse(RaceRefereeAssignments assignment) {

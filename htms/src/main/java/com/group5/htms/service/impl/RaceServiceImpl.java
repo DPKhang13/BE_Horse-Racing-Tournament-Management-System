@@ -69,6 +69,7 @@ public class RaceServiceImpl implements RaceService {
     private final BetOptionService betOptionService;
     private final RaceValidator raceValidator;
     private final RaceParticipationCancellationService raceParticipationCancellationService;
+    private final RefereeRaceAuthorizationService refereeRaceAuthorizationService;
 
     @Override
     @Transactional(readOnly = true)
@@ -209,6 +210,7 @@ public class RaceServiceImpl implements RaceService {
     @Transactional
     public RaceStartResponse startRace(Integer raceId, RaceStartRequest request) {
         Races race = getRaceEntity(raceId);
+        refereeRaceAuthorizationService.requireChiefReferee(race.getId());
         String previousStatus = race.getStatus();
 
         raceValidator.ensureRaceCanStart(race, request);
@@ -311,6 +313,14 @@ public class RaceServiceImpl implements RaceService {
                 .stream()
                 .map(jockeyAssignmentMapper::toListResponse)
                 .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<JockeyAssignmentListResponse> getApprovedParticipantsForChief(Integer raceId) {
+        Races race = getRaceEntity(raceId);
+        refereeRaceAuthorizationService.requireChiefReferee(race.getId());
+        return getApprovedParticipantsByRace(race.getId());
     }
 
     @Override

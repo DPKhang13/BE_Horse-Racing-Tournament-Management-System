@@ -34,19 +34,13 @@ public class AdminRaceResultController {
         return ResponseEntity.ok(raceResultService.getAdminResults(raceId));
     }
 
-    @Operation(summary = "Admin replace race result draft", description = "Admin sua toan bo draft result truoc khi confirm/publish.")
+    @Operation(summary = "Admin replace race results", description = "Admin edits draft or chief-confirmed results before publishing.")
     @PutMapping("/draft/update")
     public ResponseEntity<RaceResultDraftResponse> replaceDraftByAdmin(
             @PathVariable Integer raceId,
             @Valid @RequestBody RaceResultDraftRequest request
     ) {
         return ResponseEntity.ok(raceResultService.replaceDraftByAdmin(raceId, request));
-    }
-
-    @Operation(summary = "Admin confirm race results", description = "Admin validate va tinh pointsAwarded cho result.")
-    @PatchMapping("/confirm")
-    public ResponseEntity<List<RaceResultResponse>> confirmResults(@PathVariable Integer raceId) {
-        return ResponseEntity.ok(raceResultService.confirmResults(raceId));
     }
 
     @Operation(summary = "Admin cancel race results", description = "Admin huy result truoc khi publish, khong refund bet.")

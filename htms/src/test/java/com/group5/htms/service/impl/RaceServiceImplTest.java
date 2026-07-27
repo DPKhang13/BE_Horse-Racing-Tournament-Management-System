@@ -82,6 +82,8 @@ class RaceServiceImplTest {
 
     @Mock
     private RaceParticipationCancellationService raceParticipationCancellationService;
+    @Mock
+    private RefereeRaceAuthorizationService refereeRaceAuthorizationService;
 
     private RaceServiceImpl service;
     private RaceValidator raceValidator;
@@ -104,7 +106,8 @@ class RaceServiceImplTest {
                 tournamentScheduleMapper,
                 betOptionService,
                 raceValidator,
-                raceParticipationCancellationService
+                raceParticipationCancellationService,
+                refereeRaceAuthorizationService
         );
     }
 
@@ -128,6 +131,18 @@ class RaceServiceImplTest {
         assertThatThrownBy(() -> service.startRace(10, null))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessage("Race not found");
+    }
+
+    @Test
+    void startRaceRequiresChiefRefereeAssignment() {
+        Races race = race(RaceStatus.READY.getValue());
+        when(racesRepository.findById(10)).thenReturn(Optional.of(race));
+        when(refereeRaceAuthorizationService.requireChiefReferee(10))
+                .thenThrow(new BadRequestException("Only the chief referee assigned to this race can perform this action"));
+
+        assertThatThrownBy(() -> service.startRace(10, RaceStartRequest.builder().build()))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("Only the chief referee assigned to this race can perform this action");
     }
 
     @Test

@@ -5,7 +5,6 @@ import com.group5.htms.dto.raceresult.request.RaceResultDraftItemRequest;
 import com.group5.htms.dto.raceresult.request.RaceResultDraftRequest;
 import com.group5.htms.dto.raceresult.request.RaceResultUpdateRequest;
 import com.group5.htms.entity.JockeyHorseAssignments;
-import com.group5.htms.entity.RaceRefereeAssignments;
 import com.group5.htms.entity.RaceResults;
 import com.group5.htms.entity.Races;
 import com.group5.htms.entity.RefereeReports;
@@ -28,9 +27,6 @@ import java.util.Set;
 @Component
 @RequiredArgsConstructor
 public class RaceResultValidator {
-    private static final String ROLE_CHIEF_REFEREE = "chief_referee";
-    private static final String ROLE_MAIN_REFEREE = "main_referee";
-
     private final RaceResultsRepository raceResultsRepository;
     private final RefereeReportsRepository refereeReportsRepository;
 
@@ -174,13 +170,6 @@ public class RaceResultValidator {
         }
     }
 
-    public void ensureChiefOrMainReferee(RaceRefereeAssignments assignment) {
-        String role = cleanLower(assignment.getRefereeRole());
-        if (!ROLE_CHIEF_REFEREE.equals(role) && !ROLE_MAIN_REFEREE.equals(role)) {
-            throw new BadRequestException("Only chief or main referee can submit race results");
-        }
-    }
-
     public void ensureRaceInProgressForResults(Races race) {
         if (!RaceStatus.IN_PROGRESS.equalsValue(race.getStatus())) {
             throw new BadRequestException("Race must be in progress to submit results");
@@ -212,11 +201,6 @@ public class RaceResultValidator {
         if (!refereeReportsRepository.existsById(id)) {
             throw new ResourceNotFoundException("Referee report not found");
         }
-    }
-
-    private String cleanLower(String value) {
-        String cleaned = clean(value);
-        return cleaned == null ? null : cleaned.toLowerCase();
     }
 
     private String clean(String value) {
