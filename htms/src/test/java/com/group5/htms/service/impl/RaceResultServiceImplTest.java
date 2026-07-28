@@ -1,6 +1,5 @@
 package com.group5.htms.service.impl;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.group5.htms.entity.JockeyHorseAssignments;
 import com.group5.htms.entity.RacePointRules;
 import com.group5.htms.entity.RaceResults;
@@ -103,8 +102,7 @@ class RaceResultServiceImplTest {
                 authService,
                 raceResultMapper,
                 new RaceResultValidator(raceResultsRepository, refereeReportsRepository),
-                refereeRaceAuthorizationService,
-                new ObjectMapper()
+                refereeRaceAuthorizationService
         );
     }
 

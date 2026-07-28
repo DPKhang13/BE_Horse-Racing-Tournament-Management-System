@@ -89,6 +89,7 @@ public class RaceResultServiceImpl implements RaceResultService {
     private static final String REF_TYPE_RACE_RESULT = "race_result";
     private static final String NOTIFICATION_TYPE_RACE_RESULT = "race_result";
     private static final String NOTIFICATION_TYPE_BET_RESULT = "bet_result";
+    private static final ObjectMapper AUDIT_OBJECT_MAPPER = new ObjectMapper();
 
     private final RaceResultsRepository raceResultsRepository;
     private final RaceRoundsRepository raceRoundsRepository;
@@ -107,7 +108,6 @@ public class RaceResultServiceImpl implements RaceResultService {
     private final RaceResultMapper raceResultMapper;
     private final RaceResultValidator raceResultValidator;
     private final RefereeRaceAuthorizationService refereeRaceAuthorizationService;
-    private final ObjectMapper objectMapper;
 
     @Override
     @Transactional(readOnly = true)
@@ -667,7 +667,7 @@ public class RaceResultServiceImpl implements RaceResultService {
                 })
                 .toList();
         try {
-            return objectMapper.writeValueAsString(snapshot);
+            return AUDIT_OBJECT_MAPPER.writeValueAsString(snapshot);
         } catch (JsonProcessingException exception) {
             throw new IllegalStateException("Cannot serialize race result audit", exception);
         }
