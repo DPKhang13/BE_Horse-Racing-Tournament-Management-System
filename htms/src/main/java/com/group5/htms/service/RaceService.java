@@ -51,5 +51,7 @@ public interface RaceService {
 
     List<JockeyAssignmentListResponse> getApprovedParticipantsByRace(Integer raceId);
 
+    List<JockeyAssignmentListResponse> getApprovedParticipantsForChief(Integer raceId);
+
     RaceGateAvailabilityResponse getAvailableGates(Integer raceId);
 }

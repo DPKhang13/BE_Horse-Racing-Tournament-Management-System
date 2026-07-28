@@ -1,5 +1,7 @@
 package com.group5.htms.service.impl;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.group5.htms.dto.raceresult.request.RaceResultCancelRequest;
 import com.group5.htms.dto.raceresult.request.RaceResultCreateRequest;
 import com.group5.htms.dto.raceresult.request.RaceResultDraftItemRequest;
@@ -22,6 +24,7 @@ import com.group5.htms.entity.JockeyProfiles;
 import com.group5.htms.entity.Notifications;
 import com.group5.htms.entity.RacePointRules;
 import com.group5.htms.entity.RaceRefereeAssignments;
+import com.group5.htms.entity.RaceResultAdminEditAudit;
 import com.group5.htms.entity.RaceResults;
 import com.group5.htms.entity.RaceRounds;
 import com.group5.htms.entity.Races;
@@ -46,11 +49,10 @@ import com.group5.htms.repository.BetsRepository;
 import com.group5.htms.repository.JockeyHorseAssignmentsRepository;
 import com.group5.htms.repository.NotificationsRepository;
 import com.group5.htms.repository.RacePointRulesRepository;
-import com.group5.htms.repository.RaceRefereeAssignmentsRepository;
+import com.group5.htms.repository.RaceResultAdminEditAuditRepository;
 import com.group5.htms.repository.RaceResultsRepository;
 import com.group5.htms.repository.RaceRoundsRepository;
 import com.group5.htms.repository.RacesRepository;
-import com.group5.htms.repository.RefereeProfilesRepository;
 import com.group5.htms.repository.RefereeReportsRepository;
 import com.group5.htms.repository.TournamentsRepository;
 import com.group5.htms.repository.UsersRepository;
@@ -87,16 +89,16 @@ public class RaceResultServiceImpl implements RaceResultService {
     private static final String REF_TYPE_RACE_RESULT = "race_result";
     private static final String NOTIFICATION_TYPE_RACE_RESULT = "race_result";
     private static final String NOTIFICATION_TYPE_BET_RESULT = "bet_result";
+    private static final ObjectMapper AUDIT_OBJECT_MAPPER = new ObjectMapper();
 
     private final RaceResultsRepository raceResultsRepository;
     private final RaceRoundsRepository raceRoundsRepository;
     private final JockeyHorseAssignmentsRepository jockeyHorseAssignmentsRepository;
     private final RacePointRulesRepository racePointRulesRepository;
+    private final RaceResultAdminEditAuditRepository raceResultAdminEditAuditRepository;
     private final RefereeReportsRepository refereeReportsRepository;
     private final TournamentsRepository tournamentsRepository;
     private final RacesRepository racesRepository;
-    private final RaceRefereeAssignmentsRepository raceRefereeAssignmentsRepository;
-    private final RefereeProfilesRepository refereeProfilesRepository;
     private final BetsRepository betsRepository;
     private final WalletsRepository walletsRepository;
     private final WalletTransactionsRepository walletTransactionsRepository;
@@ -105,6 +107,7 @@ public class RaceResultServiceImpl implements RaceResultService {
     private final AuthService authService;
     private final RaceResultMapper raceResultMapper;
     private final RaceResultValidator raceResultValidator;
+    private final RefereeRaceAuthorizationService refereeRaceAuthorizationService;
 
     @Override
     @Transactional(readOnly = true)
@@ -240,8 +243,8 @@ public class RaceResultServiceImpl implements RaceResultService {
     @Transactional
     public RaceResultDraftResponse createDraft(Integer raceId, RaceResultDraftRequest request) {
         Races race = getRace(raceId);
-        RefereeProfiles referee = getCurrentReferee();
-        RaceRefereeAssignments refereeAssignment = ensureChiefOrMainAssigned(race.getId(), referee.getId());
+        RaceRefereeAssignments refereeAssignment = refereeRaceAuthorizationService.requireChiefReferee(race.getId());
+        RefereeProfiles referee = refereeAssignment.getReferee();
         raceResultValidator.ensureRaceInProgressForResults(race);
         raceResultValidator.validateDraftRequest(request);
 
@@ -257,8 +260,8 @@ public class RaceResultServiceImpl implements RaceResultService {
     @Transactional
     public RaceResultDraftResponse replaceDraft(Integer raceId, RaceResultDraftRequest request) {
         Races race = getRace(raceId);
-        RefereeProfiles referee = getCurrentReferee();
-        RaceRefereeAssignments refereeAssignment = ensureChiefOrMainAssigned(race.getId(), referee.getId());
+        RaceRefereeAssignments refereeAssignment = refereeRaceAuthorizationService.requireChiefReferee(race.getId());
+        RefereeProfiles referee = refereeAssignment.getReferee();
         raceResultValidator.ensureRaceInProgressForResults(race);
         raceResultValidator.validateDraftRequest(request);
         raceResultValidator.ensureNoPublishedResults(race.getId());
@@ -286,18 +289,28 @@ public class RaceResultServiceImpl implements RaceResultService {
         if (existingResults.isEmpty()) {
             throw new ResourceNotFoundException("Race result draft not found");
         }
-        if (existingResults.stream().anyMatch(result -> RaceResultStatus.CONFIRMED.equalsValue(result.getStatus()))) {
-            throw new BadRequestException("Only draft results can be edited");
-        }
-        if (existingResults.stream().anyMatch(result -> !RaceResultStatus.DRAFT.equalsValue(result.getStatus()))) {
-            throw new BadRequestException("Only draft results can be edited");
+        boolean isConfirmedResult = existingResults.stream()
+                .allMatch(result -> RaceResultStatus.CONFIRMED.equalsValue(result.getStatus()));
+        boolean isDraftResult = existingResults.stream()
+                .allMatch(result -> RaceResultStatus.DRAFT.equalsValue(result.getStatus()));
+        if (!isConfirmedResult && !isDraftResult) {
+            throw new BadRequestException("Only draft or chief-confirmed results can be edited");
         }
 
+        String previousResultsJson = isConfirmedResult ? toAuditSnapshot(existingResults) : null;
         RefereeReports report = resolveAdminDraftReport(request, existingResults, race.getId());
         raceResultsRepository.deleteAll(existingResults);
         raceResultsRepository.flush();
 
-        List<RaceResults> savedResults = saveDraftResultsForAdmin(race, report, request);
+        List<RaceResults> savedResults = saveDraftResultsForAdmin(
+                race,
+                report,
+                request,
+                isConfirmedResult ? RaceResultStatus.CONFIRMED.getValue() : RaceResultStatus.DRAFT.getValue()
+        );
+        if (isConfirmedResult) {
+            saveAdminEditAudit(race, previousResultsJson, toAuditSnapshot(savedResults));
+        }
         return toAdminDraftResponse(race, report, savedResults);
     }
 
@@ -305,9 +318,7 @@ public class RaceResultServiceImpl implements RaceResultService {
     @Transactional(readOnly = true)
     public RaceResultDraftResponse getDraft(Integer raceId) {
         Races race = getRace(raceId);
-        RefereeProfiles referee = getCurrentReferee();
-        RaceRefereeAssignments assignment = ensureAssignedReferee(race.getId(), referee.getId(),
-                "Only assigned referees can submit results for this race");
+        RaceRefereeAssignments assignment = refereeRaceAuthorizationService.requireAssignedReferee(race.getId());
         List<RaceResults> results = activeResults(race.getId());
         if (results.isEmpty()) {
             throw new ResourceNotFoundException("Race result draft not found");
@@ -337,6 +348,7 @@ public class RaceResultServiceImpl implements RaceResultService {
     @Transactional
     public List<RaceResultResponse> confirmResults(Integer raceId) {
         Races race = getRace(raceId);
+        refereeRaceAuthorizationService.requireChiefReferee(race.getId());
         raceResultValidator.ensureRaceInProgressForResults(race);
         raceResultValidator.ensureNoPublishedResults(race.getId());
 
@@ -561,7 +573,12 @@ public class RaceResultServiceImpl implements RaceResultService {
         return raceResultsRepository.saveAll(results);
     }
 
-    private List<RaceResults> saveDraftResultsForAdmin(Races race, RefereeReports report, RaceResultDraftRequest request) {
+    private List<RaceResults> saveDraftResultsForAdmin(
+            Races race,
+            RefereeReports report,
+            RaceResultDraftRequest request,
+            String resultStatus
+    ) {
         List<JockeyHorseAssignments> confirmedAssignments = confirmedAssignments(race.getId());
         raceResultValidator.validateDraftItems(request.getResults(), confirmedAssignments);
 
@@ -577,6 +594,7 @@ public class RaceResultServiceImpl implements RaceResultService {
             result.setIsDisqualified(Boolean.TRUE.equals(item.getIsDisqualified()));
             result.setDisqualifyReason(clean(item.getDisqualifyReason()));
             result.setPointsAwarded(0);
+            result.setStatus(resultStatus);
             results.add(result);
         }
 
@@ -612,6 +630,46 @@ public class RaceResultServiceImpl implements RaceResultService {
                     .map(RacePointRules::getPoints)
                     .orElseThrow(() -> new BadRequestException("Missing point rule for finish position"));
             result.setPointsAwarded(points == null ? 0 : points);
+        }
+    }
+
+    private void saveAdminEditAudit(Races race, String previousResultsJson, String updatedResultsJson) {
+        Users admin = authService.getCurrentUser();
+        if (admin == null || admin.getId() == null) {
+            throw new BadRequestException("Current admin user is required");
+        }
+
+        raceResultAdminEditAuditRepository.save(RaceResultAdminEditAudit.builder()
+                .race(race)
+                .editedBy(admin)
+                .previousResultsJson(previousResultsJson)
+                .updatedResultsJson(updatedResultsJson)
+                .editedAt(Instant.now())
+                .build());
+    }
+
+    private String toAuditSnapshot(List<RaceResults> results) {
+        List<Map<String, Object>> snapshot = results.stream()
+                .sorted(resultComparator())
+                .map(result -> {
+                    Map<String, Object> item = new LinkedHashMap<>();
+                    item.put("resultId", result.getId());
+                    item.put("assignmentId", result.getAssignment().getId());
+                    item.put("horseId", result.getHorses().getId());
+                    item.put("reportId", result.getReport() == null ? null : result.getReport().getId());
+                    item.put("finishPosition", result.getFinishPosition());
+                    item.put("finishTimeSec", result.getFinishTimeSec());
+                    item.put("pointsAwarded", result.getPointsAwarded());
+                    item.put("isDisqualified", result.getIsDisqualified());
+                    item.put("disqualifyReason", result.getDisqualifyReason());
+                    item.put("status", result.getStatus());
+                    return item;
+                })
+                .toList();
+        try {
+            return AUDIT_OBJECT_MAPPER.writeValueAsString(snapshot);
+        } catch (JsonProcessingException exception) {
+            throw new IllegalStateException("Cannot serialize race result audit", exception);
         }
     }
 
@@ -893,29 +951,6 @@ public class RaceResultServiceImpl implements RaceResultService {
         }
         return tournamentsRepository.findById(tournamentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Tournament not found"));
-    }
-
-    private RefereeProfiles getCurrentReferee() {
-        Users user = authService.getCurrentUser();
-        raceResultValidator.ensureCurrentUserIsRaceReferee(user);
-
-        return refereeProfilesRepository.findById(user.getId())
-                .orElseThrow(() -> new ResourceNotFoundException("Referee profile not found"));
-    }
-
-    private RaceRefereeAssignments ensureChiefOrMainAssigned(Integer raceId, Integer refereeId) {
-        RaceRefereeAssignments assignment = ensureAssignedReferee(
-                raceId,
-                refereeId,
-                "Only assigned referees can submit results for this race"
-        );
-        raceResultValidator.ensureChiefOrMainReferee(assignment);
-        return assignment;
-    }
-
-    private RaceRefereeAssignments ensureAssignedReferee(Integer raceId, Integer refereeId, String message) {
-        return raceRefereeAssignmentsRepository.findByRaces_IdAndReferee_Id(raceId, refereeId)
-                .orElseThrow(() -> new BadRequestException(message));
     }
 
     private boolean hasActiveResults(Integer raceId) {
