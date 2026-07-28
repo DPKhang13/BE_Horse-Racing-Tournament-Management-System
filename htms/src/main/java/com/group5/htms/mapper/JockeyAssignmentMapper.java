@@ -2,11 +2,13 @@ package com.group5.htms.mapper;
 
 import com.group5.htms.dto.jockeyassignment.request.JockeyInvitationCreateRequest;
 import com.group5.htms.dto.jockeyassignment.request.JockeyInvitationUpdateRequest;
+import com.group5.htms.dto.jockeyassignment.response.JockeyAssignmentListResponse;
 import com.group5.htms.dto.jockeyassignment.response.JockeyAssignmentResponse;
 import com.group5.htms.entity.JockeyHorseAssignments;
+import com.group5.htms.entity.JockeyProfiles;
 import com.group5.htms.entity.RaceRegistrations;
 import com.group5.htms.entity.Races;
-import com.group5.htms.entity.Roles;
+import com.group5.htms.enums.JockeyAssignmentStatus;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -17,11 +19,10 @@ public class JockeyAssignmentMapper {
         return JockeyHorseAssignments.builder()
                 .reg(toRegistration(request.getRegistrationId()))
                 .races(toRace(request.getRaceId()))
-                .jockeyRoles(toRole(request.getJockeyRoleId()))
+                .jockey(toJockey(request.getJockeyId()))
                 .gateNumber(request.getGateNumber())
-                .status(defaultText(request.getStatus(), "pending"))
-                .invitedAt(defaultInstant(request.getInvitedAt()))
-                .respondedAt(request.getRespondedAt())
+                .status(JockeyAssignmentStatus.PENDING.getValue())
+                .invitedAt(Instant.now())
                 .build();
     }
 
@@ -32,8 +33,8 @@ public class JockeyAssignmentMapper {
         if (request.getRaceId() != null) {
             assignment.setRaces(toRace(request.getRaceId()));
         }
-        if (request.getJockeyRoleId() != null) {
-            assignment.setJockeyRoles(toRole(request.getJockeyRoleId()));
+        if (request.getJockeyId() != null) {
+            assignment.setJockey(toJockey(request.getJockeyId()));
         }
         if (request.getGateNumber() != null) {
             assignment.setGateNumber(request.getGateNumber());
@@ -50,15 +51,68 @@ public class JockeyAssignmentMapper {
     }
 
     public JockeyAssignmentResponse toResponse(JockeyHorseAssignments assignment) {
+        RaceRegistrations registration = assignment.getReg();
+        JockeyProfiles jockey = assignment.getJockey();
+
         return JockeyAssignmentResponse.builder()
                 .id(assignment.getId())
+                .assignmentId(assignment.getId())
+                .regId(registration.getId())
                 .registrationId(assignment.getReg().getId())
+                .ownerConfirmationStatus(registration.getOwnerConfirmationStatus())
                 .raceId(assignment.getRaces().getId())
-                .jockeyRoleId(assignment.getJockeyRoles().getId())
-                .gateNumber(assignment.getGateNumber())
+                .jockeyId(assignment.getJockey().getId())
+                .gateNumber(assignment.getGateNumber() == null ? registration.getGateNumber() : assignment.getGateNumber())
                 .status(assignment.getStatus())
                 .invitedAt(assignment.getInvitedAt())
+                .responseDeadline(assignment.getResponseDeadline())
                 .respondedAt(assignment.getRespondedAt())
+                .cancelledAt(assignment.getCancelledAt())
+                .expiredAt(assignment.getExpiredAt())
+                .raceName(assignment.getRaces().getName())
+                .tournamentName(tournamentName(assignment.getRaces()))
+                .raceNumber(assignment.getRaces().getRaceNumber())
+                .scheduledAt(assignment.getRaces().getScheduledAt())
+                .horseId(registration.getHorses().getId())
+                .horseName(registration.getHorses().getName())
+                .horseAvatarUrl(registration.getHorses().getAvatarUrl())
+                .ownerId(registration.getOwner().getId())
+                .ownerFullName(registration.getOwner().getUsers().getFullName())
+                .ownerStableName(registration.getOwner().getStableName())
+                .jockeyFullName(jockey.getUsers().getFullName())
+                .jockeyAvatarUrl(jockey.getUsers().getAvatarUrl())
+                .build();
+    }
+
+    public JockeyAssignmentListResponse toListResponse(JockeyHorseAssignments assignment) {
+        RaceRegistrations registration = assignment.getReg();
+        JockeyProfiles jockey = assignment.getJockey();
+
+        return JockeyAssignmentListResponse.builder()
+                .assignmentId(assignment.getId())
+                .regId(registration.getId())
+                .ownerConfirmationStatus(registration.getOwnerConfirmationStatus())
+                .raceId(assignment.getRaces().getId())
+                .jockeyId(jockey.getId())
+                .gateNumber(assignment.getGateNumber() == null ? registration.getGateNumber() : assignment.getGateNumber())
+                .status(assignment.getStatus())
+                .invitedAt(assignment.getInvitedAt())
+                .responseDeadline(assignment.getResponseDeadline())
+                .respondedAt(assignment.getRespondedAt())
+                .cancelledAt(assignment.getCancelledAt())
+                .expiredAt(assignment.getExpiredAt())
+                .raceName(assignment.getRaces().getName())
+                .tournamentName(tournamentName(assignment.getRaces()))
+                .raceNumber(assignment.getRaces().getRaceNumber())
+                .scheduledAt(assignment.getRaces().getScheduledAt())
+                .horseId(registration.getHorses().getId())
+                .horseName(registration.getHorses().getName())
+                .horseAvatarUrl(registration.getHorses().getAvatarUrl())
+                .ownerId(registration.getOwner().getId())
+                .ownerFullName(registration.getOwner().getUsers().getFullName())
+                .ownerStableName(registration.getOwner().getStableName())
+                .jockeyFullName(jockey.getUsers().getFullName())
+                .jockeyAvatarUrl(jockey.getUsers().getAvatarUrl())
                 .build();
     }
 
@@ -74,10 +128,17 @@ public class JockeyAssignmentMapper {
         return race;
     }
 
-    private Roles toRole(Integer id) {
-        Roles role = new Roles();
-        role.setId(id);
-        return role;
+    private JockeyProfiles toJockey(Integer id) {
+        JockeyProfiles jockey = new JockeyProfiles();
+        jockey.setId(id);
+        return jockey;
+    }
+
+    private String tournamentName(Races race) {
+        if (race == null || race.getSchedule() == null || race.getSchedule().getTournaments() == null) {
+            return null;
+        }
+        return race.getSchedule().getTournaments().getName();
     }
 
     private String defaultText(String value, String defaultValue) {
@@ -88,3 +149,4 @@ public class JockeyAssignmentMapper {
         return value == null ? Instant.now() : value;
     }
 }
+

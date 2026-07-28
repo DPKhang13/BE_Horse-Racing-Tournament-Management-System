@@ -1,9 +1,23 @@
 package com.group5.htms.entity;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 import org.hibernate.annotations.ColumnDefault;
 
 import java.time.Instant;
@@ -15,7 +29,13 @@ import java.time.Instant;
 @Setter
 @ToString
 @Entity
-@Table(name = "\"RaceRegistrations\"")
+@Table(
+        name = "\"race_registrations\"",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uq_reg_race_horse",
+                columnNames = {"race_id", "horse_id"}
+        )
+)
 public class RaceRegistrations {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -39,12 +59,15 @@ public class RaceRegistrations {
 
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "owner_role_id", nullable = false)
-    private Roles ownerRoles;
+    @JoinColumn(name = "owner_id", nullable = false)
+    private HorseOwnerProfiles owner;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "jockey_role_id")
-    private Roles jockeyRoles;
+    @JoinColumn(name = "jockey_id")
+    private JockeyProfiles jockey;
+
+    @Column(name = "gate_number")
+    private Integer gateNumber;
 
     @Size(max = 20)
     @NotNull
@@ -71,5 +94,4 @@ public class RaceRegistrations {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "approved_by")
     private Users approvedBy;
-
 }

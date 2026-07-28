@@ -2,6 +2,7 @@ package com.group5.htms.controller;
 
 import com.group5.htms.dto.notification.request.NotificationCreateRequest;
 import com.group5.htms.dto.notification.request.NotificationUpdateRequest;
+import com.group5.htms.dto.notification.response.NotificationListResponse;
 import com.group5.htms.dto.notification.response.NotificationResponse;
 import com.group5.htms.service.NotificationService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -29,8 +30,15 @@ public class NotificationController {
 
     @Operation(summary = "Get all notifications", description = "Lấy danh sách tất cả notification.")
     @GetMapping("/get-all")
-    public ResponseEntity<List<NotificationResponse>> getAllNotifications() {
+    public ResponseEntity<List<NotificationListResponse>> getAllNotifications() {
         return ResponseEntity.ok(notificationService.getAllNotifications());
+    }
+
+    @Operation(summary = "Get current user notifications", description = "Lấy danh sách notification của user đang đăng nhập.")
+    @GetMapping("/my-notifications")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<List<NotificationListResponse>> getCurrentUserNotifications() {
+        return ResponseEntity.ok(notificationService.getCurrentUserNotifications());
     }
 
     @Operation(summary = "Get notification by id", description = "Lấy notification theo id.")
@@ -58,18 +66,18 @@ public class NotificationController {
         return ResponseEntity.ok(notificationService.updateNotification(id, request));
     }
 
-    @Operation(summary = "Mark notification as read", description = "Đánh dấu notification là đã đọc.")
-    @PutMapping("/mark-read/{id}")
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<NotificationResponse> markAsRead(@PathVariable Integer id) {
-        return ResponseEntity.ok(notificationService.markAsRead(id));
-    }
-
     @Operation(summary = "Delete notification", description = "Xóa notification theo id.")
     @DeleteMapping("/delete/{id}")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('SPECTATOR', 'ADMIN')")
     public ResponseEntity<Void> deleteNotification(@PathVariable Integer id) {
         notificationService.deleteNotification(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "Mark notification as read", description = "Đánh dấu notification là đã đọc.")
+    @PutMapping("/mark-read/{id}")
+    @PreAuthorize("hasAnyRole('SPECTATOR', 'ADMIN')")
+    public ResponseEntity<NotificationResponse> markAsRead(@PathVariable Integer id) {
+        return ResponseEntity.ok(notificationService.markAsRead(id));
     }
 }

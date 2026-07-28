@@ -17,7 +17,7 @@ public class RaceResultCreateRequest {
     private Integer assignmentId;
 
     private Integer reportId;
-    private Integer prizeId;
+    private Integer finalRound;
 
     @Min(value = 1, message = "Finish position must be greater than or equal to 1")
     private Integer finishPosition;
@@ -25,8 +25,6 @@ public class RaceResultCreateRequest {
     @DecimalMin(value = "0.0", inclusive = false, message = "Finish time must be greater than 0")
     private BigDecimal finishTimeSec;
 
-    @Min(value = 0, message = "Points awarded must be greater than or equal to 0")
-    private Integer pointsAwarded;
 
     private Boolean isDisqualified;
 

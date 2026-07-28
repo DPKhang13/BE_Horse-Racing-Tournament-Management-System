@@ -3,7 +3,10 @@ package com.group5.htms.controller;
 import com.group5.htms.dto.bet.request.BetCheckRequest;
 import com.group5.htms.dto.bet.request.BetCreateRequest;
 import com.group5.htms.dto.bet.request.BetUpdateRequest;
+import com.group5.htms.dto.bet.response.BetListResponse;
 import com.group5.htms.dto.bet.response.BetResponse;
+import com.group5.htms.dto.dashboard.response.PredictionRaceResponse;
+import com.group5.htms.dto.dashboard.response.SpectatorDashboardResponse;
 import com.group5.htms.service.BetService;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
@@ -11,7 +14,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -28,9 +30,23 @@ import java.util.List;
 public class BetController {
     private final BetService betService;
 
+    @Operation(summary = "Get spectator dashboard", description = "Dashboard tổng hợp theo JWT spectator: wallet, summary count, upcoming races, active bets, latest results, notifications và race đang mở dự đoán.")
+    @GetMapping("/dashboard")
+    @PreAuthorize("hasAnyRole('SPECTATOR', 'ADMIN')")
+    public ResponseEntity<SpectatorDashboardResponse> getSpectatorDashboard() {
+        return ResponseEntity.ok(betService.getSpectatorDashboard());
+    }
+
+    @Operation(summary = "Get open prediction races", description = "Lấy race đang mở dự đoán kèm bet optionId để FE đặt cược.")
+    @GetMapping("/open-predictions")
+    @PreAuthorize("hasAnyRole('SPECTATOR', 'ADMIN')")
+    public ResponseEntity<List<PredictionRaceResponse>> getOpenPredictionRaces() {
+        return ResponseEntity.ok(betService.getOpenPredictionRaces());
+    }
+
     @Operation(summary = "Get all bets", description = "Lấy danh sách tất cả bet.")
     @GetMapping("/get-all")
-    public ResponseEntity<List<BetResponse>> getAllBets() {
+    public ResponseEntity<List<BetListResponse>> getAllBets() {
         return ResponseEntity.ok(betService.getAllBets());
     }
 
@@ -40,16 +56,31 @@ public class BetController {
         return ResponseEntity.ok(betService.getBetById(id));
     }
 
+
+    @Operation(summary = "Get my bet detail", description = "Lấy chi tiết phiếu cược theo bet id của user đang đăng nhập.")
+    @GetMapping({"/detail/{id}", "/my/{id}"})
+    @PreAuthorize("hasAnyRole('SPECTATOR', 'ADMIN')")
+    public ResponseEntity<BetResponse> getBetDetail(@PathVariable Integer id) {
+        return ResponseEntity.ok(betService.getBetDetail(id));
+    }
+
+    @Operation(summary = "Get my bets", description = "Lấy tất cả phiếu cược của spectator đang đăng nhập, bao gồm mọi trạng thái: pending, won, lost, cancelled...")
+    @GetMapping("/my")
+    @PreAuthorize("hasAnyRole('SPECTATOR', 'ADMIN')")
+    public ResponseEntity<List<BetListResponse>> getMyBets() {
+        return ResponseEntity.ok(betService.getMyBets());
+    }
+
     @Operation(summary = "Create bet", description = "Tạo bet cho một assignment. Spectator role được lấy từ JWT của user đang đăng nhập.")
     @PostMapping("/create")
-    @PreAuthorize("hasRole('SPECTATOR')")
+    @PreAuthorize("hasAnyRole('SPECTATOR', 'ADMIN')")
     public ResponseEntity<BetResponse> createBet(@Valid @RequestBody BetCreateRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(betService.createBet(request));
     }
 
     @Operation(summary = "Update bet", description = "Cập nhật bet. Field nào không gửi lên sẽ giữ nguyên.")
     @PutMapping("/update/{id}")
-    @PreAuthorize("hasRole('SPECTATOR')")
+    @PreAuthorize("hasAnyRole('SPECTATOR', 'ADMIN')")
     public ResponseEntity<BetResponse> updateBet(
             @PathVariable Integer id,
             @Valid @RequestBody BetUpdateRequest request
@@ -66,12 +97,6 @@ public class BetController {
     ) {
         return ResponseEntity.ok(betService.checkBet(id, request));
     }
-
-    @Operation(summary = "Delete bet", description = "Xóa bet theo id.")
-    @DeleteMapping("/delete/{id}")
-    @PreAuthorize("hasRole('SPECTATOR')")
-    public ResponseEntity<Void> deleteBet(@PathVariable Integer id) {
-        betService.deleteBet(id);
-        return ResponseEntity.noContent().build();
-    }
 }
+
+

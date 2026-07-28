@@ -3,6 +3,7 @@ package com.group5.htms.controller;
 import com.group5.htms.dto.raceresult.request.RaceResultCreateRequest;
 import com.group5.htms.dto.raceresult.request.RaceResultPublishRequest;
 import com.group5.htms.dto.raceresult.request.RaceResultUpdateRequest;
+import com.group5.htms.dto.raceresult.response.RaceResultListResponse;
 import com.group5.htms.dto.raceresult.response.RaceResultResponse;
 import com.group5.htms.service.RaceResultService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -11,7 +12,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -30,14 +30,30 @@ public class RaceResultController {
 
     @Operation(summary = "Get all race results", description = "Lấy danh sách tất cả kết quả race.")
     @GetMapping("/get-all")
-    public ResponseEntity<List<RaceResultResponse>> getAllResults() {
+    public ResponseEntity<List<RaceResultListResponse>> getAllResults() {
         return ResponseEntity.ok(raceResultService.getAllResults());
     }
 
-    @Operation(summary = "Get race result by id", description = "Lấy thông tin kết quả race theo result id.")
+    @Operation(summary = "Get race results by race id", description = "Lấy danh sách kết quả race theo race id.")
     @GetMapping("/get-by-id/{id}")
-    public ResponseEntity<RaceResultResponse> getResultById(@PathVariable Integer id) {
+    public ResponseEntity<List<RaceResultResponse>> getResultById(@PathVariable Integer id) {
         return ResponseEntity.ok(raceResultService.getResultById(id));
+    }
+
+    @Operation(summary = "Get all race results by race", description = "Lấy kết quả đua của các jockey và ngựa trong một race, response dạng list giống /api/race-results/get-all.")
+    @GetMapping("/race/{raceId}/get-all")
+    public ResponseEntity<List<RaceResultListResponse>> getResultsByRace(@PathVariable Integer raceId) {
+        return ResponseEntity.ok(raceResultService.getResultsByRace(raceId));
+    }
+
+    @Operation(
+            summary = "Recalculate race ranking from laps",
+            description = "Recalculate provisional ranking, total lap time and points from saved race rounds."
+    )
+    @PostMapping("/race/{raceId}/recalculate-from-rounds")
+    @PreAuthorize("hasAnyRole('ADMIN', 'RACE_REFEREE')")
+    public ResponseEntity<List<RaceResultListResponse>> recalculateFromRounds(@PathVariable Integer raceId) {
+        return ResponseEntity.ok(raceResultService.calculateResultsFromRounds(raceId));
     }
 
     @Operation(summary = "Create race result", description = "Tạo mới kết quả race cho một jockey assignment.")
@@ -67,11 +83,5 @@ public class RaceResultController {
         return ResponseEntity.ok(raceResultService.publishResult(id, request));
     }
 
-    @Operation(summary = "Delete race result", description = "Xóa kết quả race theo result id.")
-    @DeleteMapping("/delete/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'RACE_REFEREE')")
-    public ResponseEntity<Void> deleteResult(@PathVariable Integer id) {
-        raceResultService.deleteResult(id);
-        return ResponseEntity.noContent().build();
-    }
 }
+

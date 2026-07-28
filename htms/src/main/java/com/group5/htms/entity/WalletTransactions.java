@@ -1,10 +1,26 @@
 package com.group5.htms.entity;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 import org.hibernate.annotations.ColumnDefault;
+import com.group5.htms.enums.WalletTransactionStatus;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -16,7 +32,7 @@ import java.time.Instant;
 @Setter
 @ToString
 @Entity
-@Table(name = "\"WalletTransactions\"")
+@Table(name = "\"wallet_transactions\"")
 public class WalletTransactions {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -30,8 +46,8 @@ public class WalletTransactions {
 
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "spectator_role_id", nullable = false)
-    private Roles spectatorRoles;
+    @JoinColumn(name = "user_id", nullable = false)
+    private Users users;
 
     @Size(max = 20)
     @NotNull
@@ -71,75 +87,6 @@ public class WalletTransactions {
     @Column(name = "ref_id")
     private Integer refId;
 
-    /*
-     * Payment gateway provider.
-     * Với VNPay: "vnpay".
-     * Sau này có thể thêm "zalopay".
-     */
-    @Size(max = 30)
-    @Column(name = "gateway_provider", length = 30)
-    private String gatewayProvider;
-
-    /*
-     * Mã giao dịch gửi sang VNPay qua vnp_TxnRef.
-     *
-     * Không dùng tx_id trần.
-     * Format nên là: TOPUP-{txId}-{random}
-     *
-     * Ví dụ: TOPUP-25-A8F3K2D9
-     */
-    @Size(max = 100)
-    @Column(name = "gateway_txn_ref", length = 100)
-    private String gatewayTxnRef;
-
-    /*
-     * Mã giao dịch do VNPay trả về: vnp_TransactionNo.
-     */
-    @Size(max = 100)
-    @Column(name = "gateway_transaction_no", length = 100)
-    private String gatewayTransactionNo;
-
-    /*
-     * VNPay vnp_ResponseCode.
-     * "00" thường là thành công.
-     */
-    @Size(max = 20)
-    @Column(name = "gateway_response_code", length = 20)
-    private String gatewayResponseCode;
-
-    /*
-     * VNPay vnp_TransactionStatus.
-     * "00" thường là giao dịch thành công.
-     */
-    @Size(max = 20)
-    @Column(name = "gateway_transaction_status", length = 20)
-    private String gatewayTransactionStatus;
-
-    /*
-     * Ngân hàng/kênh thanh toán VNPay trả về.
-     */
-    @Size(max = 50)
-    @Column(name = "gateway_bank_code", length = 50)
-    private String gatewayBankCode;
-
-    /*
-     * Thời gian thanh toán VNPay trả về dạng string.
-     * Ví dụ: yyyyMMddHHmmss.
-     */
-    @Size(max = 50)
-    @Column(name = "gateway_pay_date", length = 50)
-    private String gatewayPayDate;
-
-    /*
-     * Raw params từ VNPay để debug/audit.
-     *
-     * Lưu ý:
-     * - Không expose field này ra API public.
-     * - Không log ra console.
-     */
-    @Column(name = "gateway_raw_response", columnDefinition = "TEXT")
-    private String gatewayRawResponse;
-
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by")
     @ToString.Exclude
@@ -175,7 +122,7 @@ public class WalletTransactions {
         }
 
         if (this.status == null || this.status.isBlank()) {
-            this.status = "pending";
+            this.status = WalletTransactionStatus.PENDING.getValue();
         }
 
         if (this.createdAt == null) {
@@ -188,3 +135,4 @@ public class WalletTransactions {
         this.updatedAt = Instant.now();
     }
 }
+

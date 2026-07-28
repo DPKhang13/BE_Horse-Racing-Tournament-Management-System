@@ -3,12 +3,17 @@ package com.group5.htms.service;
 import com.group5.htms.dto.jockeyassignment.request.JockeyInvitationCreateRequest;
 import com.group5.htms.dto.jockeyassignment.request.JockeyInvitationResponseRequest;
 import com.group5.htms.dto.jockeyassignment.request.JockeyInvitationUpdateRequest;
+import com.group5.htms.dto.jockeyassignment.response.JockeyAssignmentListResponse;
 import com.group5.htms.dto.jockeyassignment.response.JockeyAssignmentResponse;
 
 import java.util.List;
 
 public interface JockeyAssignmentService {
-    List<JockeyAssignmentResponse> getAllAssignments();
+    List<JockeyAssignmentListResponse> getAllAssignments();
+
+    List<JockeyAssignmentListResponse> getMyInvitations(String status);
+
+    List<JockeyAssignmentListResponse> getSentInvitations(String status);
 
     JockeyAssignmentResponse getAssignmentById(Integer id);
 
@@ -18,5 +23,8 @@ public interface JockeyAssignmentService {
 
     JockeyAssignmentResponse respondInvitation(Integer id, JockeyInvitationResponseRequest request);
 
-    void deleteAssignment(Integer id);
+    JockeyAssignmentResponse cancelInvitation(Integer id);
+
+    JockeyAssignmentResponse confirmAssignment(Integer id);
+
 }

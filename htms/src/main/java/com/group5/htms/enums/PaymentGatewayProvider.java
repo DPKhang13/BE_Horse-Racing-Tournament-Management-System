@@ -6,6 +6,8 @@ import lombok.Getter;
 public enum PaymentGatewayProvider {
 
     VNPAY("vnpay"),
+    MOMO("momo"),
+    ZALOPAY("zalopay"),
     SEPAY("sepay");
 
     private final String value;
@@ -14,3 +16,4 @@ public enum PaymentGatewayProvider {
         this.value = value;
     }
 }
+

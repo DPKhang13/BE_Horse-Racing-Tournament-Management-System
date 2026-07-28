@@ -1,10 +1,26 @@
 package com.group5.htms.entity;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 import org.hibernate.annotations.ColumnDefault;
+import com.group5.htms.enums.HorseStatus;
+import com.group5.htms.util.RankGroupUtil;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -16,7 +32,7 @@ import java.time.Instant;
 @Setter
 @ToString
 @Entity
-@Table(name = "\"Horses\"")
+@Table(name = "\"horses\"")
 public class Horses {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -25,8 +41,8 @@ public class Horses {
 
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "owner_role_id", nullable = false)
-    private Roles ownerRoles;
+    @JoinColumn(name = "owner_id", nullable = false)
+    private HorseOwnerProfiles owner;
 
     @Size(max = 100)
     @NotNull
@@ -43,7 +59,7 @@ public class Horses {
     @Column(name = "weight_kg", precision = 5, scale = 2)
     private BigDecimal weightKg;
 
-    @Column(name = "rank_group", length = Integer.MAX_VALUE)
+    @Column(name = "rank_group", length = 1)
     private String rankGroup;
 
     @NotNull
@@ -57,6 +73,11 @@ public class Horses {
     @Column(name = "total_wins")
     private Integer totalWins;
 
+    @NotNull
+    @ColumnDefault("0")
+    @Column(name = "total_races", nullable = false)
+    private Integer totalRaces;
+
     @Size(max = 20)
     @NotNull
     @ColumnDefault("'active'")
@@ -67,4 +88,25 @@ public class Horses {
     @Column(name = "registered_at", nullable = false)
     private Instant registeredAt;
 
+    @PrePersist
+    public void prePersist() {
+        if (rankingPoints == null) {
+            rankingPoints = 0;
+        }
+        if (totalWins == null) {
+            totalWins = 0;
+        }
+        if (totalRaces == null) {
+            totalRaces = 0;
+        }
+        if (rankGroup == null || rankGroup.isBlank()) {
+            rankGroup = RankGroupUtil.fromRankingPoints(rankingPoints);
+        }
+        if (status == null || status.isBlank()) {
+            status = HorseStatus.ACTIVE.getValue();
+        }
+        if (registeredAt == null) {
+            registeredAt = Instant.now();
+        }
+    }
 }

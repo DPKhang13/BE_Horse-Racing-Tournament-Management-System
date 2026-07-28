@@ -2,6 +2,7 @@ package com.group5.htms.mapper;
 
 import com.group5.htms.dto.notification.request.NotificationCreateRequest;
 import com.group5.htms.dto.notification.request.NotificationUpdateRequest;
+import com.group5.htms.dto.notification.response.NotificationListResponse;
 import com.group5.htms.dto.notification.response.NotificationResponse;
 import com.group5.htms.entity.Notifications;
 import com.group5.htms.entity.Users;
@@ -52,9 +53,30 @@ public class NotificationMapper {
     }
 
     public NotificationResponse toResponse(Notifications notification) {
+        Users user = notification.getUsers();
+
         return NotificationResponse.builder()
                 .id(notification.getId())
-                .userId(notification.getUsers().getId())
+                .notificationId(notification.getId())
+                .userId(user.getId())
+                .title(notification.getTitle())
+                .message(notification.getMessage())
+                .type(notification.getType())
+                .refId(notification.getRefId())
+                .refType(notification.getRefType())
+                .isRead(notification.getIsRead())
+                .createdAt(notification.getCreatedAt())
+                .userFullName(user.getFullName())
+                .userRoleType(user.getRoleType())
+                .build();
+    }
+
+    public NotificationListResponse toListResponse(Notifications notification) {
+        Users user = notification.getUsers();
+
+        return NotificationListResponse.builder()
+                .notificationId(notification.getId())
+                .userId(user.getId())
                 .title(notification.getTitle())
                 .message(notification.getMessage())
                 .type(notification.getType())

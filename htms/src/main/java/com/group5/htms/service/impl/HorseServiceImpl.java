@@ -1,50 +1,70 @@
 package com.group5.htms.service.impl;
 
 import com.group5.htms.exception.ResourceNotFoundException;
+import com.group5.htms.exception.BadRequestException;
+import com.group5.htms.enums.HorseStatus;
+import com.group5.htms.enums.RoleType;
 import com.group5.htms.dto.horse.request.HorseCreateRequest;
+import com.group5.htms.dto.horse.request.HorseStatusUpdateRequest;
 import com.group5.htms.dto.horse.request.HorseUpdateRequest;
+import com.group5.htms.dto.horse.response.HorseCountResponse;
+import com.group5.htms.dto.horse.response.HorseListResponse;
+import com.group5.htms.dto.horse.response.HorseRankingResponse;
 import com.group5.htms.dto.horse.response.HorseResponse;
+import com.group5.htms.entity.HorseOwnerProfiles;
 import com.group5.htms.entity.Horses;
-import com.group5.htms.entity.JockeyHorseAssignments;
-import com.group5.htms.entity.RaceRegistrations;
 import com.group5.htms.mapper.HorseMapper;
-import com.group5.htms.repository.BetsRepository;
+import com.group5.htms.repository.HorseOwnerProfilesRepository;
 import com.group5.htms.repository.HorsesRepository;
-import com.group5.htms.repository.JockeyHorseAssignmentsRepository;
-import com.group5.htms.repository.RaceRegistrationsRepository;
-import com.group5.htms.repository.RaceResultsRepository;
 import com.group5.htms.service.AuthService;
 import com.group5.htms.service.HorseService;
+import com.group5.htms.validation.HorseValidator;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
 public class HorseServiceImpl implements HorseService {
-    private static final String ROLE_HORSE_OWNER = "horse_owner";
 
     private final HorsesRepository horsesRepository;
-    private final RaceRegistrationsRepository raceRegistrationsRepository;
-    private final JockeyHorseAssignmentsRepository jockeyHorseAssignmentsRepository;
-    private final RaceResultsRepository raceResultsRepository;
-    private final BetsRepository betsRepository;
+    private final HorseOwnerProfilesRepository horseOwnerProfilesRepository;
     private final AuthService authService;
     private final HorseMapper horseMapper;
+    private final HorseValidator horseValidator;
 
     @Override
-    public List<HorseResponse> getAllHorses() {
+    @Transactional(readOnly = true)
+    public HorseCountResponse getHorseCount() {
+        return HorseCountResponse.builder()
+                .horseCount(horsesRepository.count())
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<HorseListResponse> getAllHorses() {
         return horsesRepository.findAll()
                 .stream()
-                .map(horseMapper::toResponse)
+                .map(horseMapper::toListResponse)
                 .toList();
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<HorseRankingResponse> getHorseRanking() {
+        List<Horses> horses = horsesRepository
+                .findByStatusIgnoreCaseOrderByRankingPointsDescTotalWinsDescNameAsc(HorseStatus.ACTIVE.getValue());
+
+        return java.util.stream.IntStream.range(0, horses.size())
+                .mapToObj(index -> horseMapper.toRankingResponse(horses.get(index), index + 1))
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public HorseResponse getHorseById(Integer id) {
         return horseMapper.toResponse(findHorse(id));
     }
@@ -52,17 +72,28 @@ public class HorseServiceImpl implements HorseService {
     @Override
     @Transactional
     public HorseResponse createHorse(HorseCreateRequest request) {
-        request.setOwnerRoleId(authService.getCurrentUserRoleId(ROLE_HORSE_OWNER));
+        Integer ownerId = resolveHorseOwnerId(request.getOwnerId());
+        HorseOwnerProfiles owner = findOwnerProfile(ownerId);
+        request.setOwnerId(ownerId);
         Horses horse = horseMapper.toEntity(request);
+        horse.setOwner(owner);
+        horse.setStatus(resolveCreatedHorseStatus());
 
         return horseMapper.toResponse(horsesRepository.save(horse));
     }
 
+
+    @Override
+    @Transactional
+    public HorseResponse createHorseForOwner(Integer ownerId, HorseCreateRequest request) {
+        request.setOwnerId(ownerId);
+        return createHorse(request);
+    }
     @Override
     @Transactional
     public HorseResponse updateHorse(Integer id, HorseUpdateRequest request) {
         Horses horse = findHorseForCurrentOwner(id);
-        request.setOwnerRoleId(null);
+        horseValidator.ensureNoBackendManagedFields(request);
         horseMapper.updateHorse(horse, request);
 
         return horseMapper.toResponse(horsesRepository.save(horse));
@@ -70,10 +101,20 @@ public class HorseServiceImpl implements HorseService {
 
     @Override
     @Transactional
-    public void deleteHorse(Integer id) {
-        Horses horse = findHorseForCurrentOwner(id);
-        deleteRegistrationsByHorse(id);
-        horsesRepository.delete(horse);
+    public HorseResponse updateHorseStatus(Integer id, HorseStatusUpdateRequest request) {
+        Horses horse = findHorse(id);
+        horse.setStatus(normalizeHorseStatus(request.getStatus()));
+
+        return horseMapper.toResponse(horsesRepository.save(horse));
+    }
+
+
+    private Integer resolveHorseOwnerId(Integer requestedOwnerId) {
+        if (authService.currentUserHasRole(RoleType.ADMIN.getValue()) && requestedOwnerId != null) {
+            return requestedOwnerId;
+        }
+
+        return authService.getCurrentUserId();
     }
 
     private Horses findHorse(Integer id) {
@@ -83,45 +124,37 @@ public class HorseServiceImpl implements HorseService {
 
     private Horses findHorseForCurrentOwner(Integer id) {
         Horses horse = findHorse(id);
-        Integer ownerRoleId = authService.getCurrentUserRoleId(ROLE_HORSE_OWNER);
+        Integer ownerId = authService.getCurrentUserId();
 
-        if (!Objects.equals(horse.getOwnerRoles().getId(), ownerRoleId)) {
-            throw new AccessDeniedException("You do not own this horse");
+        if (!authService.currentUserHasRole(RoleType.ADMIN.getValue())) {
+            horseValidator.ensureOwnerCanManageHorse(horse, ownerId);
         }
 
         return horse;
     }
 
-    private void deleteRegistrationsByHorse(Integer horseId) {
-        List<Integer> registrationIds = raceRegistrationsRepository.findByHorses_Id(horseId)
-                .stream()
-                .map(RaceRegistrations::getId)
-                .toList();
-
-        deleteAssignmentsByRegistrations(registrationIds);
-        raceRegistrationsRepository.deleteByHorses_Id(horseId);
+    private HorseOwnerProfiles findOwnerProfile(Integer ownerId) {
+        return horseOwnerProfilesRepository.findById(ownerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Horse owner profile not found"));
     }
 
-    private void deleteAssignmentsByRegistrations(List<Integer> registrationIds) {
-        if (registrationIds.isEmpty()) {
-            return;
+    private String resolveCreatedHorseStatus() {
+        if (authService.currentUserHasRole(RoleType.ADMIN.getValue())) {
+            return HorseStatus.ACTIVE.getValue();
         }
 
-        List<Integer> assignmentIds = jockeyHorseAssignmentsRepository.findByReg_IdIn(registrationIds)
-                .stream()
-                .map(JockeyHorseAssignments::getId)
-                .toList();
-
-        deleteAssignmentChildren(assignmentIds);
-        jockeyHorseAssignmentsRepository.deleteByReg_IdIn(registrationIds);
+        return HorseStatus.INACTIVE.getValue();
     }
 
-    private void deleteAssignmentChildren(List<Integer> assignmentIds) {
-        if (assignmentIds.isEmpty()) {
-            return;
+    private String normalizeHorseStatus(String status) {
+        if (!HorseStatus.isValid(status)) {
+            throw new BadRequestException("Status must be active, inactive or retired");
         }
 
-        betsRepository.deleteByAssignment_IdIn(assignmentIds);
-        raceResultsRepository.deleteByAssignment_IdIn(assignmentIds);
+        return status.trim().toLowerCase();
     }
+
+
 }
+
+

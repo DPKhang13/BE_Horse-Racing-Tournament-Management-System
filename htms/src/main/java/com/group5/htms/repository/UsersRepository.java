@@ -2,12 +2,11 @@ package com.group5.htms.repository;
 
 import com.group5.htms.entity.Users;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
-
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import java.util.List;
 import java.util.Optional;
 
-public interface UsersRepository extends JpaRepository<Users, Integer> {
+public interface UsersRepository extends JpaRepository<Users, Integer>, JpaSpecificationExecutor<Users> {
 
     Optional<Users> findByUsername(String username);
 
@@ -17,19 +16,13 @@ public interface UsersRepository extends JpaRepository<Users, Integer> {
 
     boolean existsByEmail(String email);
 
-    @Query("""
-            SELECT DISTINCT u
-            FROM Users u
-            LEFT JOIN FETCH u.roles
-            WHERE u.username = :identifier OR u.email = :identifier
-            """)
-    Optional<Users> findByUsernameOrEmailWithRoles(@Param("identifier") String identifier);
+    boolean existsByUsernameAndIdNot(String username, Integer id);
 
-    @Query("""
-            SELECT DISTINCT u
-            FROM Users u
-            LEFT JOIN FETCH u.roles
-            WHERE u.username = :username
-            """)
-    Optional<Users> findByUsernameWithRoles(@Param("username") String username);
+    boolean existsByEmailAndIdNot(String email, Integer id);
+
+    long countByRoleTypeIgnoreCaseAndStatusIgnoreCase(String roleType, String status);
+
+    Optional<Users> findByUsernameOrEmail(String username, String email);
+
+    List<Users> findByRoleTypeIgnoreCaseOrderByFullNameAsc(String roleType);
 }

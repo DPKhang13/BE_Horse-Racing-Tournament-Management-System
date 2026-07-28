@@ -15,7 +15,7 @@ import java.time.Instant;
 @Setter
 @ToString
 @Entity
-@Table(name = "\"Races\"")
+@Table(name = "\"races\"")
 public class Races {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -36,8 +36,13 @@ public class Races {
     @Column(name = "race_number", nullable = false)
     private Integer raceNumber;
 
-    @Column(name = "rank_group", length = Integer.MAX_VALUE)
+    @Column(name = "rank_group", length = 1)
     private String rankGroup;
+
+    @NotNull
+    @ColumnDefault("1")
+    @Column(name = "lap_count", nullable = false)
+    private Integer lapCount;
 
     @NotNull
     @Column(name = "scheduled_at", nullable = false)
@@ -58,6 +63,11 @@ public class Races {
     @ColumnDefault("8")
     @Column(name = "max_horses", nullable = false)
     private Integer maxHorses;
+
+    @NotNull
+    @ColumnDefault("3")
+    @Column(name = "max_referees", nullable = false)
+    private Integer maxReferees;
 
     @Size(max = 20)
     @NotNull

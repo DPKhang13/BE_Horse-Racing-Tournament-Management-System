@@ -19,4 +19,7 @@ public class VnpayReturnResponse {
     private String payDate;
 
     private String message;
+
+    private String transactionRef;
+    private PaymentTransactionResponse transaction;
 }

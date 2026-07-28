@@ -2,12 +2,15 @@ package com.group5.htms.service;
 
 import com.group5.htms.dto.notification.request.NotificationCreateRequest;
 import com.group5.htms.dto.notification.request.NotificationUpdateRequest;
+import com.group5.htms.dto.notification.response.NotificationListResponse;
 import com.group5.htms.dto.notification.response.NotificationResponse;
 
 import java.util.List;
 
 public interface NotificationService {
-    List<NotificationResponse> getAllNotifications();
+    List<NotificationListResponse> getAllNotifications();
+
+    List<NotificationListResponse> getCurrentUserNotifications();
 
     NotificationResponse getNotificationById(Integer id);
 

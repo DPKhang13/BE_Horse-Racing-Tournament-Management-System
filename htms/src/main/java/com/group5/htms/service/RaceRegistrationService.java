@@ -1,16 +1,26 @@
 package com.group5.htms.service;
 
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationApprovalRequest;
+import com.group5.htms.dto.raceregistration.request.RaceRegistrationApproveRequest;
+import com.group5.htms.dto.raceregistration.request.RaceRegistrationCancelRequest;
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationCreateRequest;
+import com.group5.htms.dto.raceregistration.request.RaceRegistrationRejectRequest;
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationUpdateRequest;
+import com.group5.htms.dto.raceregistration.response.RaceRegistrationListResponse;
 import com.group5.htms.dto.raceregistration.response.RaceRegistrationResponse;
 
 import java.util.List;
 
 public interface RaceRegistrationService {
-    List<RaceRegistrationResponse> getAllRegistrations();
+    List<RaceRegistrationListResponse> getAllRegistrations();
+
+    List<RaceRegistrationListResponse> getMyRegistrations();
+
+    List<RaceRegistrationListResponse> getAdminApprovalRegistrations();
 
     RaceRegistrationResponse getRegistrationById(Integer id);
+
+    RaceRegistrationResponse getMyRegistrationById(Integer id);
 
     RaceRegistrationResponse createRegistration(RaceRegistrationCreateRequest request);
 
@@ -18,5 +28,9 @@ public interface RaceRegistrationService {
 
     RaceRegistrationResponse approveRegistration(Integer id, RaceRegistrationApprovalRequest request);
 
-    void deleteRegistration(Integer id);
+    RaceRegistrationResponse approveRegistration(Integer id, RaceRegistrationApproveRequest request);
+
+    RaceRegistrationResponse rejectRegistration(Integer id, RaceRegistrationRejectRequest request);
+
+    RaceRegistrationResponse cancelRegistration(Integer id, RaceRegistrationCancelRequest request);
 }

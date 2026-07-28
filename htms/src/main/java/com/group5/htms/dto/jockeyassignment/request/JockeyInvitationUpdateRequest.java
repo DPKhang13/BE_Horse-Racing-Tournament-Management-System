@@ -11,7 +11,7 @@ import java.time.Instant;
 public class JockeyInvitationUpdateRequest {
     private Integer registrationId;
     private Integer raceId;
-    private Integer jockeyRoleId;
+    private Integer jockeyId;
     private Integer gateNumber;
 
     @Size(max = 20, message = "Status must not exceed 20 characters")

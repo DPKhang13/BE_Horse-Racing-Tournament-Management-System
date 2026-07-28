@@ -1,24 +1,23 @@
 package com.group5.htms.service.impl;
 
 import com.group5.htms.config.CustomUserDetailsConfig;
-import com.group5.htms.dto.auth.AuthResponse;
-import com.group5.htms.dto.auth.LoginRequest;
-import com.group5.htms.dto.auth.RegisterRequest;
-import com.group5.htms.dto.auth.UserMeResponse;
+import com.group5.htms.dto.auth.response.AuthResponse;
+import com.group5.htms.dto.auth.request.LoginRequest;
+import com.group5.htms.dto.auth.request.RegisterRequest;
+import com.group5.htms.dto.auth.response.UserMeResponse;
 import com.group5.htms.dto.otpverify.request.ResendOtpRequest;
 import com.group5.htms.dto.otpverify.request.VerifyOtpRequest;
 import com.group5.htms.dto.otpverify.response.OtpVerifyResponse;
-import com.group5.htms.entity.Roles;
 import com.group5.htms.entity.Users;
 import com.group5.htms.enums.OtpValidationStatus;
-import com.group5.htms.enums.RoleStatus;
 import com.group5.htms.enums.RoleType;
 import com.group5.htms.enums.UserStatus;
 import com.group5.htms.exception.BadRequestException;
-import com.group5.htms.exception.ResourceNotFoundException;
 import com.group5.htms.exception.UnauthorizedException;
 import com.group5.htms.mapper.AuthMapper;
-import com.group5.htms.repository.RolesRepository;
+import com.group5.htms.repository.HorseOwnerProfilesRepository;
+import com.group5.htms.repository.JockeyProfilesRepository;
+import com.group5.htms.repository.RefereeProfilesRepository;
 import com.group5.htms.repository.UsersRepository;
 import com.group5.htms.service.AuthService;
 import com.group5.htms.service.OtpMailService;
@@ -36,8 +35,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Set;
-
 @Service
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
@@ -45,29 +42,8 @@ public class AuthServiceImpl implements AuthService {
     private static final String ACCESS_TOKEN_COOKIE = "AccessToken";
     private static final String REFRESH_TOKEN_COOKIE = "RefreshToken";
 
-    private static final String STATUS_ACTIVE = "active";
-
-    private static final String ROLE_SPECTATOR = "spectator";
-    private static final String ROLE_HORSE_OWNER = "horse_owner";
-    private static final String ROLE_JOCKEY = "jockey";
-
-    /*
-     Role được phép tự đăng ký.
-     Admin và Race Referee phải được tạo/phân quyền bởi admin, không cho public register.
-     */
-    private static final Set<String> PUBLIC_REGISTER_ROLES = Set.of(
-            ROLE_SPECTATOR,
-            ROLE_HORSE_OWNER,
-            ROLE_JOCKEY
-    );
-
-    private static final Set<String> BLOCKED_REGISTER_ROLES = Set.of(
-            "admin",
-            "race_referee"
-    );
 
     private final UsersRepository usersRepository;
-    private final RolesRepository rolesRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final CustomUserDetailsConfig userDetailsService;
@@ -75,12 +51,15 @@ public class AuthServiceImpl implements AuthService {
     private final RefreshTokenServiceImpl refreshTokenService;
     private final AuthMapper authMapper;
     private final OtpMailService otpMailService;
+    private final HorseOwnerProfilesRepository horseOwnerProfilesRepository;
+    private final JockeyProfilesRepository jockeyProfilesRepository;
+    private final RefereeProfilesRepository refereeProfilesRepository;
     /*
      * POST /api/auth/register
      1. Check username/email trùng.
      2. Chuẩn hóa role đăng ký.
-     3. Tạo Users + Roles.
-     4. Save user, cascade sẽ save role.
+     3. Tạo Users với role_type.
+     4. Save user.
      5. Tạo access token + refresh token.
      6. Set token vào HttpOnly Cookie.
      */
@@ -115,15 +94,9 @@ public class AuthServiceImpl implements AuthService {
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .fullName(request.getFullName().trim())
                 .phone(clean(request.getPhone()))
+                .roleType(initialRole)
                 .status(UserStatus.INACTIVE.getValue())
                 .build();
-
-        Roles role = Roles.builder()
-                .roleType(initialRole)
-                .status(RoleStatus.ACTIVE.getValue())
-                .build();
-
-        user.addRole(role);
 
         usersRepository.save(user);
 
@@ -153,7 +126,10 @@ public class AuthServiceImpl implements AuthService {
                 )
         );
 
-        Users user = usersRepository.findByUsernameOrEmailWithRoles(request.getUsernameOrEmail())
+        Users user = usersRepository.findByUsernameOrEmail(
+                        request.getUsernameOrEmail(),
+                        request.getUsernameOrEmail()
+                )
                 .orElseThrow(() -> new UnauthorizedException("Invalid username/email or password"));
 
         UserDetails userDetails = userDetailsService.loadUserByUsername(user.getUsername());
@@ -196,10 +172,10 @@ public class AuthServiceImpl implements AuthService {
 
         refreshTokenService.revoke(oldJti);
 
-        Users user = usersRepository.findByUsernameWithRoles(username)
+        Users user = usersRepository.findByUsername(username)
                 .orElseThrow(() -> new UnauthorizedException("User not found"));
 
-        if (!STATUS_ACTIVE.equalsIgnoreCase(user.getStatus())) {
+        if (!UserStatus.ACTIVE.getValue().equalsIgnoreCase(user.getStatus())) {
             throw new UnauthorizedException("User account is not active");
         }
 
@@ -250,7 +226,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional(readOnly = true)
     public UserMeResponse me() {
-        return authMapper.toUserMeResponse(getCurrentUser());
+        return toUserMeResponseWithProfile(getCurrentUser());
     }
 
     @Override
@@ -264,19 +240,10 @@ public class AuthServiceImpl implements AuthService {
 
         String username = authentication.getName();
 
-        Users user = usersRepository.findByUsernameWithRoles(username)
+        Users user = usersRepository.findByUsername(username)
                 .orElseThrow(() -> new UnauthorizedException("User not found"));
 
         return user;
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public Roles getCurrentUserRole(String roleType) {
-        Users user = getCurrentUser();
-
-        return rolesRepository.findByUsersAndRoleType(user, roleType)
-                .orElseThrow(() -> new ResourceNotFoundException(roleType + " role not found"));
     }
 
     @Override
@@ -287,8 +254,9 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional(readOnly = true)
-    public Integer getCurrentUserRoleId(String roleType) {
-        return getCurrentUserRole(roleType).getId();
+    public boolean currentUserHasRole(String roleType) {
+        Users user = getCurrentUser();
+        return user.getRoleType() != null && user.getRoleType().equalsIgnoreCase(roleType);
     }
 
     /*
@@ -335,31 +303,51 @@ public class AuthServiceImpl implements AuthService {
                 .accessToken(accessToken)      // giữ lại để test Swagger/Postman
                 .refreshToken(refreshToken)    // production có thể bỏ khỏi response
                 .expiresIn(jwtUtil.getAccessTokenAge() / 1000)
-                .user(authMapper.toUserMeResponse(user))
+                .user(toUserMeResponseWithProfile(user))
                 .build();
+    }
+
+    private UserMeResponse toUserMeResponseWithProfile(Users user) {
+        if (user == null || user.getRoleType() == null) {
+            return authMapper.toUserMeResponse(user);
+        }
+
+        String roleType = user.getRoleType().trim().toLowerCase();
+
+        if (RoleType.HORSE_OWNER.getValue().equals(roleType)) {
+            return authMapper.toUserMeResponse(
+                    user,
+                    horseOwnerProfilesRepository.findById(user.getId()).orElse(null),
+                    null,
+                    null
+            );
+        }
+
+        if (RoleType.JOCKEY.getValue().equals(roleType)) {
+            return authMapper.toUserMeResponse(
+                    user,
+                    null,
+                    jockeyProfilesRepository.findById(user.getId()).orElse(null),
+                    null
+            );
+        }
+
+        if (RoleType.RACE_REFEREE.getValue().equals(roleType)) {
+            return authMapper.toUserMeResponse(
+                    user,
+                    null,
+                    null,
+                    refereeProfilesRepository.findById(user.getId()).orElse(null)
+            );
+        }
+
+        return authMapper.toUserMeResponse(user);
     }
 
     /*
      Chuẩn hóa role khi register.
      Nếu không gửi roleType thì mặc định là spectator.
      */
-//    private String normalizeRegisterRole(String roleType) {
-//        if (roleType == null || roleType.isBlank()) {
-//            return ROLE_SPECTATOR;
-//        }
-//
-//        String normalizedRole = roleType.trim().toLowerCase();
-//
-//        if (BLOCKED_REGISTER_ROLES.contains(normalizedRole)) {
-//            throw new BadRequestException("This role cannot be created from public registration");
-//        }
-//
-//        if (!PUBLIC_REGISTER_ROLES.contains(normalizedRole)) {
-//            throw new BadRequestException("Invalid register role");
-//        }
-//
-//        return normalizedRole;
-//    }
     private String normalizeRegisterRole(String roleType) {
         if (roleType == null || roleType.isBlank()) {
             return RoleType.SPECTATOR.getValue();
@@ -461,3 +449,5 @@ public class AuthServiceImpl implements AuthService {
         return cleaned.isBlank() ? null : cleaned;
     }
 }
+
+
