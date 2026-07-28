@@ -1,0 +1,384 @@
+package com.group5.htms.service.impl;
+
+import com.group5.htms.dto.withdrawal.request.WithdrawalCreateRequest;
+import com.group5.htms.dto.withdrawal.request.WithdrawalMarkPaidRequest;
+import com.group5.htms.dto.withdrawal.request.WithdrawalRejectRequest;
+import com.group5.htms.dto.withdrawal.response.WithdrawalResponse;
+import com.group5.htms.entity.Users;
+import com.group5.htms.entity.WalletTransactions;
+import com.group5.htms.entity.Wallets;
+import com.group5.htms.entity.Withdrawals;
+import com.group5.htms.enums.RoleType;
+import com.group5.htms.enums.WalletStatus;
+import com.group5.htms.enums.WalletTransactionStatus;
+import com.group5.htms.enums.WalletTransactionType;
+import com.group5.htms.enums.WithdrawalStatus;
+import com.group5.htms.exception.BadRequestException;
+import com.group5.htms.exception.UnauthorizedException;
+import com.group5.htms.repository.UsersRepository;
+import com.group5.htms.repository.WalletTransactionsRepository;
+import com.group5.htms.repository.WalletsRepository;
+import com.group5.htms.repository.WithdrawalsRepository;
+import com.group5.htms.service.WithdrawalService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.Instant;
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+public class WithdrawalServiceImpl implements WithdrawalService {
+
+    private static final BigDecimal DEFAULT_EXCHANGE_RATE = new BigDecimal("0.001000");
+    private static final BigDecimal DEFAULT_TAX_RATE = new BigDecimal("10.00");
+    private static final BigDecimal ONE_HUNDRED = new BigDecimal("100.00");
+
+    private final UsersRepository usersRepository;
+    private final WalletsRepository walletsRepository;
+    private final WalletTransactionsRepository walletTransactionsRepository;
+    private final WithdrawalsRepository withdrawalsRepository;
+    private final JavaMailSender mailSender;
+
+    @Override
+    @Transactional
+    public WithdrawalResponse createWithdrawal(WithdrawalCreateRequest request) {
+        Users user = getCurrentUser();
+        validateSpectator(user);
+
+        Wallets wallet = getLockedWallet(user.getId());
+        validateWalletActive(wallet);
+
+        BigDecimal requestedPoints = money(request.getPointsAmount());
+        if (requestedPoints.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BadRequestException("Points amount must be greater than 0");
+        }
+
+        BigDecimal pointsBefore = money(wallet.getPointBalance());
+        if (pointsBefore.compareTo(requestedPoints) < 0) {
+            throw new BadRequestException("Insufficient wallet balance");
+        }
+
+        BigDecimal grossCash = requestedPoints.divide(DEFAULT_EXCHANGE_RATE, 2, RoundingMode.HALF_UP);
+        BigDecimal taxAmount = grossCash.multiply(DEFAULT_TAX_RATE).divide(ONE_HUNDRED, 2, RoundingMode.HALF_UP);
+        BigDecimal netCash = grossCash.subtract(taxAmount).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal pointsAfter = pointsBefore.subtract(requestedPoints).setScale(2, RoundingMode.HALF_UP);
+
+        wallet.setPointBalance(pointsAfter);
+        walletsRepository.save(wallet);
+
+        WalletTransactions tx = walletTransactionsRepository.save(WalletTransactions.builder()
+                .wallets(wallet)
+                .users(user)
+                .txType(WalletTransactionType.WITHDRAW.getValue())
+                .cashAmount(grossCash)
+                .pointsAmount(requestedPoints)
+                .exchangeRate(DEFAULT_EXCHANGE_RATE)
+                .pointsBefore(pointsBefore)
+                .pointsAfter(pointsAfter)
+                .status(WalletTransactionStatus.PENDING.getValue())
+                .refType("withdrawal")
+                .createdBy(user)
+                .createdAt(Instant.now())
+                .build());
+
+        Withdrawals withdrawal = withdrawalsRepository.save(Withdrawals.builder()
+                .transaction(tx)
+                .users(user)
+                .wallets(wallet)
+                .requestedPoints(requestedPoints)
+                .grossCashAmount(grossCash)
+                .taxRate(DEFAULT_TAX_RATE)
+                .taxAmount(taxAmount)
+                .netCashAmount(netCash)
+                .exchangeRate(DEFAULT_EXCHANGE_RATE)
+                .bankName(cleanRequired(request.getBankName(), "Bank name is required"))
+                .bankAccountNumber(cleanRequired(request.getBankAccountNumber(), "Bank account number is required"))
+                .bankAccountName(cleanRequired(request.getBankAccountName(), "Bank account name is required"))
+                .status(WithdrawalStatus.PENDING.getValue())
+                .createdAt(Instant.now())
+                .build());
+
+        tx.setRefId(withdrawal.getId());
+        walletTransactionsRepository.save(tx);
+
+        return toResponse(withdrawal);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<WithdrawalResponse> getMyWithdrawals() {
+        Users user = getCurrentUser();
+        return withdrawalsRepository.findByUsersIdOrderByCreatedAtDesc(user.getId())
+                .stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public WithdrawalResponse getMyWithdrawal(Integer withdrawalId) {
+        Users user = getCurrentUser();
+        Withdrawals withdrawal = withdrawalsRepository.findByIdAndUsersId(withdrawalId, user.getId())
+                .orElseThrow(() -> new BadRequestException("Withdrawal not found"));
+        return toResponse(withdrawal);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<WithdrawalResponse> getAllWithdrawals(String status) {
+        List<Withdrawals> withdrawals = status == null || status.isBlank()
+                ? withdrawalsRepository.findAllByOrderByCreatedAtDesc()
+                : withdrawalsRepository.findByStatusIgnoreCaseOrderByCreatedAtDesc(status.trim());
+
+        return withdrawals.stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    public WithdrawalResponse approveWithdrawal(Integer withdrawalId) {
+        Users admin = getCurrentUser();
+        Withdrawals withdrawal = getLockedWithdrawal(withdrawalId);
+
+        if (!WithdrawalStatus.PENDING.equalsValue(withdrawal.getStatus())) {
+            throw new BadRequestException("Only pending withdrawals can be approved");
+        }
+
+        withdrawal.setStatus(WithdrawalStatus.APPROVED.getValue());
+        withdrawal.setApprovedBy(admin);
+        withdrawal.setApprovedAt(Instant.now());
+
+        return toResponse(withdrawalsRepository.save(withdrawal));
+    }
+
+    @Override
+    @Transactional
+    public WithdrawalResponse rejectWithdrawal(Integer withdrawalId, WithdrawalRejectRequest request) {
+        Users admin = getCurrentUser();
+        Withdrawals withdrawal = getLockedWithdrawal(withdrawalId);
+
+        if (WithdrawalStatus.REJECTED.equalsValue(withdrawal.getStatus())
+                || WithdrawalStatus.PAID.equalsValue(withdrawal.getStatus())) {
+            throw new BadRequestException("Withdrawal cannot be rejected");
+        }
+
+        WalletTransactions tx = getLockedTransaction(withdrawal);
+        if (!WalletTransactionStatus.PENDING.getValue().equalsIgnoreCase(tx.getStatus())) {
+            throw new BadRequestException("Withdrawal transaction is not pending");
+        }
+
+        Wallets wallet = walletsRepository.findFirstById(withdrawal.getWallets().getId())
+                .orElseThrow(() -> new BadRequestException("Wallet not found"));
+        validateWalletActive(wallet);
+
+        BigDecimal pointsBeforeRefund = money(wallet.getPointBalance());
+        BigDecimal pointsAfterRefund = pointsBeforeRefund.add(withdrawal.getRequestedPoints()).setScale(2, RoundingMode.HALF_UP);
+        wallet.setPointBalance(pointsAfterRefund);
+
+        tx.setStatus(WalletTransactionStatus.CANCELLED.getValue());
+        tx.setPointsAfter(pointsAfterRefund);
+
+        withdrawal.setStatus(WithdrawalStatus.REJECTED.getValue());
+        withdrawal.setRejectReason(cleanRequired(request.getRejectReason(), "Reject reason is required"));
+        withdrawal.setRejectedBy(admin);
+        withdrawal.setRejectedAt(Instant.now());
+
+        walletsRepository.save(wallet);
+        walletTransactionsRepository.save(tx);
+        return toResponse(withdrawalsRepository.save(withdrawal));
+    }
+
+    @Override
+    @Transactional
+    public WithdrawalResponse markWithdrawalPaid(Integer withdrawalId, WithdrawalMarkPaidRequest request) {
+        Users admin = getCurrentUser();
+        Withdrawals withdrawal = getLockedWithdrawal(withdrawalId);
+
+        if (!WithdrawalStatus.APPROVED.equalsValue(withdrawal.getStatus())) {
+            throw new BadRequestException("Only approved withdrawals can be marked as paid");
+        }
+
+        WalletTransactions tx = getLockedTransaction(withdrawal);
+        if (!WalletTransactionStatus.PENDING.getValue().equalsIgnoreCase(tx.getStatus())) {
+            throw new BadRequestException("Withdrawal transaction is not pending");
+        }
+
+        Instant now = Instant.now();
+        withdrawal.setStatus(WithdrawalStatus.PAID.getValue());
+        withdrawal.setPaidBy(admin);
+        withdrawal.setPaidAt(now);
+        withdrawal.setBankTransactionCode(cleanRequired(request.getBankTransactionCode(), "Bank transaction code is required"));
+        withdrawal.setPaymentNote(clean(request.getPaymentNote()));
+        generateInvoiceIfNeeded(withdrawal, now);
+
+        tx.setStatus(WalletTransactionStatus.COMPLETED.getValue());
+        walletTransactionsRepository.save(tx);
+
+        Withdrawals saved = withdrawalsRepository.save(withdrawal);
+        sendInvoiceEmailQuietly(saved);
+        return toResponse(withdrawalsRepository.save(saved));
+    }
+
+    @Override
+    @Transactional
+    public WithdrawalResponse resendInvoice(Integer withdrawalId) {
+        Withdrawals withdrawal = getLockedWithdrawal(withdrawalId);
+        if (!WithdrawalStatus.PAID.equalsValue(withdrawal.getStatus())) {
+            throw new BadRequestException("Only paid withdrawals can resend invoice");
+        }
+
+        generateInvoiceIfNeeded(withdrawal, Instant.now());
+        Withdrawals saved = withdrawalsRepository.save(withdrawal);
+        sendInvoiceEmailQuietly(saved);
+        return toResponse(withdrawalsRepository.save(saved));
+    }
+
+    private Users getCurrentUser() {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        return usersRepository.findByUsername(username)
+                .orElseThrow(() -> new UnauthorizedException("User not found"));
+    }
+
+    private void validateSpectator(Users user) {
+        if (!RoleType.SPECTATOR.getValue().equalsIgnoreCase(user.getRoleType())) {
+            throw new UnauthorizedException("Only spectator can withdraw wallet balance");
+        }
+    }
+
+    private Wallets getLockedWallet(Integer userId) {
+        Wallets wallet = walletsRepository.findByUsersId(userId)
+                .orElseThrow(() -> new BadRequestException("Wallet not found"));
+        return walletsRepository.findFirstById(wallet.getId())
+                .orElseThrow(() -> new BadRequestException("Wallet not found"));
+    }
+
+    private Withdrawals getLockedWithdrawal(Integer withdrawalId) {
+        if (withdrawalId == null) {
+            throw new BadRequestException("Withdrawal id is required");
+        }
+        return withdrawalsRepository.findFirstById(withdrawalId)
+                .orElseThrow(() -> new BadRequestException("Withdrawal not found"));
+    }
+
+    private WalletTransactions getLockedTransaction(Withdrawals withdrawal) {
+        return walletTransactionsRepository.findFirstById(withdrawal.getTransaction().getId())
+                .orElseThrow(() -> new BadRequestException("Withdrawal transaction not found"));
+    }
+
+    private void validateWalletActive(Wallets wallet) {
+        if (wallet.getStatus() == null || !WalletStatus.ACTIVE.getValue().equalsIgnoreCase(wallet.getStatus())) {
+            throw new BadRequestException("Wallet is not active");
+        }
+    }
+
+    private void generateInvoiceIfNeeded(Withdrawals withdrawal, Instant now) {
+        if (withdrawal.getInvoiceNumber() == null || withdrawal.getInvoiceNumber().isBlank()) {
+            withdrawal.setInvoiceNumber("WD-" + withdrawal.getId() + "-" + now.toEpochMilli());
+        }
+        if (withdrawal.getInvoiceGeneratedAt() == null) {
+            withdrawal.setInvoiceGeneratedAt(now);
+        }
+    }
+
+    private void sendInvoiceEmailQuietly(Withdrawals withdrawal) {
+        Users user = withdrawal.getUsers();
+        if (user == null || user.getEmail() == null || user.getEmail().isBlank()) {
+            return;
+        }
+
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setTo(user.getEmail());
+            message.setSubject("HTMS Withdrawal Invoice " + withdrawal.getInvoiceNumber());
+            message.setText("""
+                    Withdrawal invoice: %s
+                    Customer: %s
+                    Gross amount: %s VND
+                    Tax: %s VND
+                    Net paid: %s VND
+                    Bank: %s
+                    Account number: %s
+                    Bank transaction code: %s
+                    Paid at: %s
+                    """.formatted(
+                    withdrawal.getInvoiceNumber(),
+                    user.getFullName(),
+                    withdrawal.getGrossCashAmount(),
+                    withdrawal.getTaxAmount(),
+                    withdrawal.getNetCashAmount(),
+                    withdrawal.getBankName(),
+                    withdrawal.getBankAccountNumber(),
+                    withdrawal.getBankTransactionCode(),
+                    withdrawal.getPaidAt()
+            ));
+            mailSender.send(message);
+            withdrawal.setEmailSentTo(user.getEmail());
+            withdrawal.setInvoiceEmailedAt(Instant.now());
+        } catch (Exception ignored) {
+            withdrawal.setEmailSentTo(user.getEmail());
+        }
+    }
+
+    private WithdrawalResponse toResponse(Withdrawals withdrawal) {
+        Users user = withdrawal.getUsers();
+        WalletTransactions tx = withdrawal.getTransaction();
+        return WithdrawalResponse.builder()
+                .withdrawalId(withdrawal.getId())
+                .txId(tx == null ? null : tx.getId())
+                .userId(user == null ? null : user.getId())
+                .username(user == null ? null : user.getUsername())
+                .userFullName(user == null ? null : user.getFullName())
+                .userEmail(user == null ? null : user.getEmail())
+                .walletId(withdrawal.getWallets() == null ? null : withdrawal.getWallets().getId())
+                .requestedPoints(withdrawal.getRequestedPoints())
+                .grossCashAmount(withdrawal.getGrossCashAmount())
+                .taxRate(withdrawal.getTaxRate())
+                .taxAmount(withdrawal.getTaxAmount())
+                .netCashAmount(withdrawal.getNetCashAmount())
+                .exchangeRate(withdrawal.getExchangeRate())
+                .bankName(withdrawal.getBankName())
+                .bankAccountNumber(withdrawal.getBankAccountNumber())
+                .bankAccountName(withdrawal.getBankAccountName())
+                .status(withdrawal.getStatus())
+                .approvedBy(withdrawal.getApprovedBy() == null ? null : withdrawal.getApprovedBy().getId())
+                .approvedAt(withdrawal.getApprovedAt())
+                .rejectedBy(withdrawal.getRejectedBy() == null ? null : withdrawal.getRejectedBy().getId())
+                .rejectedAt(withdrawal.getRejectedAt())
+                .paidBy(withdrawal.getPaidBy() == null ? null : withdrawal.getPaidBy().getId())
+                .paidAt(withdrawal.getPaidAt())
+                .rejectReason(withdrawal.getRejectReason())
+                .bankTransactionCode(withdrawal.getBankTransactionCode())
+                .paymentNote(withdrawal.getPaymentNote())
+                .invoiceNumber(withdrawal.getInvoiceNumber())
+                .invoiceUrl(withdrawal.getInvoiceUrl())
+                .invoiceGeneratedAt(withdrawal.getInvoiceGeneratedAt())
+                .invoiceEmailedAt(withdrawal.getInvoiceEmailedAt())
+                .emailSentTo(withdrawal.getEmailSentTo())
+                .createdAt(withdrawal.getCreatedAt())
+                .build();
+    }
+
+    private BigDecimal money(BigDecimal value) {
+        return value == null ? BigDecimal.ZERO : value.setScale(2, RoundingMode.HALF_UP);
+    }
+
+    private String clean(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    private String cleanRequired(String value, String message) {
+        String cleaned = clean(value);
+        if (cleaned == null) {
+            throw new BadRequestException(message);
+        }
+        return cleaned;
+    }
+}
