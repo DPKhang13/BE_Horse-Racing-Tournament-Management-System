@@ -92,7 +92,7 @@ public class RaceRegistrationController {
 
     @Operation(summary = "Approve race registration", description = "Cập nhật trạng thái duyệt đăng ký race. Người duyệt được lấy từ JWT.")
     @PutMapping("/approve/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'RACE_REFEREE')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<RaceRegistrationResponse> approveRegistration(
             @PathVariable Integer id,
             @Valid @RequestBody RaceRegistrationApprovalRequest request

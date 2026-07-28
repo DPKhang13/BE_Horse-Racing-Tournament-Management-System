@@ -14,12 +14,14 @@ import com.group5.htms.entity.Races;
 import com.group5.htms.entity.TournamentSchedules;
 import com.group5.htms.entity.Tournaments;
 import com.group5.htms.enums.RaceRegistrationStatus;
+import com.group5.htms.enums.ChiefInspectionStatus;
 import com.group5.htms.enums.RaceStatus;
 import com.group5.htms.enums.TournamentStatus;
 import com.group5.htms.exception.BadRequestException;
 import com.group5.htms.mapper.RaceRegistrationMapper;
 import com.group5.htms.repository.HorseOwnerProfilesRepository;
 import com.group5.htms.repository.HorsesRepository;
+import com.group5.htms.repository.JockeyHorseAssignmentsRepository;
 import com.group5.htms.repository.RaceRegistrationsRepository;
 import com.group5.htms.repository.RacesRepository;
 import com.group5.htms.repository.TournamentsRepository;
@@ -60,10 +62,16 @@ class RaceRegistrationServiceImplTest {
     private HorseOwnerProfilesRepository horseOwnerProfilesRepository;
 
     @Mock
+    private JockeyHorseAssignmentsRepository jockeyHorseAssignmentsRepository;
+
+    @Mock
     private AuthService authService;
 
     @Mock
     private RaceRegistrationMapper raceRegistrationMapper;
+
+    @Mock
+    private RefereeRaceAuthorizationService refereeRaceAuthorizationService;
 
     private RaceRegistrationServiceImpl service;
     private RaceRegistrationValidator raceRegistrationValidator;
@@ -78,9 +86,11 @@ class RaceRegistrationServiceImplTest {
                 racesRepository,
                 horsesRepository,
                 horseOwnerProfilesRepository,
+                jockeyHorseAssignmentsRepository,
                 authService,
                 raceRegistrationMapper,
-                raceRegistrationValidator
+                raceRegistrationValidator,
+                refereeRaceAuthorizationService
         );
     }
 
@@ -103,7 +113,7 @@ class RaceRegistrationServiceImplTest {
 
     @Test
     void getAdminApprovalRegistrationsReturnsApprovalReadyRegistrationsOnly() {
-        RaceRegistrations pendingRegistration = registration(RaceRegistrationStatus.PENDING.getValue());
+        RaceRegistrations pendingRegistration = approvalReadyRegistration();
         RaceRegistrationListResponse expectedResponse = RaceRegistrationListResponse.builder()
                 .regId(10)
                 .status(RaceRegistrationStatus.PENDING.getValue())
@@ -233,6 +243,8 @@ class RaceRegistrationServiceImplTest {
     @Test
     void approveRegistrationFailsIfJockeyAssignmentNotOwnerConfirmed() {
         RaceRegistrations registration = registration(RaceRegistrationStatus.PENDING.getValue());
+        registration.setChiefInspectionStatus(ChiefInspectionStatus.APPROVED.getValue());
+        registration.getRaces().setStatus(RaceStatus.REGISTRATION_CLOSED.getValue());
         when(raceRegistrationsRepository.findById(10)).thenReturn(Optional.of(registration));
 
         assertThatThrownBy(() -> service.approveRegistration(10, new RaceRegistrationApproveRequest()))
@@ -265,7 +277,7 @@ class RaceRegistrationServiceImplTest {
 
     @Test
     void rejectRegistrationSucceedsIfRegistrationIsPending() {
-        RaceRegistrations registration = registration(RaceRegistrationStatus.PENDING.getValue());
+        RaceRegistrations registration = approvalReadyRegistration();
         RaceRegistrationResponse expectedResponse = RaceRegistrationResponse.builder()
                 .regId(10)
                 .status(RaceRegistrationStatus.REJECTED.getValue())
@@ -371,6 +383,8 @@ class RaceRegistrationServiceImplTest {
         RaceRegistrations registration = registration(RaceRegistrationStatus.PENDING.getValue());
         registration.setJockey(JockeyProfiles.builder().id(7).build());
         registration.setOwnerConfirmationStatus(RaceRegistrationStatus.CONFIRMED.getValue());
+        registration.setChiefInspectionStatus(ChiefInspectionStatus.APPROVED.getValue());
+        registration.getRaces().setStatus(RaceStatus.REGISTRATION_CLOSED.getValue());
         return registration;
     }
     private RaceRegistrations registration(String status) {
@@ -381,6 +395,7 @@ class RaceRegistrationServiceImplTest {
                 .horses(horse("A"))
                 .owner(owner())
                 .status(status)
+                .chiefInspectionStatus(ChiefInspectionStatus.PENDING.getValue())
                 .registeredAt(Instant.now())
                 .build();
     }

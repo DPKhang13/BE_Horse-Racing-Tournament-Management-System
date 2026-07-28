@@ -17,6 +17,7 @@ import com.group5.htms.entity.Races;
 import com.group5.htms.entity.Tournaments;
 import com.group5.htms.entity.Users;
 import com.group5.htms.enums.JockeyAssignmentStatus;
+import com.group5.htms.enums.ChiefInspectionStatus;
 import com.group5.htms.enums.RaceRegistrationStatus;
 import com.group5.htms.enums.RaceStatus;
 import com.group5.htms.enums.TournamentStatus;
@@ -251,14 +252,17 @@ public class TournamentServiceImpl implements TournamentService {
         List<RaceRegistrations> pendingRegistrations = registrations.stream()
                 .filter(registration -> RaceRegistrationStatus.PENDING.equalsValue(registration.getStatus()))
                 .toList();
-        List<RaceRegistrations> pendingRegistrationsWithActiveInvitation = pendingRegistrations.stream()
+        List<RaceRegistrations> unresolvedPendingRegistrations = pendingRegistrations.stream()
+                .filter(registration -> !confirmedRegistrationIds.contains(registration.getId()))
+                .toList();
+        List<RaceRegistrations> pendingRegistrationsWithActiveInvitation = unresolvedPendingRegistrations.stream()
                 .filter(registration -> hasActiveJockeyAssignment(registration, assignmentsByRegistrationId))
                 .toList();
-        List<RaceRegistrations> pendingRegistrationsWithoutActiveInvitation = pendingRegistrations.stream()
+        List<RaceRegistrations> pendingRegistrationsWithoutActiveInvitation = unresolvedPendingRegistrations.stream()
                 .filter(registration -> !hasActiveJockeyAssignment(registration, assignmentsByRegistrationId))
                 .toList();
         List<RaceRegistrations> pendingRegistrationsToReject = closeRequest.isAutoRejectPending()
-                ? pendingRegistrations
+                ? unresolvedPendingRegistrations
                 : pendingRegistrationsWithoutActiveInvitation;
         List<RaceRegistrations> approvedUnconfirmedRegistrations = registrations.stream()
                 .filter(registration -> RaceRegistrationStatus.APPROVED.equalsValue(registration.getStatus()))
@@ -306,24 +310,14 @@ public class TournamentServiceImpl implements TournamentService {
             cancelActiveAssignmentsForRegistrations(assignments, approvedUnconfirmedRegistrations, now);
         }
 
-        Set<Integer> readyRaceIds = registrations.stream()
-                .filter(registration -> RaceRegistrationStatus.APPROVED.equalsValue(registration.getStatus()))
-                .filter(registration -> confirmedRegistrationIds.contains(registration.getId()))
-                .map(registration -> registration.getRaces().getId())
-                .collect(Collectors.toSet());
-
         int readyRaceCount = 0;
-        int closedRaceCount = 0;
+        int closedRaceCount = registrationOpenRaces.size();
 
-        for (Races race : registrationOpenRaces) {
-            if (readyRaceIds.contains(race.getId())) {
-                race.setStatus(RaceStatus.READY.getValue());
-                readyRaceCount++;
-            } else {
-                race.setStatus(RaceStatus.REGISTRATION_CLOSED.getValue());
-                closedRaceCount++;
-            }
-        }
+        registrations.stream()
+                .filter(registration -> RaceRegistrationStatus.PENDING.equalsValue(registration.getStatus()))
+                .filter(registration -> confirmedRegistrationIds.contains(registration.getId()))
+                .forEach(registration -> registration.setChiefInspectionStatus(ChiefInspectionStatus.PENDING.getValue()));
+        registrationOpenRaces.forEach(race -> race.setStatus(RaceStatus.REGISTRATION_CLOSED.getValue()));
 
         tournament.setStatus(TournamentStatus.REGISTRATION_CLOSED.getValue());
 
@@ -344,9 +338,7 @@ public class TournamentServiceImpl implements TournamentService {
                 )
                 .closedRaceCount(closedRaceCount)
                 .readyRaceCount(readyRaceCount)
-                .message(closeRequest.isAllowCloseWithoutEligibleRaces()
-                        ? "Registration closed successfully. Races without eligible horses were closed without being marked ready"
-                        : "Registration closed successfully. Every registration-open race has at least one approved horse with a confirmed jockey assignment")
+                .message("Registration closed successfully. Chief inspection and final admin approval are required before a race becomes ready")
                 .build();
     }
 
@@ -379,8 +371,7 @@ public class TournamentServiceImpl implements TournamentService {
             }
 
             long eligibleHorseCount = raceRegistrations.stream()
-                    .filter(registration -> RaceRegistrationStatus.APPROVED.equalsValue(registration.getStatus()))
-                    .filter(registration -> confirmedRegistrationIds.contains(registration.getId()))
+                    .filter(registration -> isEligibleRegistration(registration, confirmedRegistrationIds))
                     .count();
 
             if (eligibleHorseCount <= 0) {
@@ -393,7 +384,7 @@ public class TournamentServiceImpl implements TournamentService {
 
                 throw new BadRequestException(
                         "Race " + race.getId() + " - " + race.getName()
-                                + " has no approved horses with confirmed jockey assignments; cannot close tournament registration"
+                                + " has no owner-confirmed horses with confirmed jockey assignments; cannot close tournament registration"
                                 + formatNotEligibleRegistrationSuffix(
                                 notEligibleRegistrations,
                                 assignmentsByRegistrationId
@@ -407,7 +398,8 @@ public class TournamentServiceImpl implements TournamentService {
             RaceRegistrations registration,
             Set<Integer> confirmedRegistrationIds
     ) {
-        return RaceRegistrationStatus.APPROVED.equalsValue(registration.getStatus())
+        return (RaceRegistrationStatus.PENDING.equalsValue(registration.getStatus())
+                || RaceRegistrationStatus.APPROVED.equalsValue(registration.getStatus()))
                 && confirmedRegistrationIds.contains(registration.getId());
     }
 

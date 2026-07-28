@@ -17,6 +17,15 @@ public class RaceRegistrationListResponse {
     private Integer gateNumber;
     private String status;
     private String ownerConfirmationStatus;
+    private String chiefInspectionStatus;
+    private Integer chiefInspectedById;
+    private String chiefInspectedByFullName;
+    private Instant chiefInspectedAt;
+    private String chiefInspectionNote;
+    private Integer adminReviewedById;
+    private String adminReviewedByFullName;
+    private Instant adminReviewedAt;
+    private String adminReviewNote;
     private Instant registeredAt;
     private String tournamentName;
     private String raceName;

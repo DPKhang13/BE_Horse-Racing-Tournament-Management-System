@@ -508,11 +508,14 @@ public class RaceServiceImpl implements RaceService {
     }
 
     private void validateRaceHasRequiredAssignments(Integer raceId) {
-        if (jockeyHorseAssignmentsRepository.countByRaces_IdAndStatusIgnoreCase(
-                raceId,
-                JockeyAssignmentStatus.CONFIRMED.getValue()
-        ) < 1) {
-            throw new BadRequestException("Race must have at least one confirmed jockey assignment before starting");
+        if (jockeyHorseAssignmentsRepository
+                .findByRaces_IdAndStatusIgnoreCaseAndReg_StatusIgnoreCaseOrderByReg_GateNumberAsc(
+                        raceId,
+                        JockeyAssignmentStatus.CONFIRMED.getValue(),
+                        RaceRegistrationStatus.APPROVED.getValue()
+                )
+                .isEmpty()) {
+            throw new BadRequestException("Race must have at least one finally approved horse and confirmed jockey assignment before starting");
         }
 
         if (raceRefereeAssignmentsRepository.countByRaces_Id(raceId) < 1) {
