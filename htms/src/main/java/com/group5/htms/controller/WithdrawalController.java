@@ -1,5 +1,6 @@
 package com.group5.htms.controller;
 
+import com.group5.htms.dto.withdrawal.request.WithdrawalApproveRequest;
 import com.group5.htms.dto.withdrawal.request.WithdrawalCreateRequest;
 import com.group5.htms.dto.withdrawal.request.WithdrawalMarkPaidRequest;
 import com.group5.htms.dto.withdrawal.request.WithdrawalRejectRequest;
@@ -62,9 +63,10 @@ public class WithdrawalController {
     @PatchMapping("/admin/{withdrawalId}/approve")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<WithdrawalResponse> approveWithdrawal(
-            @PathVariable Integer withdrawalId
+            @PathVariable Integer withdrawalId,
+            @Valid @RequestBody WithdrawalApproveRequest request
     ) {
-        return ResponseEntity.ok(withdrawalService.approveWithdrawal(withdrawalId));
+        return ResponseEntity.ok(withdrawalService.approveWithdrawal(withdrawalId, request));
     }
 
     @PatchMapping("/admin/{withdrawalId}/reject")

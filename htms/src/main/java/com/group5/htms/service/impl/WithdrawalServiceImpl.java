@@ -1,5 +1,6 @@
 package com.group5.htms.service.impl;
 
+import com.group5.htms.dto.withdrawal.request.WithdrawalApproveRequest;
 import com.group5.htms.dto.withdrawal.request.WithdrawalCreateRequest;
 import com.group5.htms.dto.withdrawal.request.WithdrawalMarkPaidRequest;
 import com.group5.htms.dto.withdrawal.request.WithdrawalRejectRequest;
@@ -29,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.List;
 
@@ -39,6 +41,7 @@ public class WithdrawalServiceImpl implements WithdrawalService {
     private static final BigDecimal DEFAULT_EXCHANGE_RATE = new BigDecimal("0.001000");
     private static final BigDecimal DEFAULT_TAX_RATE = new BigDecimal("10.00");
     private static final BigDecimal ONE_HUNDRED = new BigDecimal("100.00");
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     private final UsersRepository usersRepository;
     private final WalletsRepository walletsRepository;
@@ -98,9 +101,6 @@ public class WithdrawalServiceImpl implements WithdrawalService {
                 .taxAmount(taxAmount)
                 .netCashAmount(netCash)
                 .exchangeRate(DEFAULT_EXCHANGE_RATE)
-                .bankName(cleanRequired(request.getBankName(), "Bank name is required"))
-                .bankAccountNumber(cleanRequired(request.getBankAccountNumber(), "Bank account number is required"))
-                .bankAccountName(cleanRequired(request.getBankAccountName(), "Bank account name is required"))
                 .status(WithdrawalStatus.PENDING.getValue())
                 .createdAt(Instant.now())
                 .build());
@@ -144,7 +144,7 @@ public class WithdrawalServiceImpl implements WithdrawalService {
 
     @Override
     @Transactional
-    public WithdrawalResponse approveWithdrawal(Integer withdrawalId) {
+    public WithdrawalResponse approveWithdrawal(Integer withdrawalId, WithdrawalApproveRequest request) {
         Users admin = getCurrentUser();
         Withdrawals withdrawal = getLockedWithdrawal(withdrawalId);
 
@@ -155,6 +155,9 @@ public class WithdrawalServiceImpl implements WithdrawalService {
         withdrawal.setStatus(WithdrawalStatus.APPROVED.getValue());
         withdrawal.setApprovedBy(admin);
         withdrawal.setApprovedAt(Instant.now());
+        withdrawal.setPayoutLocation(cleanRequired(request.getPayoutLocation(), "Payout location is required"));
+        withdrawal.setPayoutCounter(cleanRequired(request.getPayoutCounter(), "Payout counter is required"));
+        withdrawal.setPickupCode(generatePickupCode());
 
         return toResponse(withdrawalsRepository.save(withdrawal));
     }
@@ -206,6 +209,11 @@ public class WithdrawalServiceImpl implements WithdrawalService {
             throw new BadRequestException("Only approved withdrawals can be marked as paid");
         }
 
+        String pickupCode = cleanRequired(request.getPickupCode(), "Pickup code is required");
+        if (withdrawal.getPickupCode() == null || !withdrawal.getPickupCode().equalsIgnoreCase(pickupCode)) {
+            throw new BadRequestException("Invalid pickup code");
+        }
+
         WalletTransactions tx = getLockedTransaction(withdrawal);
         if (!WalletTransactionStatus.PENDING.getValue().equalsIgnoreCase(tx.getStatus())) {
             throw new BadRequestException("Withdrawal transaction is not pending");
@@ -215,7 +223,6 @@ public class WithdrawalServiceImpl implements WithdrawalService {
         withdrawal.setStatus(WithdrawalStatus.PAID.getValue());
         withdrawal.setPaidBy(admin);
         withdrawal.setPaidAt(now);
-        withdrawal.setBankTransactionCode(cleanRequired(request.getBankTransactionCode(), "Bank transaction code is required"));
         withdrawal.setPaymentNote(clean(request.getPaymentNote()));
         generateInvoiceIfNeeded(withdrawal, now);
 
@@ -279,6 +286,14 @@ public class WithdrawalServiceImpl implements WithdrawalService {
         }
     }
 
+    private String generatePickupCode() {
+        String pickupCode;
+        do {
+            pickupCode = "WD" + String.format("%06d", SECURE_RANDOM.nextInt(1_000_000));
+        } while (withdrawalsRepository.existsByPickupCodeIgnoreCase(pickupCode));
+        return pickupCode;
+    }
+
     private void generateInvoiceIfNeeded(Withdrawals withdrawal, Instant now) {
         if (withdrawal.getInvoiceNumber() == null || withdrawal.getInvoiceNumber().isBlank()) {
             withdrawal.setInvoiceNumber("WD-" + withdrawal.getId() + "-" + now.toEpochMilli());
@@ -304,9 +319,9 @@ public class WithdrawalServiceImpl implements WithdrawalService {
                     Gross amount: %s VND
                     Tax: %s VND
                     Net paid: %s VND
-                    Bank: %s
-                    Account number: %s
-                    Bank transaction code: %s
+                    Pickup code: %s
+                    Payout location: %s
+                    Payout counter: %s
                     Paid at: %s
                     """.formatted(
                     withdrawal.getInvoiceNumber(),
@@ -314,9 +329,9 @@ public class WithdrawalServiceImpl implements WithdrawalService {
                     withdrawal.getGrossCashAmount(),
                     withdrawal.getTaxAmount(),
                     withdrawal.getNetCashAmount(),
-                    withdrawal.getBankName(),
-                    withdrawal.getBankAccountNumber(),
-                    withdrawal.getBankTransactionCode(),
+                    withdrawal.getPickupCode(),
+                    withdrawal.getPayoutLocation(),
+                    withdrawal.getPayoutCounter(),
                     withdrawal.getPaidAt()
             ));
             mailSender.send(message);
@@ -344,9 +359,9 @@ public class WithdrawalServiceImpl implements WithdrawalService {
                 .taxAmount(withdrawal.getTaxAmount())
                 .netCashAmount(withdrawal.getNetCashAmount())
                 .exchangeRate(withdrawal.getExchangeRate())
-                .bankName(withdrawal.getBankName())
-                .bankAccountNumber(withdrawal.getBankAccountNumber())
-                .bankAccountName(withdrawal.getBankAccountName())
+                .pickupCode(withdrawal.getPickupCode())
+                .payoutLocation(withdrawal.getPayoutLocation())
+                .payoutCounter(withdrawal.getPayoutCounter())
                 .status(withdrawal.getStatus())
                 .approvedBy(withdrawal.getApprovedBy() == null ? null : withdrawal.getApprovedBy().getId())
                 .approvedAt(withdrawal.getApprovedAt())
@@ -355,7 +370,6 @@ public class WithdrawalServiceImpl implements WithdrawalService {
                 .paidBy(withdrawal.getPaidBy() == null ? null : withdrawal.getPaidBy().getId())
                 .paidAt(withdrawal.getPaidAt())
                 .rejectReason(withdrawal.getRejectReason())
-                .bankTransactionCode(withdrawal.getBankTransactionCode())
                 .paymentNote(withdrawal.getPaymentNote())
                 .invoiceNumber(withdrawal.getInvoiceNumber())
                 .invoiceUrl(withdrawal.getInvoiceUrl())

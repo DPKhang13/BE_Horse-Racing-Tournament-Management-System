@@ -1,5 +1,6 @@
 package com.group5.htms.service;
 
+import com.group5.htms.dto.withdrawal.request.WithdrawalApproveRequest;
 import com.group5.htms.dto.withdrawal.request.WithdrawalCreateRequest;
 import com.group5.htms.dto.withdrawal.request.WithdrawalMarkPaidRequest;
 import com.group5.htms.dto.withdrawal.request.WithdrawalRejectRequest;
@@ -17,7 +18,7 @@ public interface WithdrawalService {
 
     List<WithdrawalResponse> getAllWithdrawals(String status);
 
-    WithdrawalResponse approveWithdrawal(Integer withdrawalId);
+    WithdrawalResponse approveWithdrawal(Integer withdrawalId, WithdrawalApproveRequest request);
 
     WithdrawalResponse rejectWithdrawal(Integer withdrawalId, WithdrawalRejectRequest request);
 

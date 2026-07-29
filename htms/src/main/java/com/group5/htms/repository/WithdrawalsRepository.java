@@ -22,4 +22,6 @@ public interface WithdrawalsRepository extends JpaRepository<Withdrawals, Intege
     List<Withdrawals> findByStatusIgnoreCaseOrderByCreatedAtDesc(String status);
 
     Optional<Withdrawals> findByIdAndUsersId(Integer withdrawalId, Integer userId);
+
+    boolean existsByPickupCodeIgnoreCase(String pickupCode);
 }

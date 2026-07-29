@@ -22,9 +22,9 @@ public class WithdrawalResponse {
     private BigDecimal taxAmount;
     private BigDecimal netCashAmount;
     private BigDecimal exchangeRate;
-    private String bankName;
-    private String bankAccountNumber;
-    private String bankAccountName;
+    private String pickupCode;
+    private String payoutLocation;
+    private String payoutCounter;
     private String status;
     private Integer approvedBy;
     private Instant approvedAt;
@@ -33,7 +33,6 @@ public class WithdrawalResponse {
     private Integer paidBy;
     private Instant paidAt;
     private String rejectReason;
-    private String bankTransactionCode;
     private String paymentNote;
     private String invoiceNumber;
     private String invoiceUrl;

@@ -77,20 +77,17 @@ public class Withdrawals {
     @Column(name = "exchange_rate", precision = 18, scale = 6)
     private BigDecimal exchangeRate;
 
-    @Size(max = 100)
-    @NotNull
-    @Column(name = "bank_name", nullable = false, length = 100)
-    private String bankName;
+    @Size(max = 20)
+    @Column(name = "pickup_code", length = 20, unique = true)
+    private String pickupCode;
 
-    @Size(max = 50)
-    @NotNull
-    @Column(name = "bank_account_number", nullable = false, length = 50)
-    private String bankAccountNumber;
+    @Size(max = 255)
+    @Column(name = "payout_location")
+    private String payoutLocation;
 
     @Size(max = 100)
-    @NotNull
-    @Column(name = "bank_account_name", nullable = false, length = 100)
-    private String bankAccountName;
+    @Column(name = "payout_counter", length = 100)
+    private String payoutCounter;
 
     @Size(max = 20)
     @NotNull
@@ -122,10 +119,6 @@ public class Withdrawals {
     @Size(max = 255)
     @Column(name = "reject_reason")
     private String rejectReason;
-
-    @Size(max = 100)
-    @Column(name = "bank_transaction_code", length = 100)
-    private String bankTransactionCode;
 
     @Size(max = 255)
     @Column(name = "payment_note")

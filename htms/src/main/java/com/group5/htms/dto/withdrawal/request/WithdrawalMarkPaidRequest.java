@@ -7,9 +7,9 @@ import lombok.Data;
 @Data
 public class WithdrawalMarkPaidRequest {
 
-    @NotBlank(message = "Bank transaction code is required")
-    @Size(max = 100, message = "Bank transaction code must not exceed 100 characters")
-    private String bankTransactionCode;
+    @NotBlank(message = "Pickup code is required")
+    @Size(max = 20, message = "Pickup code must not exceed 20 characters")
+    private String pickupCode;
 
     @Size(max = 255, message = "Payment note must not exceed 255 characters")
     private String paymentNote;
