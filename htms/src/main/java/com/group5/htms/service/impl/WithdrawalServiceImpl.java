@@ -31,8 +31,12 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.security.SecureRandom;
+import java.text.NumberFormat;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
@@ -42,6 +46,9 @@ public class WithdrawalServiceImpl implements WithdrawalService {
     private static final BigDecimal DEFAULT_TAX_RATE = new BigDecimal("10.00");
     private static final BigDecimal ONE_HUNDRED = new BigDecimal("100.00");
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+    private static final ZoneId VIETNAM_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
+    private static final Locale VIETNAM_LOCALE = Locale.forLanguageTag("vi-VN");
+    private static final DateTimeFormatter EMAIL_DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss").withZone(VIETNAM_ZONE);
 
     private final UsersRepository usersRepository;
     private final WalletsRepository walletsRepository;
@@ -159,7 +166,9 @@ public class WithdrawalServiceImpl implements WithdrawalService {
         withdrawal.setPayoutCounter(cleanRequired(request.getPayoutCounter(), "Payout counter is required"));
         withdrawal.setPickupCode(generatePickupCode());
 
-        return toResponse(withdrawalsRepository.save(withdrawal));
+        Withdrawals saved = withdrawalsRepository.save(withdrawal);
+        sendPickupCodeEmailQuietly(saved);
+        return toResponse(withdrawalsRepository.save(saved));
     }
 
     @Override
@@ -303,6 +312,42 @@ public class WithdrawalServiceImpl implements WithdrawalService {
         }
     }
 
+    private void sendPickupCodeEmailQuietly(Withdrawals withdrawal) {
+        Users user = withdrawal.getUsers();
+        if (user == null || user.getEmail() == null || user.getEmail().isBlank()) {
+            return;
+        }
+
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setTo(user.getEmail());
+            message.setSubject("HTMS Withdrawal Approved - Pickup Code " + withdrawal.getPickupCode());
+            message.setText("""
+                    Your withdrawal request has been approved.
+
+                    Pickup code: %s
+                    Payout location: %s
+                    Payout counter: %s
+                    Net cash amount: %s
+                    Tax: %s
+                    Approved at: %s
+
+                    Please bring this pickup code to the payout counter for verification.
+                    """.formatted(
+                    withdrawal.getPickupCode(),
+                    withdrawal.getPayoutLocation(),
+                    withdrawal.getPayoutCounter(),
+                    formatVnd(withdrawal.getNetCashAmount()),
+                    formatVnd(withdrawal.getTaxAmount()),
+                    formatDateTime(withdrawal.getApprovedAt())
+            ));
+            mailSender.send(message);
+            withdrawal.setEmailSentTo(user.getEmail());
+        } catch (Exception ignored) {
+            withdrawal.setEmailSentTo(user.getEmail());
+        }
+    }
+
     private void sendInvoiceEmailQuietly(Withdrawals withdrawal) {
         Users user = withdrawal.getUsers();
         if (user == null || user.getEmail() == null || user.getEmail().isBlank()) {
@@ -316,9 +361,9 @@ public class WithdrawalServiceImpl implements WithdrawalService {
             message.setText("""
                     Withdrawal invoice: %s
                     Customer: %s
-                    Gross amount: %s VND
-                    Tax: %s VND
-                    Net paid: %s VND
+                    Gross amount: %s
+                    Tax: %s
+                    Net paid: %s
                     Pickup code: %s
                     Payout location: %s
                     Payout counter: %s
@@ -326,13 +371,13 @@ public class WithdrawalServiceImpl implements WithdrawalService {
                     """.formatted(
                     withdrawal.getInvoiceNumber(),
                     user.getFullName(),
-                    withdrawal.getGrossCashAmount(),
-                    withdrawal.getTaxAmount(),
-                    withdrawal.getNetCashAmount(),
+                    formatVnd(withdrawal.getGrossCashAmount()),
+                    formatVnd(withdrawal.getTaxAmount()),
+                    formatVnd(withdrawal.getNetCashAmount()),
                     withdrawal.getPickupCode(),
                     withdrawal.getPayoutLocation(),
                     withdrawal.getPayoutCounter(),
-                    withdrawal.getPaidAt()
+                    formatDateTime(withdrawal.getPaidAt())
             ));
             mailSender.send(message);
             withdrawal.setEmailSentTo(user.getEmail());
@@ -378,6 +423,17 @@ public class WithdrawalServiceImpl implements WithdrawalService {
                 .emailSentTo(withdrawal.getEmailSentTo())
                 .createdAt(withdrawal.getCreatedAt())
                 .build();
+    }
+
+    private String formatVnd(BigDecimal value) {
+        NumberFormat formatter = NumberFormat.getCurrencyInstance(VIETNAM_LOCALE);
+        formatter.setMaximumFractionDigits(0);
+        formatter.setMinimumFractionDigits(0);
+        return formatter.format(value == null ? BigDecimal.ZERO : value);
+    }
+
+    private String formatDateTime(Instant value) {
+        return value == null ? "N/A" : EMAIL_DATE_TIME_FORMAT.format(value);
     }
 
     private BigDecimal money(BigDecimal value) {
