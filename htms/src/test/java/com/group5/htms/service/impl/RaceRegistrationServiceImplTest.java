@@ -247,6 +247,32 @@ class RaceRegistrationServiceImplTest {
         assertThat(registration.getStatus()).isEqualTo(RaceRegistrationStatus.APPROVED.getValue());
         assertThat(registration.getApprovedAt()).isNotNull();
         assertThat(registration.getApprovedBy().getId()).isEqualTo(99);
+        verify(raceRegistrationsRepository).existsHorseScheduleConflictInTournament(
+                1,
+                5,
+                registration.getRaces().getScheduledAt(),
+                2,
+                List.of(RaceRegistrationStatus.REJECTED.getValue(), RaceRegistrationStatus.CANCELLED.getValue()),
+                List.of(RaceStatus.COMPLETED.getValue(), RaceStatus.CANCELLED.getValue())
+        );
+    }
+
+    @Test
+    void approveRegistrationFailsWhenHorseHasActiveScheduleConflict() {
+        RaceRegistrations registration = approvalReadyRegistration();
+        when(raceRegistrationsRepository.findById(10)).thenReturn(Optional.of(registration));
+        when(raceRegistrationsRepository.existsHorseScheduleConflictInTournament(
+                1,
+                5,
+                registration.getRaces().getScheduledAt(),
+                2,
+                List.of(RaceRegistrationStatus.REJECTED.getValue(), RaceRegistrationStatus.CANCELLED.getValue()),
+                List.of(RaceStatus.COMPLETED.getValue(), RaceStatus.CANCELLED.getValue())
+        )).thenReturn(true);
+
+        assertThatThrownBy(() -> service.approveRegistration(10, new RaceRegistrationApproveRequest()))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("Horse is already registered in another race at the same time");
     }
 
     @Test

@@ -256,6 +256,16 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
     public RaceRegistrationResponse approveRegistration(Integer id, RaceRegistrationApproveRequest request) {
         RaceRegistrations registration = findRegistration(id);
         raceRegistrationValidator.ensureCanApprove(registration);
+        raceRegistrationValidator.ensureHorseHasNoScheduleConflict(
+                raceRegistrationsRepository.existsHorseScheduleConflictInTournament(
+                        registration.getTournaments().getId(),
+                        registration.getHorses().getId(),
+                        registration.getRaces().getScheduledAt(),
+                        registration.getRaces().getId(),
+                        RELEASED_REGISTRATION_STATUSES,
+                        TERMINAL_RACE_STATUSES
+                )
+        );
         ensureRaceCapacityAvailable(registration.getRaces());
 
         registration.setStatus(RaceRegistrationStatus.APPROVED.getValue());
