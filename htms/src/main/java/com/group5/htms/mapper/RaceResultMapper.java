@@ -10,6 +10,7 @@ import com.group5.htms.entity.JockeyHorseAssignments;
 import com.group5.htms.entity.RaceResults;
 import com.group5.htms.entity.Races;
 import com.group5.htms.entity.RefereeReports;
+import com.group5.htms.enums.RaceResultStatus;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -26,10 +27,10 @@ public class RaceResultMapper {
                 .finalRound(request.getFinalRound())
                 .finishPosition(request.getFinishPosition())
                 .finishTimeSec(request.getFinishTimeSec())
-                .pointsAwarded(defaultZero(request.getPointsAwarded()))
+                .pointsAwarded(0)
                 .isDisqualified(request.getIsDisqualified() != null && request.getIsDisqualified())
                 .disqualifyReason(trim(request.getDisqualifyReason()))
-                .status(defaultText(request.getStatus(), "draft"))
+                .status(defaultText(request.getStatus(), RaceResultStatus.DRAFT.getValue()))
                 .recordedAt(defaultInstant(request.getRecordedAt()))
                 .publishedAt(request.getPublishedAt())
                 .build();
@@ -53,9 +54,6 @@ public class RaceResultMapper {
         }
         if (request.getFinishTimeSec() != null) {
             result.setFinishTimeSec(request.getFinishTimeSec());
-        }
-        if (request.getPointsAwarded() != null) {
-            result.setPointsAwarded(request.getPointsAwarded());
         }
         if (request.getIsDisqualified() != null) {
             result.setIsDisqualified(request.getIsDisqualified());
@@ -109,7 +107,7 @@ public class RaceResultMapper {
                 .ownerStableName(result.getOwner().getStableName())
                 .jockeyId(assignment.getJockey().getId())
                 .jockeyFullName(assignment.getJockey().getUsers().getFullName())
-                .gateNumber(assignment.getGateNumber())
+                .gateNumber(assignment.getGateNumber() == null ? assignment.getReg().getGateNumber() : assignment.getGateNumber())
                 .reportVerdict(result.getReport() == null ? null : result.getReport().getVerdict())
                 .build();
     }
@@ -134,13 +132,15 @@ public class RaceResultMapper {
                 .raceName(race.getName())
                 .raceNumber(race.getRaceNumber())
                 .scheduledAt(race.getScheduledAt())
+                .location(race.getSchedule().getTournaments().getLocation())
+                .distance(race.getDistanceM())
                 .horseName(result.getHorses().getName())
                 .horseAvatarUrl(result.getHorses().getAvatarUrl())
                 .ownerFullName(result.getOwner().getUsers().getFullName())
                 .ownerStableName(result.getOwner().getStableName())
                 .jockeyId(assignment.getJockey().getId())
                 .jockeyFullName(assignment.getJockey().getUsers().getFullName())
-                .gateNumber(assignment.getGateNumber())
+                .gateNumber(assignment.getGateNumber() == null ? assignment.getReg().getGateNumber() : assignment.getGateNumber())
                 .build();
     }
 
@@ -178,9 +178,6 @@ public class RaceResultMapper {
         return id == null ? null : toReport(id);
     }
 
-    private Integer defaultZero(Integer value) {
-        return value == null ? 0 : value;
-    }
 
     private String defaultText(String value, String defaultValue) {
         return value == null || value.isBlank() ? defaultValue : value.trim();

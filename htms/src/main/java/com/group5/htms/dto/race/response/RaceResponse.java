@@ -4,6 +4,9 @@ import lombok.Builder;
 import lombok.Getter;
 
 import java.time.Instant;
+import java.util.List;
+
+import com.group5.htms.dto.racepointrule.response.RacePointRuleResponse;
 
 @Getter
 @Builder
@@ -22,7 +25,6 @@ public class RaceResponse {
     private String trackType;
     private Integer maxHorses;
     private Integer maxReferees;
-    private String pointRuleNote;
     private String status;
     private String tournamentName;
     private java.time.LocalDate raceDate;
@@ -33,4 +35,5 @@ public class RaceResponse {
     private Long registeredHorseCount;
     private Long acceptedJockeyCount;
     private Long assignedRefereeCount;
+    private List<RacePointRuleResponse> pointRules;
 }

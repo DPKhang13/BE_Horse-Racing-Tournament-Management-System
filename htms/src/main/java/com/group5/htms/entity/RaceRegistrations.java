@@ -9,6 +9,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
@@ -28,7 +29,13 @@ import java.time.Instant;
 @Setter
 @ToString
 @Entity
-@Table(name = "\"race_registrations\"")
+@Table(
+        name = "\"race_registrations\"",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uq_reg_race_horse",
+                columnNames = {"race_id", "horse_id"}
+        )
+)
 public class RaceRegistrations {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -59,6 +66,9 @@ public class RaceRegistrations {
     @JoinColumn(name = "jockey_id")
     private JockeyProfiles jockey;
 
+    @Column(name = "gate_number")
+    private Integer gateNumber;
+
     @Size(max = 20)
     @NotNull
     @ColumnDefault("'pending'")
@@ -74,6 +84,23 @@ public class RaceRegistrations {
     @Column(name = "owner_confirmed_at")
     private Instant ownerConfirmedAt;
 
+    @Size(max = 20)
+    @NotNull
+    @ColumnDefault("'pending'")
+    @Column(name = "chief_inspection_status", nullable = false, length = 20)
+    private String chiefInspectionStatus;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "chief_inspected_by")
+    private RefereeProfiles chiefInspectedBy;
+
+    @Column(name = "chief_inspected_at")
+    private Instant chiefInspectedAt;
+
+    @Size(max = 1000)
+    @Column(name = "chief_inspection_note", length = 1000)
+    private String chiefInspectionNote;
+
     @NotNull
     @Column(name = "registered_at", nullable = false)
     private Instant registeredAt;
@@ -84,4 +111,15 @@ public class RaceRegistrations {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "approved_by")
     private Users approvedBy;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "admin_reviewed_by")
+    private Users adminReviewedBy;
+
+    @Column(name = "admin_reviewed_at")
+    private Instant adminReviewedAt;
+
+    @Size(max = 1000)
+    @Column(name = "admin_review_note", length = 1000)
+    private String adminReviewNote;
 }

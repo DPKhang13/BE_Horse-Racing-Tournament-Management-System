@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 
 @Data
@@ -29,6 +30,10 @@ public class TournamentSummaryResponse {
     private BigDecimal prizePool;
 
     private String status;
+
+    private Instant registrationOpenAt;
+
+    private Instant registrationCloseAt;
 
     private String createdByFullName;
 }

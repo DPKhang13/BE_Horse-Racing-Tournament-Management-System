@@ -23,6 +23,7 @@ public class JockeyMapper {
                 .licenseNumber(jockey.getLicenseNumber())
                 .rankingPoints(jockey.getRankingPoints())
                 .totalWins(jockey.getTotalWins())
+                .totalRaces(jockey.getTotalRaces())
                 .experienceYears(jockey.getExperienceYears())
                 .status(jockey.getStatus())
                 .userStatus(user.getStatus())
@@ -41,6 +42,7 @@ public class JockeyMapper {
                 .licenseNumber(jockey.getLicenseNumber())
                 .rankingPoints(jockey.getRankingPoints())
                 .totalWins(jockey.getTotalWins())
+                .totalRaces(jockey.getTotalRaces())
                 .experienceYears(jockey.getExperienceYears())
                 .status(jockey.getStatus())
                 .build();

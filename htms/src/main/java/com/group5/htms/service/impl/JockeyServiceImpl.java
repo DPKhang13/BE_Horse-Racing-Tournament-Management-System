@@ -16,8 +16,6 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class JockeyServiceImpl implements JockeyService {
-    private static final String STATUS_AVAILABLE = "available";
-
     private final JockeyProfilesRepository jockeyProfilesRepository;
     private final JockeyHorseAssignmentsRepository jockeyHorseAssignmentsRepository;
     private final RaceResultsRepository raceResultsRepository;
@@ -41,7 +39,7 @@ public class JockeyServiceImpl implements JockeyService {
     @Override
     public List<JockeyRankingResponse> getJockeyRanking() {
         var jockeys = jockeyProfilesRepository
-                .findByStatusIgnoreCaseOrderByRankingPointsDescTotalWinsDescExperienceYearsDesc(STATUS_AVAILABLE);
+                .findAllByOrderByRankingPointsDescTotalWinsDescExperienceYearsDesc();
 
         return java.util.stream.IntStream.range(0, jockeys.size())
                 .mapToObj(index -> toRankingResponse(jockeys.get(index), index + 1))
@@ -49,9 +47,9 @@ public class JockeyServiceImpl implements JockeyService {
     }
 
     private JockeyRankingResponse toRankingResponse(JockeyProfiles jockey, Integer rank) {
-        long totalRaces = jockeyHorseAssignmentsRepository.countByJockey_Id(jockey.getId());
-        long totalWins = raceResultsRepository.countByAssignment_Jockey_IdAndFinishPosition(jockey.getId(), 1);
-        double winRate = totalRaces == 0 ? 0 : (double) totalWins * 100 / totalRaces;
+        long totalRaces = jockey.getTotalRaces() == null ? 0 : jockey.getTotalRaces();
+        long totalWins = jockey.getTotalWins() == null ? 0 : jockey.getTotalWins();
+        double winRate = totalRaces == 0 ? 0 : Math.ceil((double) totalWins * 100 / totalRaces);
 
         return jockeyMapper.toRankingResponse(jockey, rank, totalRaces, winRate);
     }

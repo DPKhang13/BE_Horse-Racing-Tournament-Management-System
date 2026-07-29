@@ -18,6 +18,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 import org.hibernate.annotations.ColumnDefault;
+import com.group5.htms.enums.JockeyStatus;
 
 @Builder
 @AllArgsConstructor
@@ -52,6 +53,11 @@ public class JockeyProfiles {
 
     @NotNull
     @ColumnDefault("0")
+    @Column(name = "total_races", nullable = false)
+    private Integer totalRaces;
+
+    @NotNull
+    @ColumnDefault("0")
     @Column(name = "experience_years", nullable = false)
     private Integer experienceYears;
 
@@ -67,12 +73,21 @@ public class JockeyProfiles {
             this.rankingPoints = 0;
         }
 
+        if (this.totalWins == null) {
+            this.totalWins = 0;
+        }
+
+        if (this.totalRaces == null) {
+            this.totalRaces = 0;
+        }
+
         if (this.experienceYears == null) {
             this.experienceYears = 0;
         }
 
         if (this.status == null || this.status.isBlank()) {
-            this.status = "available";
+            this.status = JockeyStatus.AVAILABLE.getValue();
         }
     }
 }
+

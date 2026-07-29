@@ -24,6 +24,8 @@ public class RaceResultListResponse {
     private String raceName;
     private Integer raceNumber;
     private Instant scheduledAt;
+    private String location;
+    private Double distance;
     private String horseName;
     private String horseAvatarUrl;
     private String ownerFullName;

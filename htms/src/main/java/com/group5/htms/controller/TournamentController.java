@@ -2,6 +2,7 @@ package com.group5.htms.controller;
 
 import com.group5.htms.dto.tournament.request.TournamentCreateRequest;
 import com.group5.htms.dto.tournament.request.TournamentUpdateRequest;
+import com.group5.htms.dto.tournament.response.GlobalTournamentCountResponse;
 import com.group5.htms.dto.tournament.response.TournamentDetailResponse;
 import com.group5.htms.dto.tournament.response.TournamentResponse;
 import com.group5.htms.dto.tournament.response.TournamentSummaryResponse;
@@ -23,7 +24,14 @@ public class TournamentController {
 
     private final TournamentService tournamentService;
 
-    @PostMapping("/create")
+    @GetMapping("/get-global-tournament-count")
+    public ResponseEntity<GlobalTournamentCountResponse> getGlobalTournamentCount() {
+        return ResponseEntity.ok(
+                tournamentService.getGlobalTournamentCount()
+        );
+    }
+
+    @PostMapping("/create-tournament")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<TournamentResponse> createTournament(
             @Valid @RequestBody TournamentCreateRequest request
@@ -33,7 +41,7 @@ public class TournamentController {
                 .body(tournamentService.createTournament(request));
     }
 
-    @PutMapping("/update/{tournamentId}")
+    @PutMapping("/update-tournament/{tournamentId}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<TournamentResponse> updateTournament(
             @PathVariable Integer tournamentId,
@@ -44,7 +52,7 @@ public class TournamentController {
         );
     }
 
-    @GetMapping("/getId/{tournamentId}")
+    @GetMapping("/get-tournament/{tournamentId}")
     public ResponseEntity<TournamentDetailResponse> getTournamentById(
             @PathVariable Integer tournamentId
     ) {
@@ -53,7 +61,7 @@ public class TournamentController {
         );
     }
 
-    @GetMapping("getAll")
+    @GetMapping("/get-tournament-list")
     public ResponseEntity<List<TournamentSummaryResponse>> getAllTournaments(
             @RequestParam(required = false) String status
     ) {
@@ -62,19 +70,8 @@ public class TournamentController {
         );
     }
 
-//    @DeleteMapping("/{tournamentId}")
-//    @PreAuthorize("hasRole('ADMIN')")
-//    public ResponseEntity<Map<String, String>> deleteTournament(
-//            @PathVariable Integer tournamentId
-//    ) {
-//        tournamentService.deleteTournament(tournamentId);
-//
-//        return ResponseEntity.ok(
-//                Map.of("message", "Tournament deleted successfully")
-//        );
-//    }
 
-    @PatchMapping("/cancel/{tournamentId}")
+    @PatchMapping("/cancel-tournament/{tournamentId}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<TournamentResponse> cancelTournament(
             @PathVariable Integer tournamentId

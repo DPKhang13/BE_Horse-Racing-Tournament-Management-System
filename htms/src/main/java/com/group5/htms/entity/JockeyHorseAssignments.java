@@ -63,6 +63,15 @@ public class JockeyHorseAssignments {
     @Column(name = "invited_at", nullable = false)
     private Instant invitedAt;
 
+    @Column(name = "response_deadline")
+    private Instant responseDeadline;
+
     @Column(name = "responded_at")
     private Instant respondedAt;
+
+    @Column(name = "cancelled_at")
+    private Instant cancelledAt;
+
+    @Column(name = "expired_at")
+    private Instant expiredAt;
 }

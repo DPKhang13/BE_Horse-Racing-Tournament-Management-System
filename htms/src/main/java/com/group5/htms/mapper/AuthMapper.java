@@ -80,6 +80,7 @@ public class AuthMapper {
                 .licenseNumber(profile.getLicenseNumber())
                 .rankingPoints(profile.getRankingPoints())
                 .totalWins(profile.getTotalWins())
+                .totalRaces(profile.getTotalRaces())
                 .experienceYears(profile.getExperienceYears())
                 .status(profile.getStatus())
                 .build();

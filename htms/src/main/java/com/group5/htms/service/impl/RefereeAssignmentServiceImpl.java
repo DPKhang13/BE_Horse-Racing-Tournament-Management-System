@@ -6,9 +6,13 @@ import com.group5.htms.entity.RaceRefereeAssignments;
 import com.group5.htms.entity.Races;
 import com.group5.htms.entity.RefereeProfiles;
 import com.group5.htms.entity.Users;
+import com.group5.htms.enums.JockeyAssignmentStatus;
+import com.group5.htms.enums.RaceStatus;
+import com.group5.htms.enums.RoleStatus;
 import com.group5.htms.enums.RoleType;
 import com.group5.htms.exception.BadRequestException;
 import com.group5.htms.mapper.RefereeAssignmentMapper;
+import com.group5.htms.repository.JockeyHorseAssignmentsRepository;
 import com.group5.htms.repository.RaceRefereeAssignmentsRepository;
 import com.group5.htms.repository.RacesRepository;
 import com.group5.htms.repository.RefereeProfilesRepository;
@@ -26,23 +30,18 @@ import java.util.Set;
 public class RefereeAssignmentServiceImpl implements RefereeAssignmentService {
 
     private static final int DEFAULT_MAX_REFEREES = 3;
-    private static final String STATUS_ACTIVE = "active";
-    private static final String STATUS_SCHEDULED = "scheduled";
-    private static final String STATUS_UPCOMING = "upcoming";
     private static final String ROLE_CHIEF_REFEREE = "chief_referee";
     private static final String ROLE_MAIN_REFEREE = "main_referee";
 
     private static final Set<String> ALLOWED_REFEREE_ROLES = Set.of(
             ROLE_CHIEF_REFEREE,
-            ROLE_MAIN_REFEREE,
-            "finish_judge",
-            "track_judge",
-            "weight_judge"
+            ROLE_MAIN_REFEREE
     );
 
     private final RacesRepository racesRepository;
     private final RefereeProfilesRepository refereeProfilesRepository;
     private final RaceRefereeAssignmentsRepository raceRefereeAssignmentsRepository;
+    private final JockeyHorseAssignmentsRepository jockeyHorseAssignmentsRepository;
     private final RefereeAssignmentMapper refereeAssignmentMapper;
 
     @Override
@@ -67,12 +66,13 @@ public class RefereeAssignmentServiceImpl implements RefereeAssignmentService {
                 .orElseThrow(() -> new BadRequestException("Referee not found"));
 
         validateRaceCanAssignReferee(race);
+        validateRaceHasConfirmedAssignment(race);
         validateReferee(referee);
         validateDuplicateReferee(raceId, referee.getId());
         validateMaxReferees(race);
 
         String refereeRole = normalizeRefereeRole(request.getRefereeRole());
-        validateChiefReferee(raceId, refereeRole);
+        validateDuplicateRefereeRole(raceId, refereeRole);
 
         request.setRaceId(raceId);
 
@@ -109,21 +109,31 @@ public class RefereeAssignmentServiceImpl implements RefereeAssignmentService {
     private void validateRaceCanAssignReferee(Races race) {
         String status = race.getStatus();
 
-        if (status == null) {
-            throw new BadRequestException("Only scheduled or upcoming races can have referees assigned");
+        if (status == null
+                || (!RaceStatus.REGISTRATION_CLOSED.equalsValue(status)
+                && !RaceStatus.READY.equalsValue(status)
+                && !RaceStatus.OPEN_FOR_BETTING.equalsValue(status))) {
+            throw new BadRequestException(
+                    "Referees can only be assigned when registration is closed, race is ready or betting is open"
+            );
         }
+    }
 
-        String normalizedStatus = status.trim().toLowerCase();
+    private void validateRaceHasConfirmedAssignment(Races race) {
+        long confirmedAssignmentCount =
+                jockeyHorseAssignmentsRepository.countByRaces_IdAndStatusIgnoreCase(
+                        race.getId(),
+                        JockeyAssignmentStatus.CONFIRMED.getValue()
+                );
 
-        if (!STATUS_SCHEDULED.equals(normalizedStatus)
-                && !STATUS_UPCOMING.equals(normalizedStatus)) {
-            throw new BadRequestException("Only scheduled or upcoming races can have referees assigned");
+        if (confirmedAssignmentCount < 1) {
+            throw new BadRequestException("Race must have at least one confirmed jockey assignment before assigning referees");
         }
     }
 
     private void validateReferee(RefereeProfiles referee) {
         if (referee.getStatus() == null
-                || !STATUS_ACTIVE.equalsIgnoreCase(referee.getStatus().trim())) {
+                || !RoleStatus.ACTIVE.getValue().equalsIgnoreCase(referee.getStatus().trim())) {
             throw new BadRequestException("Referee profile is not active");
         }
 
@@ -134,7 +144,7 @@ public class RefereeAssignmentServiceImpl implements RefereeAssignmentService {
         }
 
         if (user.getStatus() == null
-                || !STATUS_ACTIVE.equalsIgnoreCase(user.getStatus().trim())) {
+                || !RoleStatus.ACTIVE.getValue().equalsIgnoreCase(user.getStatus().trim())) {
             throw new BadRequestException("Referee user account is not active");
         }
 
@@ -148,13 +158,21 @@ public class RefereeAssignmentServiceImpl implements RefereeAssignmentService {
         Integer maxRefereesValue = race.getMaxReferees();
         int maxReferees = maxRefereesValue == null
                 ? DEFAULT_MAX_REFEREES
-                : maxRefereesValue;
+                : Math.min(maxRefereesValue, DEFAULT_MAX_REFEREES);
+
+        if (maxRefereesValue != null && maxRefereesValue > DEFAULT_MAX_REFEREES) {
+            maxReferees = DEFAULT_MAX_REFEREES;
+        }
 
         if (maxReferees <= 0) {
             throw new BadRequestException("Maximum number of referees reached for this race");
         }
 
         long currentCount = raceRefereeAssignmentsRepository.countByRaces_Id(race.getId());
+
+        if (currentCount >= DEFAULT_MAX_REFEREES) {
+            throw new BadRequestException("Maximum number of referees for one race is 3");
+        }
 
         if (currentCount >= maxReferees) {
             throw new BadRequestException("Maximum number of referees reached for this race");
@@ -184,23 +202,12 @@ public class RefereeAssignmentServiceImpl implements RefereeAssignmentService {
         return normalizedRole;
     }
 
-    private void validateChiefReferee(Integer raceId, String refereeRole) {
-        if (!isChiefRefereeRole(refereeRole)) {
-            return;
+    private void validateDuplicateRefereeRole(Integer raceId, String refereeRole) {
+        if (raceRefereeAssignmentsRepository.existsByRaces_IdAndRefereeRoleIgnoreCase(
+                raceId,
+                refereeRole
+        )) {
+            throw new BadRequestException("Referee role already exists for this race");
         }
-
-        boolean chiefExists = raceRefereeAssignmentsRepository
-                .existsByRaces_IdAndRefereeRoleIgnoreCase(raceId, ROLE_CHIEF_REFEREE)
-                || raceRefereeAssignmentsRepository
-                .existsByRaces_IdAndRefereeRoleIgnoreCase(raceId, ROLE_MAIN_REFEREE);
-
-        if (chiefExists) {
-            throw new BadRequestException("Chief referee already exists for this race");
-        }
-    }
-
-    private boolean isChiefRefereeRole(String refereeRole) {
-        return ROLE_CHIEF_REFEREE.equalsIgnoreCase(refereeRole)
-                || ROLE_MAIN_REFEREE.equalsIgnoreCase(refereeRole);
     }
 }

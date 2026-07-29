@@ -9,8 +9,11 @@ import com.group5.htms.entity.Horses;
 import com.group5.htms.entity.JockeyProfiles;
 import com.group5.htms.entity.RaceRegistrations;
 import com.group5.htms.entity.Races;
+import com.group5.htms.entity.RefereeProfiles;
 import com.group5.htms.entity.Tournaments;
 import com.group5.htms.entity.Users;
+import com.group5.htms.enums.ChiefInspectionStatus;
+import com.group5.htms.enums.RaceRegistrationStatus;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -23,13 +26,11 @@ public class RaceRegistrationMapper {
                 .races(toRace(request.getRaceId()))
                 .horses(toHorse(request.getHorseId()))
                 .owner(toOwner(request.getOwnerId()))
-                .jockey(toNullableJockey(request.getJockeyId()))
-                .status(defaultText(request.getStatus(), "pending"))
-                .ownerConfirmationStatus(defaultText(request.getOwnerConfirmationStatus(), "pending"))
-                .ownerConfirmedAt(request.getOwnerConfirmedAt())
-                .registeredAt(defaultInstant(request.getRegisteredAt()))
-                .approvedAt(request.getApprovedAt())
-                .approvedBy(toNullableUser(request.getApprovedById()))
+                .gateNumber(request.getGateNumber())
+                .status(RaceRegistrationStatus.PENDING.getValue())
+                .ownerConfirmationStatus(RaceRegistrationStatus.PENDING.getValue())
+                .chiefInspectionStatus(ChiefInspectionStatus.PENDING.getValue())
+                .registeredAt(Instant.now())
                 .build();
     }
 
@@ -43,35 +44,17 @@ public class RaceRegistrationMapper {
         if (request.getHorseId() != null) {
             registration.setHorses(toHorse(request.getHorseId()));
         }
-        if (request.getOwnerId() != null) {
-            registration.setOwner(toOwner(request.getOwnerId()));
+        if (request.getGateNumber() != null) {
+            registration.setGateNumber(request.getGateNumber());
         }
-        if (request.getJockeyId() != null) {
-            registration.setJockey(toJockey(request.getJockeyId()));
-        }
-        if (request.getStatus() != null && !request.getStatus().isBlank()) {
-            registration.setStatus(request.getStatus().trim());
-        }
-        if (request.getOwnerConfirmationStatus() != null && !request.getOwnerConfirmationStatus().isBlank()) {
-            registration.setOwnerConfirmationStatus(request.getOwnerConfirmationStatus().trim());
-        }
-        if (request.getOwnerConfirmedAt() != null) {
-            registration.setOwnerConfirmedAt(request.getOwnerConfirmedAt());
-        }
-        if (request.getRegisteredAt() != null) {
-            registration.setRegisteredAt(request.getRegisteredAt());
-        }
-        if (request.getApprovedAt() != null) {
-            registration.setApprovedAt(request.getApprovedAt());
-        }
-        if (request.getApprovedById() != null) {
-            registration.setApprovedBy(toUser(request.getApprovedById()));
-        }
+
     }
 
     public RaceRegistrationResponse toResponse(RaceRegistrations registration) {
         JockeyProfiles jockey = registration.getJockey();
         Users approvedBy = registration.getApprovedBy();
+        RefereeProfiles chiefInspector = registration.getChiefInspectedBy();
+        Users adminReviewer = registration.getAdminReviewedBy();
 
         return RaceRegistrationResponse.builder()
                 .id(registration.getId())
@@ -81,14 +64,26 @@ public class RaceRegistrationMapper {
                 .horseId(registration.getHorses().getId())
                 .ownerId(registration.getOwner().getId())
                 .jockeyId(registration.getJockey() == null ? null : registration.getJockey().getId())
+                .gateNumber(registration.getGateNumber())
                 .status(registration.getStatus())
                 .ownerConfirmationStatus(registration.getOwnerConfirmationStatus())
                 .ownerConfirmedAt(registration.getOwnerConfirmedAt())
+                .chiefInspectionStatus(registration.getChiefInspectionStatus())
+                .chiefInspectedById(chiefInspector == null ? null : chiefInspector.getId())
+                .chiefInspectedByFullName(chiefInspector == null || chiefInspector.getUsers() == null
+                        ? null : chiefInspector.getUsers().getFullName())
+                .chiefInspectedAt(registration.getChiefInspectedAt())
+                .chiefInspectionNote(registration.getChiefInspectionNote())
                 .registeredAt(registration.getRegisteredAt())
                 .approvedAt(registration.getApprovedAt())
                 .approvedById(approvedBy == null ? null : approvedBy.getId())
+                .adminReviewedById(adminReviewer == null ? null : adminReviewer.getId())
+                .adminReviewedByFullName(adminReviewer == null ? null : adminReviewer.getFullName())
+                .adminReviewedAt(registration.getAdminReviewedAt())
+                .adminReviewNote(registration.getAdminReviewNote())
                 .tournamentName(registration.getTournaments().getName())
                 .raceName(registration.getRaces().getName())
+                .raceStatus(registration.getRaces().getStatus())
                 .raceNumber(registration.getRaces().getRaceNumber())
                 .scheduledAt(registration.getRaces().getScheduledAt())
                 .horseName(registration.getHorses().getName())
@@ -103,6 +98,8 @@ public class RaceRegistrationMapper {
 
     public RaceRegistrationListResponse toListResponse(RaceRegistrations registration) {
         JockeyProfiles jockey = registration.getJockey();
+        RefereeProfiles chiefInspector = registration.getChiefInspectedBy();
+        Users adminReviewer = registration.getAdminReviewedBy();
 
         return RaceRegistrationListResponse.builder()
                 .regId(registration.getId())
@@ -111,11 +108,23 @@ public class RaceRegistrationMapper {
                 .horseId(registration.getHorses().getId())
                 .ownerId(registration.getOwner().getId())
                 .jockeyId(jockey == null ? null : jockey.getId())
+                .gateNumber(registration.getGateNumber())
                 .status(registration.getStatus())
                 .ownerConfirmationStatus(registration.getOwnerConfirmationStatus())
+                .chiefInspectionStatus(registration.getChiefInspectionStatus())
+                .chiefInspectedById(chiefInspector == null ? null : chiefInspector.getId())
+                .chiefInspectedByFullName(chiefInspector == null || chiefInspector.getUsers() == null
+                        ? null : chiefInspector.getUsers().getFullName())
+                .chiefInspectedAt(registration.getChiefInspectedAt())
+                .chiefInspectionNote(registration.getChiefInspectionNote())
+                .adminReviewedById(adminReviewer == null ? null : adminReviewer.getId())
+                .adminReviewedByFullName(adminReviewer == null ? null : adminReviewer.getFullName())
+                .adminReviewedAt(registration.getAdminReviewedAt())
+                .adminReviewNote(registration.getAdminReviewNote())
                 .registeredAt(registration.getRegisteredAt())
                 .tournamentName(registration.getTournaments().getName())
                 .raceName(registration.getRaces().getName())
+                .raceStatus(registration.getRaces().getStatus())
                 .raceNumber(registration.getRaces().getRaceNumber())
                 .scheduledAt(registration.getRaces().getScheduledAt())
                 .horseName(registration.getHorses().getName())
@@ -150,31 +159,6 @@ public class RaceRegistrationMapper {
         return owner;
     }
 
-    private JockeyProfiles toJockey(Integer id) {
-        JockeyProfiles jockey = new JockeyProfiles();
-        jockey.setId(id);
-        return jockey;
-    }
 
-    private JockeyProfiles toNullableJockey(Integer id) {
-        return id == null ? null : toJockey(id);
-    }
-
-    private Users toUser(Integer id) {
-        Users user = new Users();
-        user.setId(id);
-        return user;
-    }
-
-    private Users toNullableUser(Integer id) {
-        return id == null ? null : toUser(id);
-    }
-
-    private String defaultText(String value, String defaultValue) {
-        return value == null || value.isBlank() ? defaultValue : value.trim();
-    }
-
-    private Instant defaultInstant(Instant value) {
-        return value == null ? Instant.now() : value;
-    }
 }
+

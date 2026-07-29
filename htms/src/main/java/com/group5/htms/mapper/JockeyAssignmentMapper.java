@@ -8,6 +8,7 @@ import com.group5.htms.entity.JockeyHorseAssignments;
 import com.group5.htms.entity.JockeyProfiles;
 import com.group5.htms.entity.RaceRegistrations;
 import com.group5.htms.entity.Races;
+import com.group5.htms.enums.JockeyAssignmentStatus;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -20,9 +21,8 @@ public class JockeyAssignmentMapper {
                 .races(toRace(request.getRaceId()))
                 .jockey(toJockey(request.getJockeyId()))
                 .gateNumber(request.getGateNumber())
-                .status(defaultText(request.getStatus(), "pending"))
-                .invitedAt(defaultInstant(request.getInvitedAt()))
-                .respondedAt(request.getRespondedAt())
+                .status(JockeyAssignmentStatus.PENDING.getValue())
+                .invitedAt(Instant.now())
                 .build();
     }
 
@@ -59,13 +59,19 @@ public class JockeyAssignmentMapper {
                 .assignmentId(assignment.getId())
                 .regId(registration.getId())
                 .registrationId(assignment.getReg().getId())
+                .ownerConfirmationStatus(registration.getOwnerConfirmationStatus())
                 .raceId(assignment.getRaces().getId())
                 .jockeyId(assignment.getJockey().getId())
-                .gateNumber(assignment.getGateNumber())
+                .gateNumber(assignment.getGateNumber() == null ? registration.getGateNumber() : assignment.getGateNumber())
                 .status(assignment.getStatus())
                 .invitedAt(assignment.getInvitedAt())
+                .responseDeadline(assignment.getResponseDeadline())
                 .respondedAt(assignment.getRespondedAt())
+                .cancelledAt(assignment.getCancelledAt())
+                .expiredAt(assignment.getExpiredAt())
                 .raceName(assignment.getRaces().getName())
+                .raceStatus(assignment.getRaces().getStatus())
+                .tournamentName(tournamentName(assignment.getRaces()))
                 .raceNumber(assignment.getRaces().getRaceNumber())
                 .scheduledAt(assignment.getRaces().getScheduledAt())
                 .horseId(registration.getHorses().getId())
@@ -86,13 +92,19 @@ public class JockeyAssignmentMapper {
         return JockeyAssignmentListResponse.builder()
                 .assignmentId(assignment.getId())
                 .regId(registration.getId())
+                .ownerConfirmationStatus(registration.getOwnerConfirmationStatus())
                 .raceId(assignment.getRaces().getId())
                 .jockeyId(jockey.getId())
-                .gateNumber(assignment.getGateNumber())
+                .gateNumber(assignment.getGateNumber() == null ? registration.getGateNumber() : assignment.getGateNumber())
                 .status(assignment.getStatus())
                 .invitedAt(assignment.getInvitedAt())
+                .responseDeadline(assignment.getResponseDeadline())
                 .respondedAt(assignment.getRespondedAt())
+                .cancelledAt(assignment.getCancelledAt())
+                .expiredAt(assignment.getExpiredAt())
                 .raceName(assignment.getRaces().getName())
+                .raceStatus(assignment.getRaces().getStatus())
+                .tournamentName(tournamentName(assignment.getRaces()))
                 .raceNumber(assignment.getRaces().getRaceNumber())
                 .scheduledAt(assignment.getRaces().getScheduledAt())
                 .horseId(registration.getHorses().getId())
@@ -124,6 +136,13 @@ public class JockeyAssignmentMapper {
         return jockey;
     }
 
+    private String tournamentName(Races race) {
+        if (race == null || race.getSchedule() == null || race.getSchedule().getTournaments() == null) {
+            return null;
+        }
+        return race.getSchedule().getTournaments().getName();
+    }
+
     private String defaultText(String value, String defaultValue) {
         return value == null || value.isBlank() ? defaultValue : value.trim();
     }
@@ -132,3 +151,4 @@ public class JockeyAssignmentMapper {
         return value == null ? Instant.now() : value;
     }
 }
+

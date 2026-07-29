@@ -25,8 +25,9 @@ public class PrizeItemRequest {
 
     @NotNull(message = "Prize amount is required")
     @DecimalMin(value = "0.01", inclusive = true, message = "Prize amount must be greater than 0")
+    @Digits(integer = 16, fraction = 2, message = "Prize amount must have at most 16 integer digits and 2 decimal places")
     private BigDecimal amount;
 
-    @Size(max = 1000, message = "Note must not exceed 1000 characters")
+    @Size(max = 255, message = "Note must not exceed 255 characters")
     private String note;
 }

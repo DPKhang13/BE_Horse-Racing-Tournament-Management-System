@@ -1,6 +1,7 @@
 package com.group5.htms.controller;
 
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationApprovalRequest;
+import com.group5.htms.dto.raceregistration.request.RaceRegistrationCancelRequest;
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationCreateRequest;
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationUpdateRequest;
 import com.group5.htms.dto.raceregistration.response.RaceRegistrationListResponse;
@@ -12,14 +13,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -38,11 +38,9 @@ public class RaceRegistrationController {
 
     @Operation(summary = "Get my race registrations", description = "Lấy danh sách đăng ký tham gia giải/race của horse owner đang đăng nhập.")
     @GetMapping("/get-my-registrations")
-    @PreAuthorize("hasRole('HORSE_OWNER')")
-    public ResponseEntity<List<RaceRegistrationListResponse>> getMyRegistrations(
-            @RequestParam(required = false) String status
-    ) {
-        return ResponseEntity.ok(raceRegistrationService.getMyRegistrations(status));
+    @PreAuthorize("hasAnyRole('HORSE_OWNER', 'ADMIN')")
+    public ResponseEntity<List<RaceRegistrationListResponse>> getMyRegistrations() {
+        return ResponseEntity.ok(raceRegistrationService.getMyRegistrations());
     }
 
     @Operation(summary = "Get race registration by id", description = "Lấy thông tin đăng ký race theo registration id.")
@@ -51,9 +49,16 @@ public class RaceRegistrationController {
         return ResponseEntity.ok(raceRegistrationService.getRegistrationById(id));
     }
 
+    @Operation(summary = "Get my race registration detail", description = "Horse Owner xem chi tiết đơn đăng ký race của chính mình.")
+    @GetMapping("/get-my-registration/{id}")
+    @PreAuthorize("hasRole('HORSE_OWNER')")
+    public ResponseEntity<RaceRegistrationResponse> getMyRegistrationById(@PathVariable Integer id) {
+        return ResponseEntity.ok(raceRegistrationService.getMyRegistrationById(id));
+    }
+
     @Operation(summary = "Create race registration", description = "Đăng ký một ngựa vào race. Owner role được lấy từ JWT của user đang đăng nhập.")
     @PostMapping("/create")
-    @PreAuthorize("hasRole('HORSE_OWNER')")
+    @PreAuthorize("hasAnyRole('HORSE_OWNER', 'ADMIN')")
     public ResponseEntity<RaceRegistrationResponse> createRegistration(
             @Valid @RequestBody RaceRegistrationCreateRequest request
     ) {
@@ -62,7 +67,7 @@ public class RaceRegistrationController {
 
     @Operation(summary = "Update race registration", description = "Cập nhật thông tin đăng ký race. Field nào không gửi lên sẽ giữ nguyên.")
     @PutMapping("/update/{id}")
-    @PreAuthorize("hasRole('HORSE_OWNER')")
+    @PreAuthorize("hasAnyRole('HORSE_OWNER', 'ADMIN')")
     public ResponseEntity<RaceRegistrationResponse> updateRegistration(
             @PathVariable Integer id,
             @Valid @RequestBody RaceRegistrationUpdateRequest request
@@ -70,21 +75,28 @@ public class RaceRegistrationController {
         return ResponseEntity.ok(raceRegistrationService.updateRegistration(id, request));
     }
 
+    @Operation(summary = "Cancel my race registration", description = "Horse Owner hủy đơn đăng ký tham gia race của chính mình.")
+    @PatchMapping("/cancel/{id}")
+    @PreAuthorize("hasRole('HORSE_OWNER')")
+    public ResponseEntity<RaceRegistrationResponse> cancelRegistration(
+            @PathVariable Integer id,
+            @Valid @RequestBody(required = false) RaceRegistrationCancelRequest request
+    ) {
+        return ResponseEntity.ok(
+                raceRegistrationService.cancelRegistration(
+                        id,
+                        request == null ? new RaceRegistrationCancelRequest() : request
+                )
+        );
+    }
+
     @Operation(summary = "Approve race registration", description = "Cập nhật trạng thái duyệt đăng ký race. Người duyệt được lấy từ JWT.")
     @PutMapping("/approve/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'RACE_REFEREE')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<RaceRegistrationResponse> approveRegistration(
             @PathVariable Integer id,
             @Valid @RequestBody RaceRegistrationApprovalRequest request
     ) {
         return ResponseEntity.ok(raceRegistrationService.approveRegistration(id, request));
-    }
-
-    @Operation(summary = "Delete race registration", description = "Xóa đăng ký race theo registration id.")
-    @DeleteMapping("/delete/{id}")
-    @PreAuthorize("hasRole('HORSE_OWNER')")
-    public ResponseEntity<Void> deleteRegistration(@PathVariable Integer id) {
-        raceRegistrationService.deleteRegistration(id);
-        return ResponseEntity.noContent().build();
     }
 }

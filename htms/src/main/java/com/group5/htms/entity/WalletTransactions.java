@@ -20,6 +20,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 import org.hibernate.annotations.ColumnDefault;
+import com.group5.htms.enums.WalletTransactionStatus;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -86,37 +87,6 @@ public class WalletTransactions {
     @Column(name = "ref_id")
     private Integer refId;
 
-    @Size(max = 30)
-    @Column(name = "gateway_provider", length = 30)
-    private String gatewayProvider;
-
-    @Size(max = 100)
-    @Column(name = "gateway_txn_ref", length = 100)
-    private String gatewayTxnRef;
-
-    @Size(max = 100)
-    @Column(name = "gateway_transaction_no", length = 100)
-    private String gatewayTransactionNo;
-
-    @Size(max = 20)
-    @Column(name = "gateway_response_code", length = 20)
-    private String gatewayResponseCode;
-
-    @Size(max = 20)
-    @Column(name = "gateway_transaction_status", length = 20)
-    private String gatewayTransactionStatus;
-
-    @Size(max = 50)
-    @Column(name = "gateway_bank_code", length = 50)
-    private String gatewayBankCode;
-
-    @Size(max = 50)
-    @Column(name = "gateway_pay_date", length = 50)
-    private String gatewayPayDate;
-
-    @Column(name = "gateway_raw_response", columnDefinition = "TEXT")
-    private String gatewayRawResponse;
-
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by")
     @ToString.Exclude
@@ -152,7 +122,7 @@ public class WalletTransactions {
         }
 
         if (this.status == null || this.status.isBlank()) {
-            this.status = "pending";
+            this.status = WalletTransactionStatus.PENDING.getValue();
         }
 
         if (this.createdAt == null) {
@@ -165,3 +135,4 @@ public class WalletTransactions {
         this.updatedAt = Instant.now();
     }
 }
+

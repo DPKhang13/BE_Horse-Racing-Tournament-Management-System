@@ -6,7 +6,6 @@ import com.group5.htms.service.JockeyService;
 import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -25,7 +24,6 @@ public class JockeyController {
             description = "Lấy danh sách jockey để chủ ngựa chọn khi tạo lời mời đăng ký race."
     )
     @GetMapping("/get-all")
-    @PreAuthorize("hasRole('HORSE_OWNER')")
     public ResponseEntity<List<JockeyListResponse>> getAllJockeys(
             @RequestParam(required = false) String status
     ) {

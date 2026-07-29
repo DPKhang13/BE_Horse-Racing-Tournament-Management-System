@@ -45,16 +45,39 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // Cho phép browser gửi preflight request
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/bets/get-all",
+                                "/api/jockey-assignments/get-all",
+                                "/api/horses/get-all",
+                                "/api/jockeys/get-all",
+                                "/api/bet-options/get-all",
+                                "/api/notifications/get-all",
+                                "/api/race-registrations/get-all",
+                                "/api/race-rounds/get-all",
+                                "/api/race-results/get-all",
+                                "/api/race-results/race/*/get-all"
+                        ).permitAll()
 
                         // Public APIs
                         .requestMatchers(
                                 "/api/auth/register",
                                 "/api/auth/login",
+                                "/api/auth/verify-otp",
+                                "/api/auth/resend-otp",
                                 "/api/auth/refresh-token",
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",
-                                "/api/payments/vnpay/return",
-                                "/api/payments/vnpay/ipn"
+                                "/api/horses/get-horse-count",
+                                "/api/horses/ranking",
+                                "/api/jockeys/ranking",
+                                "/api/races/get-scheduled-race-count",
+                                "/api/tournaments/get-global-tournament-count",
+                                "/api/payments/vnpay/handle-payment-return",
+                                "/api/payments/vnpay/handle-payment-ipn",
+                                "/api/payments/momo/handle-payment-return",
+                                "/api/payments/momo/handle-payment-ipn",
+                                "/api/payments/zalopay/handle-payment-return",
+                                "/api/payments/zalopay/handle-payment-callback"
                         ).permitAll()
 
                         // Cần accessToken

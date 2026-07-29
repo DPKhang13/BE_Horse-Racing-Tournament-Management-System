@@ -34,6 +34,13 @@ public class NotificationController {
         return ResponseEntity.ok(notificationService.getAllNotifications());
     }
 
+    @Operation(summary = "Get current user notifications", description = "Lấy danh sách notification của user đang đăng nhập.")
+    @GetMapping("/my-notifications")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<List<NotificationListResponse>> getCurrentUserNotifications() {
+        return ResponseEntity.ok(notificationService.getCurrentUserNotifications());
+    }
+
     @Operation(summary = "Get notification by id", description = "Lấy notification theo id.")
     @GetMapping("/get-by-id/{id}")
     public ResponseEntity<NotificationResponse> getNotificationById(@PathVariable Integer id) {
@@ -59,18 +66,18 @@ public class NotificationController {
         return ResponseEntity.ok(notificationService.updateNotification(id, request));
     }
 
-    @Operation(summary = "Mark notification as read", description = "Đánh dấu notification là đã đọc.")
-    @PutMapping("/mark-read/{id}")
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<NotificationResponse> markAsRead(@PathVariable Integer id) {
-        return ResponseEntity.ok(notificationService.markAsRead(id));
-    }
-
     @Operation(summary = "Delete notification", description = "Xóa notification theo id.")
     @DeleteMapping("/delete/{id}")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('SPECTATOR', 'ADMIN')")
     public ResponseEntity<Void> deleteNotification(@PathVariable Integer id) {
         notificationService.deleteNotification(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "Mark notification as read", description = "Đánh dấu notification là đã đọc.")
+    @PutMapping("/mark-read/{id}")
+    @PreAuthorize("hasAnyRole('SPECTATOR', 'ADMIN')")
+    public ResponseEntity<NotificationResponse> markAsRead(@PathVariable Integer id) {
+        return ResponseEntity.ok(notificationService.markAsRead(id));
     }
 }

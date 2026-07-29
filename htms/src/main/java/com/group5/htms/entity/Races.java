@@ -36,7 +36,7 @@ public class Races {
     @Column(name = "race_number", nullable = false)
     private Integer raceNumber;
 
-    @Column(name = "rank_group", length = Integer.MAX_VALUE)
+    @Column(name = "rank_group", length = 1)
     private String rankGroup;
 
     @NotNull
@@ -68,9 +68,6 @@ public class Races {
     @ColumnDefault("3")
     @Column(name = "max_referees", nullable = false)
     private Integer maxReferees;
-
-    @Column(name = "point_rule_note", length = Integer.MAX_VALUE)
-    private String pointRuleNote;
 
     @Size(max = 20)
     @NotNull

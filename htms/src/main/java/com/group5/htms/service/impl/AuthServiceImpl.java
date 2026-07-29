@@ -42,7 +42,6 @@ public class AuthServiceImpl implements AuthService {
     private static final String ACCESS_TOKEN_COOKIE = "AccessToken";
     private static final String REFRESH_TOKEN_COOKIE = "RefreshToken";
 
-    private static final String STATUS_ACTIVE = "active";
 
     private final UsersRepository usersRepository;
     private final PasswordEncoder passwordEncoder;
@@ -176,7 +175,7 @@ public class AuthServiceImpl implements AuthService {
         Users user = usersRepository.findByUsername(username)
                 .orElseThrow(() -> new UnauthorizedException("User not found"));
 
-        if (!STATUS_ACTIVE.equalsIgnoreCase(user.getStatus())) {
+        if (!UserStatus.ACTIVE.getValue().equalsIgnoreCase(user.getStatus())) {
             throw new UnauthorizedException("User account is not active");
         }
 
@@ -251,6 +250,13 @@ public class AuthServiceImpl implements AuthService {
     @Transactional(readOnly = true)
     public Integer getCurrentUserId() {
         return getCurrentUser().getId();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean currentUserHasRole(String roleType) {
+        Users user = getCurrentUser();
+        return user.getRoleType() != null && user.getRoleType().equalsIgnoreCase(roleType);
     }
 
     /*
@@ -443,3 +449,5 @@ public class AuthServiceImpl implements AuthService {
         return cleaned.isBlank() ? null : cleaned;
     }
 }
+
+

@@ -9,6 +9,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
@@ -27,7 +28,19 @@ import java.time.Instant;
 @Setter
 @ToString
 @Entity
-@Table(name = "\"race_referee_assignments\"")
+@Table(
+        name = "\"race_referee_assignments\"",
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uq_ref_assign_race_referee",
+                        columnNames = {"race_id", "referee_id"}
+                ),
+                @UniqueConstraint(
+                        name = "uq_ref_assign_race_role",
+                        columnNames = {"race_id", "referee_role"}
+                )
+        }
+)
 public class RaceRefereeAssignments {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

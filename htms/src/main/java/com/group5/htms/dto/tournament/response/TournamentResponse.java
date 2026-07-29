@@ -31,6 +31,10 @@ public class TournamentResponse {
 
     private String status;
 
+    private Instant registrationOpenAt;
+
+    private Instant registrationCloseAt;
+
     private Integer createdByUserId;
 
     private Integer createdBy;

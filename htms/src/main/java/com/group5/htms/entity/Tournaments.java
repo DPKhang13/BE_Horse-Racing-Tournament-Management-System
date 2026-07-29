@@ -53,6 +53,12 @@ public class Tournaments {
     @Column(name = "status", nullable = false, length = 20)
     private String status;
 
+    @Column(name = "registration_open_at")
+    private Instant registrationOpenAt;
+
+    @Column(name = "registration_close_at")
+    private Instant registrationCloseAt;
+
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "created_by", nullable = false)

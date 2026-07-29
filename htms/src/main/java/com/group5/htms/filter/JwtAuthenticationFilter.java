@@ -28,6 +28,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final CustomUserDetailsConfig userDetailsService;
 
     @Override
+    protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
+        String path = request.getServletPath();
+
+        return path.equals("/api/payments/vnpay/handle-payment-return")
+                || path.equals("/api/payments/vnpay/handle-payment-ipn")
+                || path.equals("/api/payments/momo/handle-payment-return")
+                || path.equals("/api/payments/momo/handle-payment-ipn")
+                || path.equals("/api/payments/zalopay/handle-payment-return")
+                || path.equals("/api/payments/zalopay/handle-payment-callback");
+    }
+
+    @Override
     protected void doFilterInternal(
             @NonNull HttpServletRequest request,
             @NonNull HttpServletResponse response,

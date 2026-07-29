@@ -8,8 +8,11 @@ import com.group5.htms.dto.horse.response.HorseResponse;
 import com.group5.htms.entity.HorseOwnerProfiles;
 import com.group5.htms.entity.Horses;
 import com.group5.htms.entity.Users;
+import com.group5.htms.enums.HorseStatus;
+import com.group5.htms.util.RankGroupUtil;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 
 @Component
@@ -21,59 +24,42 @@ public class HorseMapper {
                 .breed(trim(request.getBreed()))
                 .age(request.getAge())
                 .weightKg(request.getWeightKg())
-                .rankGroup(trim(request.getRankGroup()))
-                .rankingPoints(defaultZero(request.getRankingPoints()))
+                .rankGroup(resolveRankGroup(request.getRankGroup()))
+                .rankingPoints(0)
                 .avatarUrl(trim(request.getAvatarUrl()))
-                .totalWins(defaultZero(request.getTotalWins()))
-                .status(defaultStatus(request.getStatus()))
-                .registeredAt(defaultRegisteredAt(request.getRegisteredAt()))
+                .totalWins(0)
+                .totalRaces(0)
+                .status(HorseStatus.ACTIVE.getValue())
+                .registeredAt(Instant.now())
                 .build();
     }
 
     public void updateHorse(Horses horse, HorseUpdateRequest request) {
-        if (request.getOwnerId() != null) {
-            horse.setOwner(toOwner(request.getOwnerId()));
-        }
-        if (request.getName() != null && !request.getName().isBlank()) {
+        if (hasUpdateValue(request.getName())) {
             horse.setName(request.getName().trim());
         }
-        if (request.getBreed() != null) {
+        if (hasUpdateValue(request.getBreed())) {
             horse.setBreed(trim(request.getBreed()));
         }
-        if (request.getAge() != null) {
+        if (hasPositiveUpdateValue(request.getAge())) {
             horse.setAge(request.getAge());
         }
-        if (request.getWeightKg() != null) {
+        if (hasPositiveUpdateValue(request.getWeightKg())) {
             horse.setWeightKg(request.getWeightKg());
         }
-        if (request.getRankGroup() != null) {
-            horse.setRankGroup(trim(request.getRankGroup()));
-        }
-        if (request.getRankingPoints() != null) {
-            horse.setRankingPoints(request.getRankingPoints());
-        }
-        if (request.getAvatarUrl() != null) {
+if (hasUpdateValue(request.getAvatarUrl())) {
             horse.setAvatarUrl(trim(request.getAvatarUrl()));
-        }
-        if (request.getTotalWins() != null) {
-            horse.setTotalWins(request.getTotalWins());
-        }
-        if (request.getStatus() != null && !request.getStatus().isBlank()) {
-            horse.setStatus(request.getStatus().trim());
-        }
-        if (request.getRegisteredAt() != null) {
-            horse.setRegisteredAt(request.getRegisteredAt());
         }
     }
 
     public HorseResponse toResponse(Horses horse) {
         HorseOwnerProfiles owner = horse.getOwner();
-        Users ownerUser = owner.getUsers();
+        Users ownerUser = getOwnerUser(owner);
 
         return HorseResponse.builder()
                 .id(horse.getId())
                 .horseId(horse.getId())
-                .ownerId(owner.getId())
+                .ownerId(owner == null ? null : owner.getId())
                 .name(horse.getName())
                 .breed(horse.getBreed())
                 .age(horse.getAge())
@@ -82,56 +68,61 @@ public class HorseMapper {
                 .rankingPoints(horse.getRankingPoints())
                 .avatarUrl(horse.getAvatarUrl())
                 .totalWins(horse.getTotalWins())
+                .totalRaces(horse.getTotalRaces())
                 .status(horse.getStatus())
                 .registeredAt(horse.getRegisteredAt())
-                .ownerFullName(ownerUser.getFullName())
-                .ownerEmail(ownerUser.getEmail())
-                .ownerPhone(ownerUser.getPhone())
-                .ownerStableName(owner.getStableName())
-                .ownerLicenseNumber(owner.getLicenseNumber())
+                .ownerFullName(ownerUser == null ? null : ownerUser.getFullName())
+                .ownerEmail(ownerUser == null ? null : ownerUser.getEmail())
+                .ownerPhone(ownerUser == null ? null : ownerUser.getPhone())
+                .ownerStableName(owner == null ? null : owner.getStableName())
+                .ownerLicenseNumber(owner == null ? null : owner.getLicenseNumber())
                 .build();
     }
 
     public HorseListResponse toListResponse(Horses horse) {
         HorseOwnerProfiles owner = horse.getOwner();
-        Users ownerUser = owner.getUsers();
+        Users ownerUser = getOwnerUser(owner);
 
         return HorseListResponse.builder()
                 .horseId(horse.getId())
-                .ownerId(owner.getId())
+                .ownerId(owner == null ? null : owner.getId())
                 .name(horse.getName())
                 .breed(horse.getBreed())
+                .age(horse.getAge())
+                .weightKg(horse.getWeightKg())
                 .rankGroup(horse.getRankGroup())
                 .rankingPoints(horse.getRankingPoints())
                 .avatarUrl(horse.getAvatarUrl())
                 .totalWins(horse.getTotalWins())
+                .totalRaces(horse.getTotalRaces())
                 .status(horse.getStatus())
-                .ownerFullName(ownerUser.getFullName())
-                .ownerStableName(owner.getStableName())
+                .ownerFullName(ownerUser == null ? null : ownerUser.getFullName())
+                .ownerStableName(owner == null ? null : owner.getStableName())
                 .build();
     }
 
     public HorseRankingResponse toRankingResponse(Horses horse, Integer rank) {
         HorseOwnerProfiles owner = horse.getOwner();
-        Users ownerUser = owner.getUsers();
+        Users ownerUser = getOwnerUser(owner);
 
         return HorseRankingResponse.builder()
                 .rank(rank)
                 .id(horse.getId())
                 .horseId(horse.getId())
-                .ownerId(owner.getId())
+                .ownerId(owner == null ? null : owner.getId())
                 .name(horse.getName())
                 .breed(horse.getBreed())
                 .rankGroup(horse.getRankGroup())
                 .rankingPoints(horse.getRankingPoints())
                 .totalWins(horse.getTotalWins())
+                .totalRaces(horse.getTotalRaces())
                 .avatarUrl(horse.getAvatarUrl())
                 .status(horse.getStatus())
-                .ownerFullName(ownerUser.getFullName())
-                .ownerEmail(ownerUser.getEmail())
-                .ownerPhone(ownerUser.getPhone())
-                .ownerStableName(owner.getStableName())
-                .ownerLicenseNumber(owner.getLicenseNumber())
+                .ownerFullName(ownerUser == null ? null : ownerUser.getFullName())
+                .ownerEmail(ownerUser == null ? null : ownerUser.getEmail())
+                .ownerPhone(ownerUser == null ? null : ownerUser.getPhone())
+                .ownerStableName(owner == null ? null : owner.getStableName())
+                .ownerLicenseNumber(owner == null ? null : owner.getLicenseNumber())
                 .build();
     }
 
@@ -146,7 +137,7 @@ public class HorseMapper {
     }
 
     private String defaultStatus(String value) {
-        return value == null || value.isBlank() ? "active" : value.trim();
+        return value == null || value.isBlank() ? HorseStatus.ACTIVE.getValue() : value.trim();
     }
 
     private Instant defaultRegisteredAt(Instant value) {
@@ -156,4 +147,27 @@ public class HorseMapper {
     private String trim(String value) {
         return value == null ? null : value.trim();
     }
+
+    private String resolveRankGroup(String value) {
+        return value == null || value.isBlank()
+                ? RankGroupUtil.fromRankingPoints(0)
+                : value.trim().toUpperCase();
+    }
+
+    private boolean hasUpdateValue(String value) {
+        return value != null && !value.isBlank() && !"string".equalsIgnoreCase(value.trim());
+    }
+
+    private boolean hasPositiveUpdateValue(Integer value) {
+        return value != null && value > 0;
+    }
+
+    private boolean hasPositiveUpdateValue(BigDecimal value) {
+        return value != null && value.compareTo(BigDecimal.ZERO) > 0;
+    }
+
+    private Users getOwnerUser(HorseOwnerProfiles owner) {
+        return owner == null ? null : owner.getUsers();
+    }
 }
+
