@@ -314,7 +314,7 @@ public class TournamentServiceImpl implements TournamentService {
         int closedRaceCount = registrationOpenRaces.size();
 
         registrations.stream()
-                .filter(registration -> RaceRegistrationStatus.PENDING.equalsValue(registration.getStatus()))
+                .filter(registration -> RaceRegistrationStatus.APPROVED.equalsValue(registration.getStatus()))
                 .filter(registration -> confirmedRegistrationIds.contains(registration.getId()))
                 .forEach(registration -> registration.setChiefInspectionStatus(ChiefInspectionStatus.PENDING.getValue()));
         registrationOpenRaces.forEach(race -> race.setStatus(RaceStatus.REGISTRATION_CLOSED.getValue()));
@@ -338,7 +338,7 @@ public class TournamentServiceImpl implements TournamentService {
                 )
                 .closedRaceCount(closedRaceCount)
                 .readyRaceCount(readyRaceCount)
-                .message("Registration closed successfully. Chief inspection and final admin approval are required before a race becomes ready")
+                .message("Registration closed successfully. Chief inspection is required before a race becomes ready")
                 .build();
     }
 
@@ -398,8 +398,7 @@ public class TournamentServiceImpl implements TournamentService {
             RaceRegistrations registration,
             Set<Integer> confirmedRegistrationIds
     ) {
-        return (RaceRegistrationStatus.PENDING.equalsValue(registration.getStatus())
-                || RaceRegistrationStatus.APPROVED.equalsValue(registration.getStatus()))
+        return RaceRegistrationStatus.APPROVED.equalsValue(registration.getStatus())
                 && confirmedRegistrationIds.contains(registration.getId());
     }
 

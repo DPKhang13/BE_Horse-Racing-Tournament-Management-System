@@ -18,6 +18,7 @@ import com.group5.htms.entity.Races;
 import com.group5.htms.entity.TournamentSchedules;
 import com.group5.htms.entity.Tournaments;
 import com.group5.htms.enums.RaceRegistrationStatus;
+import com.group5.htms.enums.ChiefInspectionStatus;
 import com.group5.htms.enums.RaceResultStatus;
 import com.group5.htms.enums.RaceStatus;
 import com.group5.htms.enums.JockeyAssignmentStatus;
@@ -311,6 +312,10 @@ public class RaceServiceImpl implements RaceService {
                         RaceRegistrationStatus.APPROVED.getValue()
                 )
                 .stream()
+                .filter(assignment -> assignment.getReg() != null
+                        && ChiefInspectionStatus.APPROVED.equalsValue(
+                        assignment.getReg().getChiefInspectionStatus()
+                ))
                 .map(jockeyAssignmentMapper::toListResponse)
                 .toList();
     }
@@ -508,14 +513,19 @@ public class RaceServiceImpl implements RaceService {
     }
 
     private void validateRaceHasRequiredAssignments(Integer raceId) {
-        if (jockeyHorseAssignmentsRepository
+        boolean hasChiefApprovedParticipant = jockeyHorseAssignmentsRepository
                 .findByRaces_IdAndStatusIgnoreCaseAndReg_StatusIgnoreCaseOrderByReg_GateNumberAsc(
                         raceId,
                         JockeyAssignmentStatus.CONFIRMED.getValue(),
                         RaceRegistrationStatus.APPROVED.getValue()
                 )
-                .isEmpty()) {
-            throw new BadRequestException("Race must have at least one finally approved horse and confirmed jockey assignment before starting");
+                .stream()
+                .anyMatch(assignment -> assignment.getReg() != null
+                        && ChiefInspectionStatus.APPROVED.equalsValue(
+                        assignment.getReg().getChiefInspectionStatus()
+                ));
+        if (!hasChiefApprovedParticipant) {
+            throw new BadRequestException("Race must have at least one chief-approved horse and confirmed jockey assignment before starting");
         }
 
         if (raceRefereeAssignmentsRepository.countByRaces_Id(raceId) < 1) {

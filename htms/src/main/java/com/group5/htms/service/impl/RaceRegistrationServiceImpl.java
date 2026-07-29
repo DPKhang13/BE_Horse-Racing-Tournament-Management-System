@@ -75,6 +75,7 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
                         RaceRegistrationStatus.APPROVED.getValue()
                 )
                 .stream()
+                .filter(registration -> ChiefInspectionStatus.APPROVED.equalsValue(registration.getChiefInspectionStatus()))
                 .map(raceRegistrationMapper::toListResponse)
                 .toList();
     }
@@ -99,8 +100,7 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
                         RaceRegistrationStatus.CONFIRMED.getValue()
                 )
                 .stream()
-                .filter(registration -> ChiefInspectionStatus.APPROVED.equalsValue(registration.getChiefInspectionStatus()))
-                .filter(registration -> RaceStatus.REGISTRATION_CLOSED.equalsValue(registration.getRaces().getStatus()))
+                .filter(registration -> RaceStatus.REGISTRATION_OPEN.equalsValue(registration.getRaces().getStatus()))
                 .map(raceRegistrationMapper::toListResponse)
                 .toList();
     }
@@ -116,7 +116,7 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
 
         return raceRegistrationsRepository.findByRaces_Id(race.getId())
                 .stream()
-                .filter(registration -> RaceRegistrationStatus.PENDING.equalsValue(registration.getStatus()))
+                .filter(registration -> RaceRegistrationStatus.APPROVED.equalsValue(registration.getStatus()))
                 .filter(registration -> RaceRegistrationStatus.CONFIRMED.equalsValue(registration.getOwnerConfirmationStatus()))
                 .filter(this::hasConfirmedJockeyAssignment)
                 .map(raceRegistrationMapper::toListResponse)
@@ -459,16 +459,16 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
 
         List<RaceRegistrations> registrations = raceRegistrationsRepository.findByRaces_Id(race.getId());
         boolean hasPendingFinalReview = registrations.stream()
-                .filter(registration -> RaceRegistrationStatus.PENDING.equalsValue(registration.getStatus()))
+                .filter(registration -> RaceRegistrationStatus.APPROVED.equalsValue(registration.getStatus()))
                 .filter(this::hasConfirmedJockeyAssignment)
-                .anyMatch(registration -> ChiefInspectionStatus.PENDING.equalsValue(registration.getChiefInspectionStatus())
-                        || ChiefInspectionStatus.APPROVED.equalsValue(registration.getChiefInspectionStatus()));
+                .anyMatch(registration -> ChiefInspectionStatus.PENDING.equalsValue(registration.getChiefInspectionStatus()));
         if (hasPendingFinalReview) {
             return;
         }
 
         boolean hasFinalApprovedParticipant = registrations.stream()
                 .filter(registration -> RaceRegistrationStatus.APPROVED.equalsValue(registration.getStatus()))
+                .filter(registration -> ChiefInspectionStatus.APPROVED.equalsValue(registration.getChiefInspectionStatus()))
                 .anyMatch(this::hasConfirmedJockeyAssignment);
         if (hasFinalApprovedParticipant) {
             race.setStatus(RaceStatus.READY.getValue());

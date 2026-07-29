@@ -97,6 +97,7 @@ class RaceRegistrationServiceImplTest {
     @Test
     void getAllRegistrationsReturnsApprovedRegistrationsOnly() {
         RaceRegistrations approvedRegistration = registration(RaceRegistrationStatus.APPROVED.getValue());
+        approvedRegistration.setChiefInspectionStatus(ChiefInspectionStatus.APPROVED.getValue());
         RaceRegistrationListResponse expectedResponse = RaceRegistrationListResponse.builder()
                 .regId(10)
                 .status(RaceRegistrationStatus.APPROVED.getValue())
@@ -243,8 +244,8 @@ class RaceRegistrationServiceImplTest {
     @Test
     void approveRegistrationFailsIfJockeyAssignmentNotOwnerConfirmed() {
         RaceRegistrations registration = registration(RaceRegistrationStatus.PENDING.getValue());
-        registration.setChiefInspectionStatus(ChiefInspectionStatus.APPROVED.getValue());
-        registration.getRaces().setStatus(RaceStatus.REGISTRATION_CLOSED.getValue());
+        registration.setChiefInspectionStatus(ChiefInspectionStatus.PENDING.getValue());
+        registration.getRaces().setStatus(RaceStatus.REGISTRATION_OPEN.getValue());
         when(raceRegistrationsRepository.findById(10)).thenReturn(Optional.of(registration));
 
         assertThatThrownBy(() -> service.approveRegistration(10, new RaceRegistrationApproveRequest()))
@@ -383,8 +384,8 @@ class RaceRegistrationServiceImplTest {
         RaceRegistrations registration = registration(RaceRegistrationStatus.PENDING.getValue());
         registration.setJockey(JockeyProfiles.builder().id(7).build());
         registration.setOwnerConfirmationStatus(RaceRegistrationStatus.CONFIRMED.getValue());
-        registration.setChiefInspectionStatus(ChiefInspectionStatus.APPROVED.getValue());
-        registration.getRaces().setStatus(RaceStatus.REGISTRATION_CLOSED.getValue());
+        registration.setChiefInspectionStatus(ChiefInspectionStatus.PENDING.getValue());
+        registration.getRaces().setStatus(RaceStatus.REGISTRATION_OPEN.getValue());
         return registration;
     }
     private RaceRegistrations registration(String status) {

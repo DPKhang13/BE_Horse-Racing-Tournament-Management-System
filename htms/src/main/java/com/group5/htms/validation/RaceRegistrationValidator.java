@@ -102,8 +102,8 @@ public class RaceRegistrationValidator {
         if (!RaceRegistrationStatus.PENDING.equalsValue(registration.getStatus())) {
             throw new BadRequestException("Only pending registrations can be approved");
         }
-        if (!RaceStatus.REGISTRATION_CLOSED.equalsValue(registration.getRaces().getStatus())) {
-            throw new BadRequestException("Registration can be finally approved only after registration is closed");
+        if (!RaceStatus.REGISTRATION_OPEN.equalsValue(registration.getRaces().getStatus())) {
+            throw new BadRequestException("Registration can be approved only while registration is open");
         }
         if (registration.getJockey() == null) {
             throw new BadRequestException("Registration must have a confirmed jockey before admin approval");
@@ -111,26 +111,20 @@ public class RaceRegistrationValidator {
         if (!RaceRegistrationStatus.CONFIRMED.equalsValue(registration.getOwnerConfirmationStatus())) {
             throw new BadRequestException("Owner must confirm jockey assignment before admin approval");
         }
-        if (!ChiefInspectionStatus.APPROVED.equalsValue(registration.getChiefInspectionStatus())) {
-            throw new BadRequestException("Chief referee must approve the horse before admin approval");
-        }
     }
 
     public void ensureCanReject(RaceRegistrations registration) {
         if (!RaceRegistrationStatus.PENDING.equalsValue(registration.getStatus())) {
             throw new BadRequestException("Only pending registrations can be rejected");
         }
-        if (!RaceStatus.REGISTRATION_CLOSED.equalsValue(registration.getRaces().getStatus())) {
-            throw new BadRequestException("Registration can be finally rejected only after registration is closed");
-        }
-        if (!ChiefInspectionStatus.APPROVED.equalsValue(registration.getChiefInspectionStatus())) {
-            throw new BadRequestException("Only chief-approved registrations can be finally rejected by admin");
+        if (!RaceStatus.REGISTRATION_OPEN.equalsValue(registration.getRaces().getStatus())) {
+            throw new BadRequestException("Registration can be rejected only while registration is open");
         }
     }
 
     public void ensureCanInspect(RaceRegistrations registration) {
-        if (!RaceRegistrationStatus.PENDING.equalsValue(registration.getStatus())) {
-            throw new BadRequestException("Only pending registrations can be inspected");
+        if (!RaceRegistrationStatus.APPROVED.equalsValue(registration.getStatus())) {
+            throw new BadRequestException("Only admin-approved registrations can be inspected");
         }
         if (!RaceStatus.REGISTRATION_CLOSED.equalsValue(registration.getRaces().getStatus())) {
             throw new BadRequestException("Horse inspection is available only after registration is closed");
