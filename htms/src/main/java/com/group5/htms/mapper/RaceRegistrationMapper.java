@@ -9,8 +9,10 @@ import com.group5.htms.entity.Horses;
 import com.group5.htms.entity.JockeyProfiles;
 import com.group5.htms.entity.RaceRegistrations;
 import com.group5.htms.entity.Races;
+import com.group5.htms.entity.RefereeProfiles;
 import com.group5.htms.entity.Tournaments;
 import com.group5.htms.entity.Users;
+import com.group5.htms.enums.ChiefInspectionStatus;
 import com.group5.htms.enums.RaceRegistrationStatus;
 import org.springframework.stereotype.Component;
 
@@ -27,6 +29,7 @@ public class RaceRegistrationMapper {
                 .gateNumber(request.getGateNumber())
                 .status(RaceRegistrationStatus.PENDING.getValue())
                 .ownerConfirmationStatus(RaceRegistrationStatus.PENDING.getValue())
+                .chiefInspectionStatus(ChiefInspectionStatus.PENDING.getValue())
                 .registeredAt(Instant.now())
                 .build();
     }
@@ -50,6 +53,8 @@ public class RaceRegistrationMapper {
     public RaceRegistrationResponse toResponse(RaceRegistrations registration) {
         JockeyProfiles jockey = registration.getJockey();
         Users approvedBy = registration.getApprovedBy();
+        RefereeProfiles chiefInspector = registration.getChiefInspectedBy();
+        Users adminReviewer = registration.getAdminReviewedBy();
 
         return RaceRegistrationResponse.builder()
                 .id(registration.getId())
@@ -63,11 +68,22 @@ public class RaceRegistrationMapper {
                 .status(registration.getStatus())
                 .ownerConfirmationStatus(registration.getOwnerConfirmationStatus())
                 .ownerConfirmedAt(registration.getOwnerConfirmedAt())
+                .chiefInspectionStatus(registration.getChiefInspectionStatus())
+                .chiefInspectedById(chiefInspector == null ? null : chiefInspector.getId())
+                .chiefInspectedByFullName(chiefInspector == null || chiefInspector.getUsers() == null
+                        ? null : chiefInspector.getUsers().getFullName())
+                .chiefInspectedAt(registration.getChiefInspectedAt())
+                .chiefInspectionNote(registration.getChiefInspectionNote())
                 .registeredAt(registration.getRegisteredAt())
                 .approvedAt(registration.getApprovedAt())
                 .approvedById(approvedBy == null ? null : approvedBy.getId())
+                .adminReviewedById(adminReviewer == null ? null : adminReviewer.getId())
+                .adminReviewedByFullName(adminReviewer == null ? null : adminReviewer.getFullName())
+                .adminReviewedAt(registration.getAdminReviewedAt())
+                .adminReviewNote(registration.getAdminReviewNote())
                 .tournamentName(registration.getTournaments().getName())
                 .raceName(registration.getRaces().getName())
+                .raceStatus(registration.getRaces().getStatus())
                 .raceNumber(registration.getRaces().getRaceNumber())
                 .scheduledAt(registration.getRaces().getScheduledAt())
                 .horseName(registration.getHorses().getName())
@@ -82,6 +98,8 @@ public class RaceRegistrationMapper {
 
     public RaceRegistrationListResponse toListResponse(RaceRegistrations registration) {
         JockeyProfiles jockey = registration.getJockey();
+        RefereeProfiles chiefInspector = registration.getChiefInspectedBy();
+        Users adminReviewer = registration.getAdminReviewedBy();
 
         return RaceRegistrationListResponse.builder()
                 .regId(registration.getId())
@@ -93,9 +111,20 @@ public class RaceRegistrationMapper {
                 .gateNumber(registration.getGateNumber())
                 .status(registration.getStatus())
                 .ownerConfirmationStatus(registration.getOwnerConfirmationStatus())
+                .chiefInspectionStatus(registration.getChiefInspectionStatus())
+                .chiefInspectedById(chiefInspector == null ? null : chiefInspector.getId())
+                .chiefInspectedByFullName(chiefInspector == null || chiefInspector.getUsers() == null
+                        ? null : chiefInspector.getUsers().getFullName())
+                .chiefInspectedAt(registration.getChiefInspectedAt())
+                .chiefInspectionNote(registration.getChiefInspectionNote())
+                .adminReviewedById(adminReviewer == null ? null : adminReviewer.getId())
+                .adminReviewedByFullName(adminReviewer == null ? null : adminReviewer.getFullName())
+                .adminReviewedAt(registration.getAdminReviewedAt())
+                .adminReviewNote(registration.getAdminReviewNote())
                 .registeredAt(registration.getRegisteredAt())
                 .tournamentName(registration.getTournaments().getName())
                 .raceName(registration.getRaces().getName())
+                .raceStatus(registration.getRaces().getStatus())
                 .raceNumber(registration.getRaces().getRaceNumber())
                 .scheduledAt(registration.getRaces().getScheduledAt())
                 .horseName(registration.getHorses().getName())

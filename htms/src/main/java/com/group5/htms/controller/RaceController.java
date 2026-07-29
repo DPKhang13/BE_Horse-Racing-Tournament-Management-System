@@ -37,7 +37,7 @@ public class RaceController {
             description = "Lấy danh sách race thuộc một tournament để chủ ngựa chọn khi đăng ký giải đấu."
     )
     @GetMapping("/tournaments/{tournamentId}/get-race-list")
-    @PreAuthorize("hasAnyRole('HORSE_OWNER', 'ADMIN', 'SPECTATOR')")
+    @PreAuthorize("hasAnyRole('HORSE_OWNER', 'ADMIN', 'SPECTATOR','JOCKEY', 'RACE_REFEREE')")
     public ResponseEntity<List<RaceListResponse>> getRacesByTournament(
             @PathVariable Integer tournamentId,
             @RequestParam(required = false) String status
@@ -50,7 +50,7 @@ public class RaceController {
             description = "Lấy danh sách ngựa tham gia race cùng jockey thi đấu; chỉ lấy registration đã admin approve và assignment đã confirmed."
     )
     @GetMapping("/races/{raceId}/participants")
-    @PreAuthorize("hasAnyRole('SPECTATOR', 'ADMIN', 'HORSE_OWNER', 'RACE_REFEREE')")
+    @PreAuthorize("hasAnyRole('SPECTATOR', 'ADMIN', 'HORSE_OWNER')")
     public ResponseEntity<List<JockeyAssignmentListResponse>> getApprovedParticipantsByRace(@PathVariable Integer raceId) {
         return ResponseEntity.ok(raceService.getApprovedParticipantsByRace(raceId));
     }

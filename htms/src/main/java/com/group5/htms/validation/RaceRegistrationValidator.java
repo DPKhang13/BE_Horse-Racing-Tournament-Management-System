@@ -5,6 +5,7 @@ import com.group5.htms.entity.Horses;
 import com.group5.htms.entity.RaceRegistrations;
 import com.group5.htms.entity.Races;
 import com.group5.htms.entity.Tournaments;
+import com.group5.htms.enums.ChiefInspectionStatus;
 import com.group5.htms.enums.HorseStatus;
 import com.group5.htms.enums.RaceRegistrationStatus;
 import com.group5.htms.enums.RaceStatus;
@@ -101,6 +102,9 @@ public class RaceRegistrationValidator {
         if (!RaceRegistrationStatus.PENDING.equalsValue(registration.getStatus())) {
             throw new BadRequestException("Only pending registrations can be approved");
         }
+        if (!RaceStatus.REGISTRATION_OPEN.equalsValue(registration.getRaces().getStatus())) {
+            throw new BadRequestException("Registration can be approved only while registration is open");
+        }
         if (registration.getJockey() == null) {
             throw new BadRequestException("Registration must have a confirmed jockey before admin approval");
         }
@@ -112,6 +116,32 @@ public class RaceRegistrationValidator {
     public void ensureCanReject(RaceRegistrations registration) {
         if (!RaceRegistrationStatus.PENDING.equalsValue(registration.getStatus())) {
             throw new BadRequestException("Only pending registrations can be rejected");
+        }
+        if (!RaceStatus.REGISTRATION_OPEN.equalsValue(registration.getRaces().getStatus())) {
+            throw new BadRequestException("Registration can be rejected only while registration is open");
+        }
+    }
+
+    public void ensureCanInspect(RaceRegistrations registration) {
+        if (!RaceRegistrationStatus.APPROVED.equalsValue(registration.getStatus())) {
+            throw new BadRequestException("Only admin-approved registrations can be inspected");
+        }
+        if (!RaceStatus.REGISTRATION_CLOSED.equalsValue(registration.getRaces().getStatus())) {
+            throw new BadRequestException("Horse inspection is available only after registration is closed");
+        }
+        if (registration.getJockey() == null
+                || !RaceRegistrationStatus.CONFIRMED.equalsValue(registration.getOwnerConfirmationStatus())) {
+            throw new BadRequestException("Registration must have a confirmed jockey before chief inspection");
+        }
+        if (!ChiefInspectionStatus.PENDING.equalsValue(registration.getChiefInspectionStatus())) {
+            throw new BadRequestException("Horse inspection has already been completed");
+        }
+    }
+
+    public void ensureValidChiefInspectionStatus(String status) {
+        if (!ChiefInspectionStatus.APPROVED.equalsValue(status)
+                && !ChiefInspectionStatus.REJECTED.equalsValue(status)) {
+            throw new BadRequestException("Chief inspection status must be approved or rejected");
         }
     }
 

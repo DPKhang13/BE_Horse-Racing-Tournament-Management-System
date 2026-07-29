@@ -7,11 +7,13 @@ import com.group5.htms.entity.Races;
 import com.group5.htms.enums.JockeyAssignmentStatus;
 import com.group5.htms.enums.RaceResultStatus;
 import com.group5.htms.enums.RaceStatus;
+import com.group5.htms.exception.BadRequestException;
 import com.group5.htms.mapper.RaceResultMapper;
 import com.group5.htms.repository.BetsRepository;
 import com.group5.htms.repository.JockeyHorseAssignmentsRepository;
 import com.group5.htms.repository.NotificationsRepository;
 import com.group5.htms.repository.RacePointRulesRepository;
+import com.group5.htms.repository.RaceResultAdminEditAuditRepository;
 import com.group5.htms.repository.RaceRefereeAssignmentsRepository;
 import com.group5.htms.repository.RaceResultsRepository;
 import com.group5.htms.repository.RaceRoundsRepository;
@@ -35,7 +37,9 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -48,6 +52,8 @@ class RaceResultServiceImplTest {
     private JockeyHorseAssignmentsRepository jockeyHorseAssignmentsRepository;
     @Mock
     private RacePointRulesRepository racePointRulesRepository;
+    @Mock
+    private RaceResultAdminEditAuditRepository raceResultAdminEditAuditRepository;
     @Mock
     private RefereeReportsRepository refereeReportsRepository;
     @Mock
@@ -72,6 +78,8 @@ class RaceResultServiceImplTest {
     private AuthService authService;
     @Mock
     private RaceResultMapper raceResultMapper;
+    @Mock
+    private RefereeRaceAuthorizationService refereeRaceAuthorizationService;
 
     private RaceResultServiceImpl service;
 
@@ -82,11 +90,10 @@ class RaceResultServiceImplTest {
                 raceRoundsRepository,
                 jockeyHorseAssignmentsRepository,
                 racePointRulesRepository,
+                raceResultAdminEditAuditRepository,
                 refereeReportsRepository,
                 tournamentsRepository,
                 racesRepository,
-                raceRefereeAssignmentsRepository,
-                refereeProfilesRepository,
                 betsRepository,
                 walletsRepository,
                 walletTransactionsRepository,
@@ -94,7 +101,8 @@ class RaceResultServiceImplTest {
                 usersRepository,
                 authService,
                 raceResultMapper,
-                new RaceResultValidator(raceResultsRepository, refereeReportsRepository)
+                new RaceResultValidator(raceResultsRepository, refereeReportsRepository),
+                refereeRaceAuthorizationService
         );
     }
 
@@ -132,12 +140,30 @@ class RaceResultServiceImplTest {
 
         service.confirmResults(10);
 
+        verify(refereeRaceAuthorizationService).requireChiefReferee(10);
+
         assertThat(fastResult.getFinishPosition()).isEqualTo(1);
         assertThat(middleResult.getFinishPosition()).isEqualTo(2);
         assertThat(slowResult.getFinishPosition()).isEqualTo(3);
         assertThat(fastResult.getPointsAwarded()).isEqualTo(10);
         assertThat(middleResult.getPointsAwarded()).isEqualTo(8);
         assertThat(slowResult.getPointsAwarded()).isEqualTo(6);
+    }
+
+    @Test
+    void confirmResultsRequiresChiefRefereeAssignment() {
+        Races race = Races.builder()
+                .id(10)
+                .status(RaceStatus.IN_PROGRESS.getValue())
+                .build();
+
+        when(racesRepository.findById(10)).thenReturn(Optional.of(race));
+        when(refereeRaceAuthorizationService.requireChiefReferee(10))
+                .thenThrow(new BadRequestException("Only the chief referee assigned to this race can perform this action"));
+
+        assertThatThrownBy(() -> service.confirmResults(10))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("Only the chief referee assigned to this race can perform this action");
     }
 
     private JockeyHorseAssignments assignment(Integer id) {

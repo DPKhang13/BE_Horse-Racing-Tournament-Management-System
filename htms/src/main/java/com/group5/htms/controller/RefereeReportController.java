@@ -32,7 +32,10 @@ public class RefereeReportController {
         return ResponseEntity.ok(refereeReportService.getMyAssignedRaces());
     }
 
-    @Operation(summary = "Submit referee report", description = "Referee submit report cho race dang in_progress.")
+    @Operation(
+            summary = "Submit referee report",
+            description = "Chief referee gui final report; main referee gui inspection hoac violation report cho race dang in_progress."
+    )
     @PostMapping("/{raceId}/reports/create")
     public ResponseEntity<RefereeReportResponse> submitReport(
             @PathVariable Integer raceId,
