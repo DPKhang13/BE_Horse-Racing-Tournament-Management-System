@@ -17,6 +17,7 @@ public class AdminDashboardSummaryResponse {
     private long totalBets;
     private BigDecimal totalSuccessfulDepositAmount;
     private BigDecimal totalCompletedWithdrawalAmount;
+    private BigDecimal totalAwardedPrizeAmount;
     private long pendingWithdrawalCount;
     private BigDecimal netCashFlow;
     private List<CashFlowByDay> cashFlowByDay;
@@ -28,6 +29,7 @@ public class AdminDashboardSummaryResponse {
         private LocalDate date;
         private BigDecimal depositAmount;
         private BigDecimal withdrawalAmount;
+        private BigDecimal prizeAwardAmount;
         private BigDecimal netCashFlow;
     }
 
