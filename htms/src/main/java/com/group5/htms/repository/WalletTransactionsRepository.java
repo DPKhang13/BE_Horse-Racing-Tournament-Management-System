@@ -2,6 +2,7 @@ package com.group5.htms.repository;
 
 import com.group5.htms.entity.WalletTransactions;
 import jakarta.persistence.LockModeType;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.stereotype.Repository;
@@ -17,10 +18,11 @@ public interface WalletTransactionsRepository extends JpaRepository<WalletTransa
 
     List<WalletTransactions> findByUsersIdOrderByCreatedAtDesc(Integer userId);
 
+    List<WalletTransactions> findAllByOrderByCreatedAtDesc(Pageable pageable);
+
     List<WalletTransactions> findByUsersIdAndTxTypeIgnoreCaseOrderByCreatedAtDesc(Integer userId, String txType);
 
     Optional<WalletTransactions> findByIdAndUsersId(Integer txId, Integer userId);
 
     boolean existsByRefTypeAndRefIdAndTxTypeIgnoreCase(String refType, Integer refId, String txType);
 }
-

@@ -8,7 +8,8 @@ public enum WalletTransactionType {
     TOPUP("topup"),
     BET("bet"),
     REWARD("reward"),
-    REFUND("refund");
+    REFUND("refund"),
+    WITHDRAW("withdraw");
 
     private final String value;
 
