@@ -22,6 +22,7 @@ import com.group5.htms.enums.ChiefInspectionStatus;
 import com.group5.htms.enums.RaceResultStatus;
 import com.group5.htms.enums.RaceStatus;
 import com.group5.htms.enums.JockeyAssignmentStatus;
+import com.group5.htms.enums.TournamentStatus;
 import com.group5.htms.exception.BadRequestException;
 import com.group5.htms.exception.ResourceNotFoundException;
 import com.group5.htms.mapper.JockeyAssignmentMapper;
@@ -219,12 +220,14 @@ public class RaceServiceImpl implements RaceService {
 
         race.setStatus(RaceStatus.IN_PROGRESS.getValue());
         Races savedRace = racesRepository.save(race);
+        Tournaments tournament = transitionTournamentToInProgress(race);
 
         return RaceStartResponse.builder()
                 .raceId(savedRace.getId())
                 .raceName(savedRace.getName())
                 .previousStatus(previousStatus)
                 .status(savedRace.getStatus())
+                .tournamentStatus(tournament == null ? null : tournament.getStatus())
                 .scheduledAt(savedRace.getScheduledAt())
                 .predictionClosesAt(savedRace.getPredictionClosesAt())
                 .bettingClosed(true)
@@ -531,6 +534,20 @@ public class RaceServiceImpl implements RaceService {
         if (raceRefereeAssignmentsRepository.countByRaces_Id(raceId) < 1) {
             throw new BadRequestException("Race must have at least one assigned referee before starting");
         }
+    }
+
+    private Tournaments transitionTournamentToInProgress(Races race) {
+        if (race.getSchedule() == null || race.getSchedule().getTournaments() == null) {
+            return null;
+        }
+
+        Tournaments tournament = race.getSchedule().getTournaments();
+        if (TournamentStatus.REGISTRATION_CLOSED.equalsValue(tournament.getStatus())) {
+            tournament.setStatus(TournamentStatus.IN_PROGRESS.getValue());
+            return tournamentsRepository.save(tournament);
+        }
+
+        return tournament;
     }
 }
 

@@ -50,6 +50,10 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
             RaceRegistrationStatus.REJECTED.getValue(),
             RaceRegistrationStatus.CANCELLED.getValue()
     );
+    private static final List<String> TERMINAL_RACE_STATUSES = List.of(
+            RaceStatus.COMPLETED.getValue(),
+            RaceStatus.CANCELLED.getValue()
+    );
     private static final List<String> ACTIVE_JOCKEY_ASSIGNMENT_STATUSES = List.of(
             JockeyAssignmentStatus.PENDING.getValue(),
             JockeyAssignmentStatus.ACCEPTED.getValue(),
@@ -162,7 +166,8 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
                         horse.getId(),
                         race.getScheduledAt(),
                         race.getId(),
-                        RELEASED_REGISTRATION_STATUSES
+                        RELEASED_REGISTRATION_STATUSES,
+                        TERMINAL_RACE_STATUSES
                 )
         );
         validateGateForCreate(race, request.getGateNumber());
@@ -223,7 +228,8 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
                         race.getScheduledAt(),
                         race.getId(),
                         registration.getId(),
-                        RELEASED_REGISTRATION_STATUSES
+                        RELEASED_REGISTRATION_STATUSES,
+                        TERMINAL_RACE_STATUSES
                 )
         );
         validateGateForUpdate(registration, race, gateNumber);

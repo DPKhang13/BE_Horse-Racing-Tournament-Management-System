@@ -157,6 +157,14 @@ class RaceRegistrationServiceImplTest {
         assertThat(captor.getValue().getHorses().getId()).isEqualTo(5);
         assertThat(captor.getValue().getOwner().getId()).isEqualTo(1);
         assertThat(captor.getValue().getJockey()).isNull();
+        verify(raceRegistrationsRepository).existsHorseScheduleConflictInTournament(
+                1,
+                5,
+                race(TournamentStatus.REGISTRATION_OPEN.getValue(), RaceStatus.REGISTRATION_OPEN.getValue()).getScheduledAt(),
+                2,
+                List.of(RaceRegistrationStatus.REJECTED.getValue(), RaceRegistrationStatus.CANCELLED.getValue()),
+                List.of(RaceStatus.COMPLETED.getValue(), RaceStatus.CANCELLED.getValue())
+        );
     }
 
     @Test

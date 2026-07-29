@@ -429,12 +429,14 @@ public class RaceResultServiceImpl implements RaceResultService {
 
         raceResultsRepository.saveAll(results);
         racesRepository.save(race);
+        Tournaments tournament = completeTournamentIfAllRacesTerminal(race);
         sendPublishNotifications(race, results, settlementSummary);
 
         return RacePublishResponse.builder()
                 .raceId(race.getId())
                 .raceName(race.getName())
                 .raceStatus(race.getStatus())
+                .tournamentStatus(tournament == null ? null : tournament.getStatus())
                 .publishedAt(publishedAt)
                 .totalResults(results.size())
                 .winnerHorseId(winner.getHorses().getId())
@@ -943,6 +945,36 @@ public class RaceResultServiceImpl implements RaceResultService {
         }
         return racesRepository.findById(raceId)
                 .orElseThrow(() -> new ResourceNotFoundException("Race not found"));
+    }
+
+    private Tournaments completeTournamentIfAllRacesTerminal(Races race) {
+        if (race.getSchedule() == null || race.getSchedule().getTournaments() == null) {
+            return null;
+        }
+
+        Tournaments tournament = race.getSchedule().getTournaments();
+        if (!TournamentStatus.IN_PROGRESS.equalsValue(tournament.getStatus())) {
+            return tournament;
+        }
+
+        List<Races> tournamentRaces = racesRepository
+                .findBySchedule_Tournaments_IdOrderByScheduledAtAsc(tournament.getId());
+        boolean hasCompletedRace = tournamentRaces.stream()
+                .anyMatch(item -> RaceStatus.COMPLETED.equalsValue(item.getStatus()));
+        boolean allRacesTerminal = !tournamentRaces.isEmpty()
+                && tournamentRaces.stream().allMatch(this::isTerminalRace);
+
+        if (hasCompletedRace && allRacesTerminal) {
+            tournament.setStatus(TournamentStatus.COMPLETED.getValue());
+            return tournamentsRepository.save(tournament);
+        }
+
+        return tournament;
+    }
+
+    private boolean isTerminalRace(Races race) {
+        return RaceStatus.COMPLETED.equalsValue(race.getStatus())
+                || RaceStatus.CANCELLED.equalsValue(race.getStatus());
     }
 
     private Tournaments getTournament(Integer tournamentId) {

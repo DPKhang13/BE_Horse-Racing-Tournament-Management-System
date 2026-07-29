@@ -29,6 +29,7 @@ public class RaceRegistrationListResponse {
     private Instant registeredAt;
     private String tournamentName;
     private String raceName;
+    private String raceStatus;
     private Integer raceNumber;
     private Instant scheduledAt;
     private String horseName;
