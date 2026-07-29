@@ -14,12 +14,14 @@ import com.group5.htms.entity.Races;
 import com.group5.htms.entity.TournamentSchedules;
 import com.group5.htms.entity.Tournaments;
 import com.group5.htms.enums.RaceRegistrationStatus;
+import com.group5.htms.enums.ChiefInspectionStatus;
 import com.group5.htms.enums.RaceStatus;
 import com.group5.htms.enums.TournamentStatus;
 import com.group5.htms.exception.BadRequestException;
 import com.group5.htms.mapper.RaceRegistrationMapper;
 import com.group5.htms.repository.HorseOwnerProfilesRepository;
 import com.group5.htms.repository.HorsesRepository;
+import com.group5.htms.repository.JockeyHorseAssignmentsRepository;
 import com.group5.htms.repository.RaceRegistrationsRepository;
 import com.group5.htms.repository.RacesRepository;
 import com.group5.htms.repository.TournamentsRepository;
@@ -60,10 +62,16 @@ class RaceRegistrationServiceImplTest {
     private HorseOwnerProfilesRepository horseOwnerProfilesRepository;
 
     @Mock
+    private JockeyHorseAssignmentsRepository jockeyHorseAssignmentsRepository;
+
+    @Mock
     private AuthService authService;
 
     @Mock
     private RaceRegistrationMapper raceRegistrationMapper;
+
+    @Mock
+    private RefereeRaceAuthorizationService refereeRaceAuthorizationService;
 
     private RaceRegistrationServiceImpl service;
     private RaceRegistrationValidator raceRegistrationValidator;
@@ -78,15 +86,18 @@ class RaceRegistrationServiceImplTest {
                 racesRepository,
                 horsesRepository,
                 horseOwnerProfilesRepository,
+                jockeyHorseAssignmentsRepository,
                 authService,
                 raceRegistrationMapper,
-                raceRegistrationValidator
+                raceRegistrationValidator,
+                refereeRaceAuthorizationService
         );
     }
 
     @Test
     void getAllRegistrationsReturnsApprovedRegistrationsOnly() {
         RaceRegistrations approvedRegistration = registration(RaceRegistrationStatus.APPROVED.getValue());
+        approvedRegistration.setChiefInspectionStatus(ChiefInspectionStatus.APPROVED.getValue());
         RaceRegistrationListResponse expectedResponse = RaceRegistrationListResponse.builder()
                 .regId(10)
                 .status(RaceRegistrationStatus.APPROVED.getValue())
@@ -103,7 +114,7 @@ class RaceRegistrationServiceImplTest {
 
     @Test
     void getAdminApprovalRegistrationsReturnsApprovalReadyRegistrationsOnly() {
-        RaceRegistrations pendingRegistration = registration(RaceRegistrationStatus.PENDING.getValue());
+        RaceRegistrations pendingRegistration = approvalReadyRegistration();
         RaceRegistrationListResponse expectedResponse = RaceRegistrationListResponse.builder()
                 .regId(10)
                 .status(RaceRegistrationStatus.PENDING.getValue())
@@ -146,6 +157,14 @@ class RaceRegistrationServiceImplTest {
         assertThat(captor.getValue().getHorses().getId()).isEqualTo(5);
         assertThat(captor.getValue().getOwner().getId()).isEqualTo(1);
         assertThat(captor.getValue().getJockey()).isNull();
+        verify(raceRegistrationsRepository).existsHorseScheduleConflictInTournament(
+                1,
+                5,
+                race(TournamentStatus.REGISTRATION_OPEN.getValue(), RaceStatus.REGISTRATION_OPEN.getValue()).getScheduledAt(),
+                2,
+                List.of(RaceRegistrationStatus.REJECTED.getValue(), RaceRegistrationStatus.CANCELLED.getValue()),
+                List.of(RaceStatus.COMPLETED.getValue(), RaceStatus.CANCELLED.getValue())
+        );
     }
 
     @Test
@@ -228,11 +247,39 @@ class RaceRegistrationServiceImplTest {
         assertThat(registration.getStatus()).isEqualTo(RaceRegistrationStatus.APPROVED.getValue());
         assertThat(registration.getApprovedAt()).isNotNull();
         assertThat(registration.getApprovedBy().getId()).isEqualTo(99);
+        verify(raceRegistrationsRepository).existsHorseScheduleConflictInTournament(
+                1,
+                5,
+                registration.getRaces().getScheduledAt(),
+                2,
+                List.of(RaceRegistrationStatus.REJECTED.getValue(), RaceRegistrationStatus.CANCELLED.getValue()),
+                List.of(RaceStatus.COMPLETED.getValue(), RaceStatus.CANCELLED.getValue())
+        );
+    }
+
+    @Test
+    void approveRegistrationFailsWhenHorseHasActiveScheduleConflict() {
+        RaceRegistrations registration = approvalReadyRegistration();
+        when(raceRegistrationsRepository.findById(10)).thenReturn(Optional.of(registration));
+        when(raceRegistrationsRepository.existsHorseScheduleConflictInTournament(
+                1,
+                5,
+                registration.getRaces().getScheduledAt(),
+                2,
+                List.of(RaceRegistrationStatus.REJECTED.getValue(), RaceRegistrationStatus.CANCELLED.getValue()),
+                List.of(RaceStatus.COMPLETED.getValue(), RaceStatus.CANCELLED.getValue())
+        )).thenReturn(true);
+
+        assertThatThrownBy(() -> service.approveRegistration(10, new RaceRegistrationApproveRequest()))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("Horse is already registered in another race at the same time");
     }
 
     @Test
     void approveRegistrationFailsIfJockeyAssignmentNotOwnerConfirmed() {
         RaceRegistrations registration = registration(RaceRegistrationStatus.PENDING.getValue());
+        registration.setChiefInspectionStatus(ChiefInspectionStatus.PENDING.getValue());
+        registration.getRaces().setStatus(RaceStatus.REGISTRATION_OPEN.getValue());
         when(raceRegistrationsRepository.findById(10)).thenReturn(Optional.of(registration));
 
         assertThatThrownBy(() -> service.approveRegistration(10, new RaceRegistrationApproveRequest()))
@@ -265,7 +312,7 @@ class RaceRegistrationServiceImplTest {
 
     @Test
     void rejectRegistrationSucceedsIfRegistrationIsPending() {
-        RaceRegistrations registration = registration(RaceRegistrationStatus.PENDING.getValue());
+        RaceRegistrations registration = approvalReadyRegistration();
         RaceRegistrationResponse expectedResponse = RaceRegistrationResponse.builder()
                 .regId(10)
                 .status(RaceRegistrationStatus.REJECTED.getValue())
@@ -371,6 +418,8 @@ class RaceRegistrationServiceImplTest {
         RaceRegistrations registration = registration(RaceRegistrationStatus.PENDING.getValue());
         registration.setJockey(JockeyProfiles.builder().id(7).build());
         registration.setOwnerConfirmationStatus(RaceRegistrationStatus.CONFIRMED.getValue());
+        registration.setChiefInspectionStatus(ChiefInspectionStatus.PENDING.getValue());
+        registration.getRaces().setStatus(RaceStatus.REGISTRATION_OPEN.getValue());
         return registration;
     }
     private RaceRegistrations registration(String status) {
@@ -381,6 +430,7 @@ class RaceRegistrationServiceImplTest {
                 .horses(horse("A"))
                 .owner(owner())
                 .status(status)
+                .chiefInspectionStatus(ChiefInspectionStatus.PENDING.getValue())
                 .registeredAt(Instant.now())
                 .build();
     }

@@ -6,9 +6,13 @@ import com.group5.htms.dto.race.response.RaceBettingOpenResponse;
 import com.group5.htms.dto.race.response.RaceStartResponse;
 import com.group5.htms.dto.schedule.request.TournamentScheduleUpdateRequest;
 import com.group5.htms.entity.Races;
+import com.group5.htms.entity.RaceRegistrations;
+import com.group5.htms.entity.JockeyHorseAssignments;
 import com.group5.htms.entity.TournamentSchedules;
 import com.group5.htms.entity.Tournaments;
 import com.group5.htms.enums.RaceStatus;
+import com.group5.htms.enums.ChiefInspectionStatus;
+import com.group5.htms.enums.JockeyAssignmentStatus;
 import com.group5.htms.enums.TournamentStatus;
 import com.group5.htms.exception.BadRequestException;
 import com.group5.htms.mapper.JockeyAssignmentMapper;
@@ -293,10 +297,26 @@ class RaceServiceImplTest {
         assertThat(response.getRaceName()).isEqualTo("Race 1");
         assertThat(response.getPreviousStatus()).isEqualTo(RaceStatus.READY.getValue());
         assertThat(response.getStatus()).isEqualTo(RaceStatus.IN_PROGRESS.getValue());
+        assertThat(response.getTournamentStatus()).isEqualTo(TournamentStatus.UPCOMING.getValue());
         assertThat(response.getBettingClosed()).isTrue();
         assertThat(response.getMessage()).isEqualTo("Race started successfully");
         assertThat(race.getStatus()).isEqualTo(RaceStatus.IN_PROGRESS.getValue());
         verify(racesRepository).save(race);
+    }
+
+    @Test
+    void startRaceTransitionsRegistrationClosedTournamentToInProgress() {
+        Races race = race(RaceStatus.READY.getValue());
+        race.getSchedule().getTournaments().setStatus(TournamentStatus.REGISTRATION_CLOSED.getValue());
+        mockRaceReadyToStart(race);
+        when(racesRepository.save(race)).thenReturn(race);
+
+        RaceStartResponse response = service.startRace(10, RaceStartRequest.builder().build());
+
+        assertThat(race.getSchedule().getTournaments().getStatus())
+                .isEqualTo(TournamentStatus.IN_PROGRESS.getValue());
+        assertThat(response.getTournamentStatus()).isEqualTo(TournamentStatus.IN_PROGRESS.getValue());
+        verify(tournamentsRepository).save(race.getSchedule().getTournaments());
     }
 
     @Test
@@ -371,12 +391,17 @@ class RaceServiceImplTest {
     void startRaceFailsWithoutConfirmedJockeyAssignment() {
         Races race = race(RaceStatus.READY.getValue());
         when(racesRepository.findById(10)).thenReturn(Optional.of(race));
-        when(jockeyHorseAssignmentsRepository.countByRaces_IdAndStatusIgnoreCase(10, "confirmed"))
-                .thenReturn(0L);
+        when(jockeyHorseAssignmentsRepository
+                .findByRaces_IdAndStatusIgnoreCaseAndReg_StatusIgnoreCaseOrderByReg_GateNumberAsc(
+                        10,
+                        JockeyAssignmentStatus.CONFIRMED.getValue(),
+                        "approved"
+                ))
+                .thenReturn(List.of());
 
         assertThatThrownBy(() -> service.startRace(10, RaceStartRequest.builder().build()))
                 .isInstanceOf(BadRequestException.class)
-                .hasMessage("Race must have at least one confirmed jockey assignment before starting");
+                .hasMessage("Race must have at least one chief-approved horse and confirmed jockey assignment before starting");
 
         verify(racesRepository, never()).save(any());
     }
@@ -385,8 +410,13 @@ class RaceServiceImplTest {
     void startRaceFailsWithoutAssignedReferee() {
         Races race = race(RaceStatus.READY.getValue());
         when(racesRepository.findById(10)).thenReturn(Optional.of(race));
-        when(jockeyHorseAssignmentsRepository.countByRaces_IdAndStatusIgnoreCase(10, "confirmed"))
-                .thenReturn(1L);
+        when(jockeyHorseAssignmentsRepository
+                .findByRaces_IdAndStatusIgnoreCaseAndReg_StatusIgnoreCaseOrderByReg_GateNumberAsc(
+                        10,
+                        JockeyAssignmentStatus.CONFIRMED.getValue(),
+                        "approved"
+                ))
+                .thenReturn(List.of(chiefApprovedAssignment()));
         when(raceRefereeAssignmentsRepository.countByRaces_Id(10)).thenReturn(0L);
 
         assertThatThrownBy(() -> service.startRace(10, RaceStartRequest.builder().build()))
@@ -422,9 +452,27 @@ class RaceServiceImplTest {
 
     private void mockRaceReadyToStart(Races race) {
         when(racesRepository.findById(10)).thenReturn(Optional.of(race));
-        when(jockeyHorseAssignmentsRepository.countByRaces_IdAndStatusIgnoreCase(10, "confirmed"))
-                .thenReturn(1L);
+        when(jockeyHorseAssignmentsRepository
+                .findByRaces_IdAndStatusIgnoreCaseAndReg_StatusIgnoreCaseOrderByReg_GateNumberAsc(
+                        10,
+                        JockeyAssignmentStatus.CONFIRMED.getValue(),
+                        "approved"
+                ))
+                .thenReturn(List.of(chiefApprovedAssignment()));
         when(raceRefereeAssignmentsRepository.countByRaces_Id(10)).thenReturn(1L);
+    }
+
+    private JockeyHorseAssignments chiefApprovedAssignment() {
+        RaceRegistrations registration = RaceRegistrations.builder()
+                .id(20)
+                .status("approved")
+                .chiefInspectionStatus(ChiefInspectionStatus.APPROVED.getValue())
+                .build();
+        return JockeyHorseAssignments.builder()
+                .id(30)
+                .reg(registration)
+                .status(JockeyAssignmentStatus.CONFIRMED.getValue())
+                .build();
     }
 
     private Races race(String status) {

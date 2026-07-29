@@ -3,6 +3,7 @@ package com.group5.htms.service.impl;
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationApprovalRequest;
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationApproveRequest;
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationCancelRequest;
+import com.group5.htms.dto.raceregistration.request.ChiefInspectionRequest;
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationCreateRequest;
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationRejectRequest;
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationUpdateRequest;
@@ -10,17 +11,24 @@ import com.group5.htms.dto.raceregistration.response.RaceRegistrationListRespons
 import com.group5.htms.dto.raceregistration.response.RaceRegistrationResponse;
 import com.group5.htms.entity.HorseOwnerProfiles;
 import com.group5.htms.entity.Horses;
+import com.group5.htms.entity.JockeyHorseAssignments;
 import com.group5.htms.entity.RaceRegistrations;
+import com.group5.htms.entity.RaceRefereeAssignments;
 import com.group5.htms.entity.Races;
+import com.group5.htms.entity.RefereeProfiles;
 import com.group5.htms.entity.Tournaments;
 import com.group5.htms.entity.Users;
 import com.group5.htms.enums.RaceRegistrationStatus;
+import com.group5.htms.enums.ChiefInspectionStatus;
+import com.group5.htms.enums.JockeyAssignmentStatus;
+import com.group5.htms.enums.RaceStatus;
 import com.group5.htms.enums.RoleType;
 import com.group5.htms.exception.BadRequestException;
 import com.group5.htms.exception.ResourceNotFoundException;
 import com.group5.htms.mapper.RaceRegistrationMapper;
 import com.group5.htms.repository.HorseOwnerProfilesRepository;
 import com.group5.htms.repository.HorsesRepository;
+import com.group5.htms.repository.JockeyHorseAssignmentsRepository;
 import com.group5.htms.repository.RaceRegistrationsRepository;
 import com.group5.htms.repository.RacesRepository;
 import com.group5.htms.repository.TournamentsRepository;
@@ -42,6 +50,15 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
             RaceRegistrationStatus.REJECTED.getValue(),
             RaceRegistrationStatus.CANCELLED.getValue()
     );
+    private static final List<String> TERMINAL_RACE_STATUSES = List.of(
+            RaceStatus.COMPLETED.getValue(),
+            RaceStatus.CANCELLED.getValue()
+    );
+    private static final List<String> ACTIVE_JOCKEY_ASSIGNMENT_STATUSES = List.of(
+            JockeyAssignmentStatus.PENDING.getValue(),
+            JockeyAssignmentStatus.ACCEPTED.getValue(),
+            JockeyAssignmentStatus.CONFIRMED.getValue()
+    );
 
 
     private final RaceRegistrationsRepository raceRegistrationsRepository;
@@ -49,9 +66,11 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
     private final RacesRepository racesRepository;
     private final HorsesRepository horsesRepository;
     private final HorseOwnerProfilesRepository horseOwnerProfilesRepository;
+    private final JockeyHorseAssignmentsRepository jockeyHorseAssignmentsRepository;
     private final AuthService authService;
     private final RaceRegistrationMapper raceRegistrationMapper;
     private final RaceRegistrationValidator raceRegistrationValidator;
+    private final RefereeRaceAuthorizationService refereeRaceAuthorizationService;
 
     @Override
     @Transactional(readOnly = true)
@@ -60,6 +79,7 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
                         RaceRegistrationStatus.APPROVED.getValue()
                 )
                 .stream()
+                .filter(registration -> ChiefInspectionStatus.APPROVED.equalsValue(registration.getChiefInspectionStatus()))
                 .map(raceRegistrationMapper::toListResponse)
                 .toList();
     }
@@ -84,6 +104,25 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
                         RaceRegistrationStatus.CONFIRMED.getValue()
                 )
                 .stream()
+                .filter(registration -> RaceStatus.REGISTRATION_OPEN.equalsValue(registration.getRaces().getStatus()))
+                .map(raceRegistrationMapper::toListResponse)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<RaceRegistrationListResponse> getChiefInspectionRegistrations(Integer raceId) {
+        Races race = findRace(raceId);
+        refereeRaceAuthorizationService.requireChiefReferee(race.getId());
+        if (!RaceStatus.REGISTRATION_CLOSED.equalsValue(race.getStatus())) {
+            throw new BadRequestException("Horse inspection is available only when race registration is closed");
+        }
+
+        return raceRegistrationsRepository.findByRaces_Id(race.getId())
+                .stream()
+                .filter(registration -> RaceRegistrationStatus.APPROVED.equalsValue(registration.getStatus()))
+                .filter(registration -> RaceRegistrationStatus.CONFIRMED.equalsValue(registration.getOwnerConfirmationStatus()))
+                .filter(this::hasConfirmedJockeyAssignment)
                 .map(raceRegistrationMapper::toListResponse)
                 .toList();
     }
@@ -127,7 +166,8 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
                         horse.getId(),
                         race.getScheduledAt(),
                         race.getId(),
-                        RELEASED_REGISTRATION_STATUSES
+                        RELEASED_REGISTRATION_STATUSES,
+                        TERMINAL_RACE_STATUSES
                 )
         );
         validateGateForCreate(race, request.getGateNumber());
@@ -141,6 +181,7 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
         registration.setJockey(null);
         registration.setStatus(RaceRegistrationStatus.PENDING.getValue());
         registration.setOwnerConfirmationStatus(RaceRegistrationStatus.PENDING.getValue());
+        registration.setChiefInspectionStatus(ChiefInspectionStatus.PENDING.getValue());
         registration.setRegisteredAt(Instant.now());
 
         return raceRegistrationMapper.toResponse(raceRegistrationsRepository.save(registration));
@@ -187,7 +228,8 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
                         race.getScheduledAt(),
                         race.getId(),
                         registration.getId(),
-                        RELEASED_REGISTRATION_STATUSES
+                        RELEASED_REGISTRATION_STATUSES,
+                        TERMINAL_RACE_STATUSES
                 )
         );
         validateGateForUpdate(registration, race, gateNumber);
@@ -214,13 +256,63 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
     public RaceRegistrationResponse approveRegistration(Integer id, RaceRegistrationApproveRequest request) {
         RaceRegistrations registration = findRegistration(id);
         raceRegistrationValidator.ensureCanApprove(registration);
+        raceRegistrationValidator.ensureHorseHasNoScheduleConflict(
+                raceRegistrationsRepository.existsHorseScheduleConflictInTournament(
+                        registration.getTournaments().getId(),
+                        registration.getHorses().getId(),
+                        registration.getRaces().getScheduledAt(),
+                        registration.getRaces().getId(),
+                        RELEASED_REGISTRATION_STATUSES,
+                        TERMINAL_RACE_STATUSES
+                )
+        );
         ensureRaceCapacityAvailable(registration.getRaces());
 
         registration.setStatus(RaceRegistrationStatus.APPROVED.getValue());
         registration.setApprovedAt(Instant.now());
         registration.setApprovedBy(currentUserReference());
+        registration.setAdminReviewedAt(Instant.now());
+        registration.setAdminReviewedBy(currentUserReference());
+        registration.setAdminReviewNote(clean(request == null ? null : request.getNote()));
 
-        return raceRegistrationMapper.toResponse(raceRegistrationsRepository.save(registration));
+        RaceRegistrationResponse response = raceRegistrationMapper.toResponse(raceRegistrationsRepository.save(registration));
+        refreshRaceReadiness(registration.getRaces());
+        return response;
+    }
+
+    @Override
+    @Transactional
+    public RaceRegistrationResponse inspectRegistration(
+            Integer raceId,
+            Integer registrationId,
+            ChiefInspectionRequest request
+    ) {
+        Races race = findRace(raceId);
+        RaceRefereeAssignments chiefAssignment = refereeRaceAuthorizationService.requireChiefReferee(race.getId());
+        RaceRegistrations registration = findRegistration(registrationId);
+
+        if (!race.getId().equals(registration.getRaces().getId())) {
+            throw new BadRequestException("Registration does not belong to this race");
+        }
+        raceRegistrationValidator.ensureCanInspect(registration);
+        String inspectionStatus = cleanLower(request.getStatus());
+        raceRegistrationValidator.ensureValidChiefInspectionStatus(inspectionStatus);
+
+        registration.setChiefInspectionStatus(inspectionStatus);
+        registration.setChiefInspectedBy(chiefAssignment.getReferee());
+        registration.setChiefInspectedAt(Instant.now());
+        registration.setChiefInspectionNote(clean(request.getNote()));
+
+        if (ChiefInspectionStatus.REJECTED.equalsValue(inspectionStatus)) {
+            registration.setStatus(RaceRegistrationStatus.REJECTED.getValue());
+            cancelActiveJockeyAssignments(registration);
+        }
+
+        RaceRegistrationResponse response = raceRegistrationMapper.toResponse(
+                raceRegistrationsRepository.save(registration)
+        );
+        refreshRaceReadiness(race);
+        return response;
     }
 
     @Override
@@ -231,8 +323,14 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
         raceRegistrationValidator.ensureCanReject(registration);
 
         registration.setStatus(RaceRegistrationStatus.REJECTED.getValue());
+        registration.setAdminReviewedAt(Instant.now());
+        registration.setAdminReviewedBy(currentUserReference());
+        registration.setAdminReviewNote(clean(request == null ? null : request.getReason()));
+        cancelActiveJockeyAssignments(registration);
 
-        return raceRegistrationMapper.toResponse(raceRegistrationsRepository.save(registration));
+        RaceRegistrationResponse response = raceRegistrationMapper.toResponse(raceRegistrationsRepository.save(registration));
+        refreshRaceReadiness(registration.getRaces());
+        return response;
     }
 
     @Override
@@ -348,6 +446,63 @@ public class RaceRegistrationServiceImpl implements RaceRegistrationService {
         if (approvedCount >= maxHorses) {
             throw new com.group5.htms.exception.BadRequestException("Race maximum horses limit has been reached");
         }
+    }
+
+    private boolean hasConfirmedJockeyAssignment(RaceRegistrations registration) {
+        return jockeyHorseAssignmentsRepository.findByReg_Id(registration.getId())
+                .stream()
+                .anyMatch(assignment -> JockeyAssignmentStatus.CONFIRMED.equalsValue(assignment.getStatus()));
+    }
+
+    private void cancelActiveJockeyAssignments(RaceRegistrations registration) {
+        Instant now = Instant.now();
+        List<JockeyHorseAssignments> activeAssignments = jockeyHorseAssignmentsRepository
+                .findByReg_IdAndStatusIn(registration.getId(), ACTIVE_JOCKEY_ASSIGNMENT_STATUSES);
+        activeAssignments.forEach(assignment -> {
+            assignment.setStatus(JockeyAssignmentStatus.CANCELLED.getValue());
+            assignment.setCancelledAt(now);
+            assignment.setResponseDeadline(null);
+        });
+        if (!activeAssignments.isEmpty()) {
+            jockeyHorseAssignmentsRepository.saveAll(activeAssignments);
+        }
+    }
+
+    private void refreshRaceReadiness(Races race) {
+        if (!RaceStatus.REGISTRATION_CLOSED.equalsValue(race.getStatus())) {
+            return;
+        }
+
+        List<RaceRegistrations> registrations = raceRegistrationsRepository.findByRaces_Id(race.getId());
+        boolean hasPendingFinalReview = registrations.stream()
+                .filter(registration -> RaceRegistrationStatus.APPROVED.equalsValue(registration.getStatus()))
+                .filter(this::hasConfirmedJockeyAssignment)
+                .anyMatch(registration -> ChiefInspectionStatus.PENDING.equalsValue(registration.getChiefInspectionStatus()));
+        if (hasPendingFinalReview) {
+            return;
+        }
+
+        boolean hasFinalApprovedParticipant = registrations.stream()
+                .filter(registration -> RaceRegistrationStatus.APPROVED.equalsValue(registration.getStatus()))
+                .filter(registration -> ChiefInspectionStatus.APPROVED.equalsValue(registration.getChiefInspectionStatus()))
+                .anyMatch(this::hasConfirmedJockeyAssignment);
+        if (hasFinalApprovedParticipant) {
+            race.setStatus(RaceStatus.READY.getValue());
+            racesRepository.save(race);
+        }
+    }
+
+    private String clean(String value) {
+        if (value == null) {
+            return null;
+        }
+        String cleaned = value.trim();
+        return cleaned.isBlank() ? null : cleaned;
+    }
+
+    private String cleanLower(String value) {
+        String cleaned = clean(value);
+        return cleaned == null ? null : cleaned.toLowerCase(java.util.Locale.ROOT);
     }
 
 }

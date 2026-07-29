@@ -12,6 +12,7 @@ public class RaceStartResponse {
     private String raceName;
     private String previousStatus;
     private String status;
+    private String tournamentStatus;
     private Instant scheduledAt;
     private Instant predictionClosesAt;
     private Boolean bettingClosed;

@@ -57,13 +57,15 @@ public interface RaceRegistrationsRepository extends JpaRepository<RaceRegistrat
               and registration.races.scheduledAt = :scheduledAt
               and registration.races.id <> :raceId
               and lower(registration.status) not in :releasedStatuses
+              and lower(registration.races.status) not in :terminalRaceStatuses
             """)
     boolean existsHorseScheduleConflictInTournament(
             @Param("tournamentId") Integer tournamentId,
             @Param("horseId") Integer horseId,
             @Param("scheduledAt") Instant scheduledAt,
             @Param("raceId") Integer raceId,
-            @Param("releasedStatuses") List<String> releasedStatuses
+            @Param("releasedStatuses") List<String> releasedStatuses,
+            @Param("terminalRaceStatuses") List<String> terminalRaceStatuses
     );
 
     @Query("""
@@ -75,6 +77,7 @@ public interface RaceRegistrationsRepository extends JpaRepository<RaceRegistrat
               and registration.races.id <> :raceId
               and registration.id <> :registrationId
               and lower(registration.status) not in :releasedStatuses
+              and lower(registration.races.status) not in :terminalRaceStatuses
             """)
     boolean existsHorseScheduleConflictInTournamentForUpdate(
             @Param("tournamentId") Integer tournamentId,
@@ -82,7 +85,8 @@ public interface RaceRegistrationsRepository extends JpaRepository<RaceRegistrat
             @Param("scheduledAt") Instant scheduledAt,
             @Param("raceId") Integer raceId,
             @Param("registrationId") Integer registrationId,
-            @Param("releasedStatuses") List<String> releasedStatuses
+            @Param("releasedStatuses") List<String> releasedStatuses,
+            @Param("terminalRaceStatuses") List<String> terminalRaceStatuses
     );
 }
 

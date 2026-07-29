@@ -3,6 +3,7 @@ package com.group5.htms.service;
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationApprovalRequest;
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationApproveRequest;
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationCancelRequest;
+import com.group5.htms.dto.raceregistration.request.ChiefInspectionRequest;
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationCreateRequest;
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationRejectRequest;
 import com.group5.htms.dto.raceregistration.request.RaceRegistrationUpdateRequest;
@@ -18,6 +19,8 @@ public interface RaceRegistrationService {
 
     List<RaceRegistrationListResponse> getAdminApprovalRegistrations();
 
+    List<RaceRegistrationListResponse> getChiefInspectionRegistrations(Integer raceId);
+
     RaceRegistrationResponse getRegistrationById(Integer id);
 
     RaceRegistrationResponse getMyRegistrationById(Integer id);
@@ -29,6 +32,8 @@ public interface RaceRegistrationService {
     RaceRegistrationResponse approveRegistration(Integer id, RaceRegistrationApprovalRequest request);
 
     RaceRegistrationResponse approveRegistration(Integer id, RaceRegistrationApproveRequest request);
+
+    RaceRegistrationResponse inspectRegistration(Integer raceId, Integer registrationId, ChiefInspectionRequest request);
 
     RaceRegistrationResponse rejectRegistration(Integer id, RaceRegistrationRejectRequest request);
 

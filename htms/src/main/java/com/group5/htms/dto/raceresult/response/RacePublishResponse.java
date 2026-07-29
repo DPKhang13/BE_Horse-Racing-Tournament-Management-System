@@ -12,6 +12,7 @@ public class RacePublishResponse {
     private Integer raceId;
     private String raceName;
     private String raceStatus;
+    private String tournamentStatus;
     private Instant publishedAt;
     private Integer totalResults;
     private Integer winnerHorseId;

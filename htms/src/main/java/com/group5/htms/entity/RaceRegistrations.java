@@ -84,6 +84,23 @@ public class RaceRegistrations {
     @Column(name = "owner_confirmed_at")
     private Instant ownerConfirmedAt;
 
+    @Size(max = 20)
+    @NotNull
+    @ColumnDefault("'pending'")
+    @Column(name = "chief_inspection_status", nullable = false, length = 20)
+    private String chiefInspectionStatus;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "chief_inspected_by")
+    private RefereeProfiles chiefInspectedBy;
+
+    @Column(name = "chief_inspected_at")
+    private Instant chiefInspectedAt;
+
+    @Size(max = 1000)
+    @Column(name = "chief_inspection_note", length = 1000)
+    private String chiefInspectionNote;
+
     @NotNull
     @Column(name = "registered_at", nullable = false)
     private Instant registeredAt;
@@ -94,4 +111,15 @@ public class RaceRegistrations {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "approved_by")
     private Users approvedBy;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "admin_reviewed_by")
+    private Users adminReviewedBy;
+
+    @Column(name = "admin_reviewed_at")
+    private Instant adminReviewedAt;
+
+    @Size(max = 1000)
+    @Column(name = "admin_review_note", length = 1000)
+    private String adminReviewNote;
 }
