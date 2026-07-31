@@ -1,0 +1,421 @@
+// HTMS PostgreSQL schema
+// Source: C:\Users\Admin\Downloads\Ldb1 (2) (PostgreSQL custom dump)
+// Import this file at https://dbdiagram.io
+
+Table users {
+  user_id integer [pk]
+  username varchar(50) [not null, unique]
+  email varchar(100) [not null, unique]
+  password_hash varchar(255) [not null]
+  full_name varchar(100) [not null]
+  phone varchar(20)
+  role_type varchar(30) [not null]
+  status varchar(20) [not null]
+  avatar_url text
+  created_at timestamp [not null]
+}
+
+Table horse_owner_profiles {
+  owner_id integer [pk]
+  stable_name varchar(150)
+  license_number varchar(50) [unique]
+  address varchar(255)
+  favorite_jockey_id integer
+  status varchar(20) [not null]
+  created_at timestamp [not null]
+}
+
+Table jockey_profiles {
+  jockey_id integer [pk]
+  license_number varchar(50) [unique]
+  ranking_points integer [not null]
+  total_wins integer
+  experience_years integer [not null]
+  status varchar(20) [not null]
+  total_races integer [not null]
+}
+
+Table referee_profiles {
+  referee_id integer [pk]
+  license_number varchar(50) [unique]
+  address varchar(255)
+  status varchar(20) [not null]
+  created_at timestamp [not null]
+}
+
+Table horses {
+  horse_id integer [pk]
+  owner_id integer [not null]
+  name varchar(100) [not null]
+  breed varchar(100)
+  age integer
+  weight_kg numeric(5,2)
+  rank_group varchar(1)
+  ranking_points integer [not null]
+  avatar_url text
+  total_wins integer
+  total_races integer [not null]
+  status varchar(20) [not null]
+  registered_at timestamp [not null]
+}
+
+Table tournaments {
+  tournament_id integer [pk]
+  name varchar(200) [not null]
+  location varchar(255) [not null]
+  start_date date [not null]
+  end_date date [not null]
+  prize_pool numeric(18,2) [not null]
+  status varchar(20) [not null]
+  registration_open_at timestamp
+  registration_close_at timestamp
+  created_by integer [not null]
+  created_at timestamp [not null]
+}
+
+Table tournament_schedules {
+  schedule_id integer [pk]
+  tournament_id integer [not null]
+  race_date date [not null]
+  day_number integer [not null]
+  title varchar(200)
+  note text
+}
+
+Table races {
+  race_id integer [pk]
+  schedule_id integer [not null]
+  name varchar(200) [not null]
+  race_number integer [not null]
+  rank_group varchar(1)
+  lap_count integer [not null]
+  scheduled_at timestamp [not null]
+  prediction_closes_at timestamp
+  distance_m double [not null]
+  track_type varchar(50)
+  max_horses integer [not null]
+  max_referees integer [not null]
+  point_rule_note text
+  status varchar(20) [not null]
+}
+
+Table race_registrations {
+  reg_id integer [pk]
+  tournament_id integer [not null]
+  race_id integer [not null]
+  horse_id integer [not null]
+  owner_id integer [not null]
+  jockey_id integer
+  gate_number integer
+  status varchar(20) [not null]
+  owner_confirmation_status varchar(20) [not null]
+  owner_confirmed_at timestamp
+  registered_at timestamp [not null]
+  approved_at timestamp
+  approved_by integer
+  admin_review_note varchar(1000)
+  admin_reviewed_at timestamp
+  admin_reviewed_by integer
+  chief_inspection_status varchar(20) [not null]
+  chief_inspected_at timestamp
+  chief_inspected_by integer
+  chief_inspection_note varchar(1000)
+
+  indexes {
+    (race_id, horse_id) [unique, name: 'uq_reg_race_horse']
+  }
+}
+
+Table jockey_horse_assignments {
+  assignment_id integer [pk]
+  reg_id integer [not null]
+  race_id integer [not null]
+  jockey_id integer [not null]
+  gate_number integer
+  status varchar(20) [not null]
+  invited_at timestamp [not null]
+  response_deadline timestamp
+  responded_at timestamp
+  cancelled_at timestamp
+  expired_at timestamp
+
+  // PostgreSQL also has partial unique indexes for active assignment states:
+  // (race_id, jockey_id) and (race_id, gate_number) when status in pending/accepted/confirmed.
+}
+
+Table race_referee_assignments {
+  ref_assign_id integer [pk]
+  race_id integer [not null]
+  referee_id integer [not null]
+  referee_role varchar(50) [not null]
+  assigned_at timestamp [not null]
+
+  indexes {
+    (race_id, referee_id) [unique, name: 'uq_ref_assign_race_referee']
+    (race_id, referee_role) [unique, name: 'uq_ref_assign_race_role']
+  }
+}
+
+Table referee_reports {
+  report_id integer [pk]
+  race_id integer [not null]
+  referee_id integer [not null]
+  report_type varchar(20) [not null]
+  inspection_notes text
+  violation_notes text
+  result_notes text
+  verdict varchar(20) [not null]
+  submitted_at timestamp [not null]
+
+  indexes {
+    (race_id, referee_id, report_type) [unique, name: 'uq_report_race_referee_type']
+  }
+}
+
+Table race_results {
+  result_id integer [pk]
+  assignment_id integer [not null]
+  race_id integer [not null]
+  horse_id integer [not null]
+  owner_id integer [not null]
+  report_id integer
+  final_round integer
+  finish_position integer
+  finish_time_sec numeric(10,3)
+  points_awarded integer [not null]
+  is_disqualified boolean [not null]
+  disqualify_reason varchar(500)
+  status varchar(20) [not null]
+  recorded_at timestamp [not null]
+  published_at timestamp
+}
+
+Table race_rounds {
+  round_id integer [pk]
+  race_id integer [not null]
+  assignment_id integer [not null]
+  horse_id integer [not null]
+  round_number integer [not null]
+  position integer [not null]
+  lap_time_sec numeric(10,3)
+  recorded_at timestamp [not null]
+
+  indexes {
+    (race_id, assignment_id, round_number) [unique, name: 'uq_round_assignment']
+    (race_id, round_number, position) [unique, name: 'uq_round_position']
+  }
+}
+
+Table race_point_rules {
+  rule_id integer [pk]
+  race_id integer [not null]
+  finish_position integer [not null]
+  points integer [not null]
+  note varchar(255)
+
+  indexes {
+    (race_id, finish_position) [unique, name: 'uq_point_rule_race_position']
+  }
+}
+
+Table race_result_admin_edit_audits {
+  audit_id integer [pk]
+  edited_at timestamp [not null]
+  previous_results_json text [not null]
+  updated_results_json text [not null]
+  edited_by integer [not null]
+  race_id integer [not null]
+}
+
+Table prize_distributions {
+  prize_id integer [pk]
+  tournament_id integer [not null]
+  finish_position integer [not null]
+  prize_name varchar(100)
+  amount numeric(18,2) [not null]
+  note varchar(255)
+
+  indexes {
+    (tournament_id, finish_position) [unique, name: 'uq_prize_tournament_position']
+  }
+}
+
+Table prize_awards {
+  award_id integer [pk]
+  prize_id integer [not null]
+  tournament_id integer [not null]
+  race_id integer [not null]
+  result_id integer [not null, unique]
+  horse_id integer [not null]
+  owner_id integer [not null]
+  finish_position integer [not null]
+  amount numeric(18,2) [not null]
+  status varchar(20) [not null]
+  awarded_at timestamp
+
+  indexes {
+    (race_id, finish_position) [unique, name: 'uq_award_race_position']
+  }
+}
+
+Table bet_options {
+  option_id integer [pk]
+  race_id integer [not null]
+  assignment_id integer [not null]
+  horse_id integer [not null]
+  current_rate numeric(8,2) [not null]
+  total_bet_points numeric(18,2) [not null]
+  total_bet_count integer [not null]
+  updated_at timestamp [not null]
+
+  indexes {
+    (race_id, horse_id) [unique, name: 'uq_option_race_horse']
+  }
+}
+
+Table bets {
+  bet_id integer [pk]
+  user_id integer [not null]
+  option_id integer [not null]
+  bet_type boolean [not null]
+  bet_points numeric(18,2) [not null]
+  bet_rate numeric(8,2) [not null]
+  reward_points numeric(18,2) [not null]
+  status varchar(20) [not null]
+  placed_at timestamp [not null]
+  settled_at timestamp
+}
+
+Table wallets {
+  wallet_id integer [pk]
+  user_id integer [not null, unique]
+  point_balance numeric(18,2) [not null]
+  status varchar(20) [not null]
+  created_at timestamp [not null]
+}
+
+Table wallet_transactions {
+  tx_id integer [pk]
+  wallet_id integer [not null]
+  user_id integer [not null]
+  tx_type varchar(20) [not null]
+  cash_amount numeric(18,2) [not null]
+  points_amount numeric(18,2) [not null]
+  exchange_rate numeric(18,2)
+  points_before numeric(18,2) [not null]
+  points_after numeric(18,2) [not null]
+  status varchar(20) [not null]
+  ref_type varchar(50)
+  ref_id integer
+  created_by integer
+  created_at timestamp [not null]
+  updated_at timestamp
+}
+
+Table withdrawals {
+  withdrawal_id integer [pk]
+  tx_id integer [not null, unique]
+  user_id integer [not null]
+  wallet_id integer [not null]
+  requested_points numeric(18,2) [not null]
+  gross_cash_amount numeric(18,2) [not null]
+  tax_rate numeric(5,2) [not null]
+  tax_amount numeric(18,2) [not null]
+  net_cash_amount numeric(18,2) [not null]
+  exchange_rate numeric(18,6)
+  status varchar(20) [not null]
+  approved_by integer
+  approved_at timestamp
+  rejected_by integer
+  rejected_at timestamp
+  paid_by integer
+  paid_at timestamp
+  reject_reason varchar(255)
+  payment_note varchar(255)
+  invoice_number varchar(50)
+  invoice_url text
+  invoice_generated_at timestamp
+  invoice_emailed_at timestamp
+  email_sent_to varchar(100)
+  created_at timestamp [not null]
+  pickup_code varchar(20)
+  payout_location varchar(255)
+  payout_counter varchar(100)
+}
+
+Table notifications {
+  notification_id integer [pk]
+  user_id integer [not null]
+  title varchar(200) [not null]
+  message text
+  type varchar(50) [not null]
+  ref_id integer
+  ref_type varchar(50)
+  is_read boolean [not null]
+  created_at timestamp [not null]
+}
+
+Ref: horse_owner_profiles.owner_id - users.user_id
+Ref: jockey_profiles.jockey_id - users.user_id
+Ref: referee_profiles.referee_id - users.user_id
+Ref: horse_owner_profiles.favorite_jockey_id > jockey_profiles.jockey_id
+Ref: horses.owner_id > horse_owner_profiles.owner_id
+
+Ref: tournaments.created_by > users.user_id
+Ref: tournament_schedules.tournament_id > tournaments.tournament_id
+Ref: races.schedule_id > tournament_schedules.schedule_id
+
+Ref: race_registrations.tournament_id > tournaments.tournament_id
+Ref: race_registrations.race_id > races.race_id
+Ref: race_registrations.horse_id > horses.horse_id
+Ref: race_registrations.owner_id > horse_owner_profiles.owner_id
+Ref: race_registrations.jockey_id > jockey_profiles.jockey_id
+Ref: race_registrations.approved_by > users.user_id
+Ref: race_registrations.admin_reviewed_by > users.user_id
+Ref: race_registrations.chief_inspected_by > referee_profiles.referee_id
+
+Ref: jockey_horse_assignments.reg_id > race_registrations.reg_id
+Ref: jockey_horse_assignments.race_id > races.race_id
+Ref: jockey_horse_assignments.jockey_id > jockey_profiles.jockey_id
+Ref: race_referee_assignments.race_id > races.race_id
+Ref: race_referee_assignments.referee_id > referee_profiles.referee_id
+Ref: referee_reports.race_id > races.race_id
+Ref: referee_reports.referee_id > referee_profiles.referee_id
+
+Ref: race_results.assignment_id > jockey_horse_assignments.assignment_id
+Ref: race_results.race_id > races.race_id
+Ref: race_results.horse_id > horses.horse_id
+Ref: race_results.owner_id > horse_owner_profiles.owner_id
+Ref: race_results.report_id > referee_reports.report_id
+Ref: race_rounds.race_id > races.race_id
+Ref: race_rounds.assignment_id > jockey_horse_assignments.assignment_id
+Ref: race_rounds.horse_id > horses.horse_id
+Ref: race_point_rules.race_id > races.race_id
+Ref: race_result_admin_edit_audits.race_id > races.race_id
+Ref: race_result_admin_edit_audits.edited_by > users.user_id
+
+Ref: prize_distributions.tournament_id > tournaments.tournament_id
+Ref: prize_awards.prize_id > prize_distributions.prize_id
+Ref: prize_awards.tournament_id > tournaments.tournament_id
+Ref: prize_awards.race_id > races.race_id
+Ref: prize_awards.result_id > race_results.result_id
+Ref: prize_awards.horse_id > horses.horse_id
+Ref: prize_awards.owner_id > horse_owner_profiles.owner_id
+
+Ref: bet_options.race_id > races.race_id
+Ref: bet_options.assignment_id > jockey_horse_assignments.assignment_id
+Ref: bet_options.horse_id > horses.horse_id
+Ref: bets.user_id > users.user_id
+Ref: bets.option_id > bet_options.option_id
+
+Ref: wallets.user_id - users.user_id
+Ref: wallet_transactions.wallet_id > wallets.wallet_id
+Ref: wallet_transactions.user_id > users.user_id
+Ref: wallet_transactions.created_by > users.user_id
+Ref: withdrawals.tx_id - wallet_transactions.tx_id
+Ref: withdrawals.user_id > users.user_id
+Ref: withdrawals.wallet_id > wallets.wallet_id
+Ref: withdrawals.approved_by > users.user_id
+Ref: withdrawals.rejected_by > users.user_id
+Ref: withdrawals.paid_by > users.user_id
+Ref: notifications.user_id > users.user_id

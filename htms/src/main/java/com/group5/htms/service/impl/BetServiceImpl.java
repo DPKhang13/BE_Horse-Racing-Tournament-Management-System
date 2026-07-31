@@ -18,6 +18,7 @@ import com.group5.htms.entity.WalletTransactions;
 import com.group5.htms.entity.Wallets;
 import com.group5.htms.enums.BetStatus;
 import com.group5.htms.enums.RaceResultStatus;
+import com.group5.htms.enums.RaceStatus;
 import com.group5.htms.enums.RoleType;
 import com.group5.htms.enums.WalletTransactionStatus;
 import com.group5.htms.enums.WalletTransactionType;
@@ -288,11 +289,15 @@ public class BetServiceImpl implements BetService {
     }
 
     private String predictionStatus(Races race) {
+        if (!RaceStatus.OPEN_FOR_BETTING.equalsValue(race.getStatus())) {
+            return "closed";
+        }
+
         Instant predictionClosesAt = race.getPredictionClosesAt();
         if (predictionClosesAt != null && !Instant.now().isBefore(predictionClosesAt)) {
-            return "đã đóng";
+            return "closed";
         }
-        return "open for betting";
+        return RaceStatus.OPEN_FOR_BETTING.getValue();
     }
 
     private PredictionRaceResponse.OptionItem toPredictionOption(BetOptions option) {
